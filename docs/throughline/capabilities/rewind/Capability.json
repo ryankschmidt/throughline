@@ -1,7 +1,7 @@
 {
   "schema": "throughline.capability.v1",
   "name": "rewind",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "rule": "rewind keeps the same Claude native session, like the CLI's /rewind; adopt upstream types around it",
   "baseline": {
     "throughline": "0.0.51",
