@@ -655,11 +655,22 @@ export async function runSliceChecks() {
     if (!repo) return [...f, "no repository at old or new home"];
     for (const w of worktrees(repo))
       if (under(w.path, VAULT)) f.push(`registered worktree under vault: ${w.path}`);
-    const scan = (dir: string, depth: number) => {
+    const scan = (dir: string, depth: number, followLinks = true) => {
       try {
         const root = lstatSync(dir);
         if (root.isSymbolicLink()) {
-          f.push(`symlink scan root: ${dir}`);
+          if (!followLinks) return;
+          let target: string;
+          try {
+            target = realpathSync(dir);
+          } catch {
+            f.push(`unresolved scan alias: ${dir}`);
+            return;
+          }
+          if (!under(target, VAULT)) f.push(`out-of-vault scan alias: ${dir}`);
+          else if (under(target, OLD_HOME) || under(target, HOME) || under(target, WORKTREES))
+            f.push(`repository scan alias: ${dir}`);
+          else scan(target, depth, false);
           return;
         }
         if (!root.isDirectory()) return;
@@ -673,13 +684,19 @@ export async function runSliceChecks() {
         else if (url === ORIGIN) f.push(`clone under vault: ${dir}`);
       }
       if (depth <= 0) return;
-      for (const name of readdirSync(dir)) {
+      let names: string[];
+      try {
+        names = readdirSync(dir);
+      } catch {
+        f.push(`unreadable clone candidate: ${dir}`);
+        return;
+      }
+      for (const name of names) {
         if (name === ".git" || name === "node_modules") continue;
         const p = join(dir, name);
         try {
           const st = lstatSync(p);
-          if (st.isSymbolicLink()) f.push(`unresolved scan alias: ${p}`);
-          else if (st.isDirectory()) scan(p, depth - 1);
+          if (st.isSymbolicLink() || st.isDirectory()) scan(p, depth - 1, followLinks);
         } catch {
           f.push(`unreadable clone candidate: ${p}`);
         }
@@ -1361,9 +1378,45 @@ export async function runSliceChecks() {
     for (const path of [HOME, WORKTREES, BACKUP_NEW, WORKTREES + "/README.md"])
       if (!existsSync(path)) f.push(`destination absent: ${path}`);
     const rows = ledgerRows();
+    const annotations = new Map<string, any>(jsonlRows(ANNOTATIONS).map((a: any) => [a.path, a]));
     for (const fp of m.fingerprints ?? []) {
-      if (fp.disposition === "archived-and-removed") {
+      const annotation = annotations.get(fp.path);
+      // Use S1-C06's precedence over the read-only frozen witness, including
+      // archived staging links and worktree moves used by preservedFindings.
+      const linkArchive =
+        !annotation &&
+        rows.find(
+          (row) =>
+            row.source === fp.path &&
+            fp.file_count === 0 &&
+            fp.symlink_count === 1 &&
+            fp.entry_count === 1 &&
+            archiveMatches(row, { ...fp, archive: row.archive }),
+        );
+      if (linkArchive) {
+        if (present(fp.path)) f.push(`archived staging link still present: ${fp.path}`);
+      } else if (annotation) {
+        if (!sameFingerprint(annotation.fingerprint, fp))
+          f.push(`annotation does not match the frozen entry on path and fingerprint: ${fp.path}`);
+        else if (annotation.disposition === "archived-and-removed") {
+          if (present(fp.path)) f.push(`archived entry still present: ${fp.path}`);
+          if (
+            annotation.is_container &&
+            !archiveMatches(
+              rows.find(
+                (row) =>
+                  row.source === annotation.archive_ledger_source &&
+                  row.archive === annotation.archive,
+              ),
+              { ...fp, path: annotation.archive_ledger_source, archive: annotation.archive },
+            )
+          )
+            f.push(`container has no passing archive ledger row: ${fp.path}`);
+        } else if (annotation.disposition === "moved-and-preserved")
+          f.push(...preservedFindings(m, fp));
+      } else if (fp.disposition === "archived-and-removed") {
         if (
+          present(fp.path) ||
           !archiveMatches(
             rows.find((r) => r.source === fp.path && r.archive === fp.archive),
             fp,
@@ -1371,17 +1424,7 @@ export async function runSliceChecks() {
         )
           f.push(`archive identity/count mismatch: ${fp.path}`);
       } else if (fp.disposition === "moved-and-preserved") {
-        if (!fp.target || !existsSync(fp.target) || !under(fp.target, WORKTREES))
-          f.push("preserved tree missing");
-        else {
-          const got = manifestOf(fp.target);
-          if (
-            !["sha256", "file_count", "symlink_count", "entry_count", "bytes"].every(
-              (k) => got[k as keyof typeof got] === fp[k],
-            )
-          )
-            f.push("preserved tree content/count drift");
-        }
+        f.push(...preservedFindings(m, fp));
       } else f.push("unknown retained/archive disposition");
     }
     const version = installedVersion();
@@ -1390,14 +1433,19 @@ export async function runSliceChecks() {
         if (!existsSync(x.path) || sha256(x.path) !== x.sha256)
           f.push(`installed payload changed without release: ${x.path}`);
     } else {
-      const a = latestAttempt(
-        EVIDENCE_ROOT + "/release-" + version.replaceAll(".", "-"),
-        "install-mac",
+      const closure = readJson(
+        join(EVIDENCE_ROOT, "release-" + version.replaceAll(".", "-"), "Release-Closure.json"),
       );
+      const mac = closure.installed_readbacks?.find((x: any) => x.target === "mac");
       if (
-        a?.row?.outcome !== "passed" ||
-        !a.installed_payloads?.length ||
-        a.installed_payloads.some((x: any) => !existsSync(x.path) || sha256(x.path) !== x.sha256)
+        closure.outcome !== "passed" ||
+        mac?.release !== version ||
+        typeof mac?.receipt_path !== "string" ||
+        !existsSync(mac.receipt_path) ||
+        sha256(mac.receipt_path) !== mac.receipt_sha256 ||
+        typeof mac?.payload_path !== "string" ||
+        !existsSync(mac.payload_path) ||
+        sha256(mac.payload_path) !== mac.payload_sha256
       )
         f.push("changed installed payload lacks exact owning install receipt");
     }
@@ -1789,6 +1837,9 @@ async function runRepositoryMoveFixtures(): Promise<void> {
     old_backup_root: join(root, "backup"),
     retired_folder: join(root, "retired"),
     old_home: join(root, "retired/old-home"),
+    vault: join(root, "vault"),
+    component_folder: join(root, "vault/component"),
+    backup_root: join(root, "new-backup"),
   });
   const rr = spec.tasks.find((t: any) => t.id === "T1.05").record_retention;
   rr.address = join(root, "retained");
@@ -1821,6 +1872,274 @@ async function runRepositoryMoveFixtures(): Promise<void> {
       unlinkSync(spec.repository.old_home);
     }
   };
+  // Pre-close reader regressions: real links, repository identities and hash-bound
+  // closure files, all under this disposable fixture root.
+  git(home, "remote", "add", "origin", spec.repository.origin);
+  const component = spec.repository.component_folder,
+    plain = join(spec.repository.vault, "plain"),
+    link = join(component, "evidence-link");
+  mkdirSync(component, { recursive: true });
+  mkdirSync(plain);
+  const withLink = (target: string, fn: () => void) => {
+    symlinkSync(target, link);
+    try {
+      fn();
+    } finally {
+      unlinkSync(link);
+    }
+  };
+  test("S1-C02 accepts a link to a plain vault directory", () =>
+    withLink(plain, () => run("S1-C02", 0)));
+  test("S1-C02 refuses a dangling link", () =>
+    withLink(join(plain, "missing"), () => run("S1-C02", 1, "unresolved scan alias")));
+  test("S1-C02 refuses an out-of-vault link", () =>
+    withLink(records, () => run("S1-C02", 1, "out-of-vault scan alias")));
+  test("S1-C02 refuses an old-home link even inside the vault", () => {
+    const old = spec.repository.old_home;
+    spec.repository.old_home = join(plain, "old-home");
+    mkdirSync(spec.repository.old_home);
+    json(specPath, spec);
+    try {
+      withLink(spec.repository.old_home, () => run("S1-C02", 1, "repository scan alias"));
+    } finally {
+      spec.repository.old_home = old;
+      json(specPath, spec);
+    }
+  });
+  test("S1-C02 refuses a link resolving to the repository", () =>
+    withLink(home, () => run("S1-C02", 1)));
+  test("S1-C02 scans a linked vault target for a matching-origin clone", () => {
+    const clone = join(plain, "clone");
+    mkdirSync(clone);
+    git(clone, "init", "-q");
+    git(clone, "remote", "add", "origin", spec.repository.origin);
+    try {
+      withLink(plain, () => run("S1-C02", 1, "clone under vault"));
+    } finally {
+      const clean = (p: string) => {
+        const st = lstatSync(p);
+        if (st.isDirectory() && !st.isSymbolicLink()) {
+          for (const n of readdirSync(p)) clean(join(p, n));
+          rmdirSync(p);
+        } else unlinkSync(p);
+      };
+      clean(clone);
+    }
+  });
+  test("S1-C02 does not follow further links inside a resolved target", () => {
+    const cycle = join(plain, "cycle");
+    symlinkSync(plain, cycle);
+    try {
+      withLink(plain, () => run("S1-C02", 0));
+    } finally {
+      unlinkSync(cycle);
+    }
+  });
+  const archiveAnnotations = join(records, "Archive-Annotations.jsonl"),
+    closePayload = join(records, "installer.pkg"),
+    closeReceipt = join(records, "installed-readback.json"),
+    closurePath = join(spec.repository.evidence_root, "release-1-2-3/Release-Closure.json");
+  const digest = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
+  file(closePayload, "installer payload\n");
+  json(closeReceipt, { outcome: "passed", release: "1.2.3" });
+  mkdirSync(spec.repository.backup_root);
+  file(join(trees, "README.md"), "Fixture collection\n");
+  const closeFixture = () => {
+    rows([]);
+    file(archiveAnnotations, "");
+    json(spec.repository.archive_ledger, { schema: "mac-disk-archive-ledger.v1", moves: [] });
+    const m: any = {
+      ...move,
+      head: a,
+      admission_state: "moved",
+      started_at: at,
+      fingerprints: [],
+      installed_app: {
+        version: "1.2.3",
+        payloads: [{ path: closePayload, sha256: digest(closePayload) }],
+      },
+      task_done_receipts: [
+        "T1.01",
+        "T1.02",
+        "T1.03",
+        "T1.04",
+        "T1.05",
+        "T1.06",
+        "T1.08",
+        "T1.09",
+        "T1.10",
+      ].map((task) => ({
+        task,
+        path: closeReceipt,
+        sha256: digest(closeReceipt),
+        exit_code: 0,
+        finished_at: at,
+      })),
+    };
+    const closure: any = {
+      outcome: "passed",
+      installed_readbacks: [
+        {
+          target: "mac",
+          release: "1.2.3",
+          payload_path: closePayload,
+          payload_sha256: digest(closePayload),
+          receipt_path: closeReceipt,
+          receipt_sha256: digest(closeReceipt),
+        },
+      ],
+    };
+    const runClose = (expected: number, reason?: string) => {
+      json(movePath, m);
+      json(closurePath, closure);
+      run("S1-C12", expected, reason, ["--before-close"]);
+    };
+    return { m, closure, runClose };
+  };
+  const archivedCloseFixture = () => {
+    const f = closeFixture(),
+      source = join(records, "now-archived"),
+      target = join(trees, "absent-preserved"),
+      archive = "rpi:/mnt/storage/archives/fixture";
+    file(join(source, "payload.txt"), "archived tree\n");
+    const fp = { path: source, target, disposition: "moved-and-preserved", ...manifestOf(source) };
+    unlinkSync(join(source, "payload.txt"));
+    rmdirSync(source);
+    f.m.fingerprints = [fp];
+    const annotation: any = {
+      path: source,
+      fingerprint: fp,
+      disposition: "archived-and-removed",
+      is_container: true,
+      archive,
+      archive_ledger_source: source,
+    };
+    const ledger: any = {
+      source,
+      archive,
+      ...fp,
+      status: "ARCHIVED_AND_REMOVED",
+      verify_result: "PASS",
+      rsync_checksum_verified: true,
+      remote_file_count: fp.file_count,
+      remote_symlink_count: fp.symlink_count,
+    };
+    const runArchived = (expected: number, reason?: string) => {
+      file(archiveAnnotations, JSON.stringify(annotation) + "\n");
+      json(spec.repository.archive_ledger, {
+        schema: "mac-disk-archive-ledger.v1",
+        moves: [ledger],
+      });
+      f.runClose(expected, reason);
+    };
+    return { ...f, annotation, ledger, runArchived };
+  };
+  test("S1-C12 accepts a formerly preserved tree with a bound archive annotation and ledger", () =>
+    archivedCloseFixture().runArchived(0));
+  test("S1-C12 refuses an archive annotation fingerprint mismatch", () => {
+    const f = archivedCloseFixture();
+    f.annotation.fingerprint = { ...f.annotation.fingerprint, sha256: "0".repeat(64) };
+    f.runArchived(1, "annotation does not match");
+  });
+  test("S1-C12 refuses an annotated archive without passing ledger proof", () => {
+    const f = archivedCloseFixture();
+    f.ledger.verify_result = "FAIL";
+    f.runArchived(1, "passing archive ledger");
+  });
+  for (const annotated of [false, true]) {
+    test(`S1-C12 preserved tree follows worktree move annotation (archive annotation ${annotated})`, () => {
+      const f = closeFixture(),
+        target = join(trees, "preserved-close");
+      file(join(target, "payload.txt"), "preserved bytes\n");
+      const fp = {
+        path: join(records, "frozen-preserved"),
+        target: join(records, "old-preserved"),
+        disposition: "moved-and-preserved",
+        ...manifestOf(target),
+      };
+      f.m.fingerprints = [fp];
+      f.m.worktrees = [{ path: fp.target, branch: "preserved-close", head: a }];
+      rows([
+        {
+          schema,
+          kind: "disposition",
+          before: fp.target,
+          after: target,
+          frozen_head: a,
+          branch: "preserved-close",
+          disposition: "moved",
+          evidence: { command: "fixture move" },
+        },
+      ]);
+      if (annotated)
+        file(
+          archiveAnnotations,
+          JSON.stringify({ path: fp.path, fingerprint: fp, disposition: "moved-and-preserved" }) +
+            "\n",
+        );
+      try {
+        f.runClose(0);
+      } finally {
+        unlinkSync(join(target, "payload.txt"));
+        rmdirSync(target);
+      }
+    });
+  }
+  test("S1-C12 accepts changed installed version with owning mac closure readback", () => {
+    const f = closeFixture();
+    f.m.installed_app.version = "1.2.2";
+    f.runClose(0);
+  });
+  for (const [name, mutate] of [
+    [
+      "no mac row",
+      (f: any) => {
+        f.closure.installed_readbacks[0].target = "tower";
+      },
+    ],
+    [
+      "failed closure",
+      (f: any) => {
+        f.closure.outcome = "failed";
+      },
+    ],
+    [
+      "wrong release",
+      (f: any) => {
+        f.closure.installed_readbacks[0].release = "1.2.2";
+      },
+    ],
+    [
+      "receipt hash drift",
+      (f: any) => {
+        f.closure.installed_readbacks[0].receipt_sha256 = "0".repeat(64);
+      },
+    ],
+    [
+      "payload hash drift",
+      (f: any) => {
+        f.closure.installed_readbacks[0].payload_sha256 = "0".repeat(64);
+      },
+    ],
+    [
+      "missing receipt",
+      (f: any) => {
+        f.closure.installed_readbacks[0].receipt_path += ".absent";
+      },
+    ],
+    [
+      "missing payload",
+      (f: any) => {
+        f.closure.installed_readbacks[0].payload_path += ".absent";
+      },
+    ],
+  ] as Array<[string, (f: any) => void]>)
+    test(`S1-C12 refuses changed release with ${name}`, () => {
+      const f = closeFixture();
+      f.m.installed_app.version = "1.2.2";
+      mutate(f);
+      f.runClose(1, "owning install receipt");
+    });
   test("S1-C03 moved before-close accepts the absent old-home alias", () => {
     json(movePath, { ...move, admission_state: "moved" });
     rows(chain);
