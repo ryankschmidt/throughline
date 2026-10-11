@@ -352,7 +352,7 @@
       "outcome": "round-2 verdict FAIL on 0.2.0; its findings are disposed as J2 in audit_dispositions"
     }
   },
-  "generated_at": "2026-10-11T14:29:27.357Z",
+  "generated_at": "2026-10-11T14:32:20.118Z",
   "generated_by": {
     "note": "the seat that ran the builder, read from its environment at build time; the design author is authored_by",
     "runtime": "codex",
@@ -361,7 +361,7 @@
     "source_files": [
       {
         "path": "./spec-data.mts",
-        "sha256": "c9abd1c2617e51004b80bbc3477723fdbf95ad7e25553d4af7f5a76db650d2ca"
+        "sha256": "02bab2321bf65363ef80b909092ca5a087a313111ef4eae2f67a37f3b9b000a2"
       },
       {
         "path": "./contracts-data.mts",
@@ -11231,7 +11231,7 @@
     {
       "id": "S1-C14",
       "slice": "slice-1",
-      "title": "A non-builder probe binds a live server, dirty fixture and unchanged index bytes, with installed bundle and server-trace backstops",
+      "title": "A non-builder probe binds a live server, dirty fixture and unchanged index bytes, with installed bundle backstop",
       "kind": "real-disk",
       "file": "./checks/slice-1-repository-move.mts",
       "expected_today": "FAIL",

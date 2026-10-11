@@ -370,7 +370,7 @@ export const CHECKS: Check[] = [
     id: "S1-C14",
     slice: "slice-1",
     title:
-      "A non-builder probe binds a live server, dirty fixture and unchanged index bytes, with installed bundle and server-trace backstops",
+      "A non-builder probe binds a live server, dirty fixture and unchanged index bytes, with installed bundle backstop",
     kind: "real-disk",
     file: "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/checks/slice-1-repository-move.mts",
     expected_today: "FAIL",
