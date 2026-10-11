@@ -98,7 +98,7 @@ const assertMigrated = Effect.gen(function* () {
   const executed = yield* runWithoutDivergence;
   assert.deepStrictEqual(
     executed.map(([id]) => id),
-    [55, 56, 57, 58, 59, 60, 61, 62, 63],
+    [55, 56, 57, 58, 59, 60, 61, 62, 63, 64],
   );
   const history = yield* sql<{
     migration_id: number;
@@ -135,7 +135,7 @@ const assertMigrated = Effect.gen(function* () {
 
 describe("ThroughLine 0.0.60 migration", () => {
   it.effect(
-    "a synthetic 0.0.60 ledger reaches 1..63 with no data loss and a no-op second run",
+    "a synthetic 0.0.60 ledger reaches 1..64 with no data loss and a no-op second run",
     () =>
       Effect.gen(function* () {
         const sql = yield* SqlClient.SqlClient;
@@ -155,7 +155,7 @@ describe("ThroughLine 0.0.60 migration", () => {
         ]);
       }).pipe(Effect.provide(layer)),
   );
-  it.effect("a fresh database runs 1..63 in order", () =>
+  it.effect("a fresh database runs 1..64 in order", () =>
     Effect.gen(function* () {
       assert.deepStrictEqual(
         (yield* runMigrations()).map(([id]) => id),
@@ -195,7 +195,7 @@ describe("ThroughLine 0.0.60 migration", () => {
 
 const suppliedCopy = process.env.THROUGHLINE_REAL_STATE_DB;
 describe.skipIf(!suppliedCopy)("real 0.0.60 database COPY (never the live database)", () => {
-  it.effect("a real 0.0.60 database reaches 1..63 with no data loss and a no-op second run", () =>
+  it.effect("a real 0.0.60 database reaches 1..64 with no data loss and a no-op second run", () =>
     Effect.gen(function* () {
       const source = fs.realpathSync(suppliedCopy!);
       assert.isFalse(

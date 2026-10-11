@@ -62,9 +62,9 @@ describe("ThroughLine migration ledger pre-step", () => {
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
       yield* sql`CREATE TABLE effect_sql_migrations (migration_id INTEGER PRIMARY KEY, name TEXT NOT NULL)`;
-      yield* sql`INSERT INTO effect_sql_migrations VALUES (55, 'OrchestrationV2'), (56, 'RemoveRedundantProjectionIndexes'), (61, 'ThroughLineIdentityPersistence'), (62, 'ThroughLineMessageSender')`;
+      yield* sql`INSERT INTO effect_sql_migrations VALUES (55, 'OrchestrationV2'), (56, 'RemoveRedundantProjectionIndexes'), (61, 'PullRequestReviewGuides'), (62, 'ThroughLineIdentityPersistence'), (63, 'ThroughLineMessageSender')`;
       assert.deepStrictEqual(yield* reconcileThroughLineMigrations(), []);
-      assert.strictEqual((yield* sql`SELECT * FROM effect_sql_migrations`).length, 4);
+      assert.strictEqual((yield* sql`SELECT * FROM effect_sql_migrations`).length, 5);
     }).pipe(Effect.provide(layer)),
   );
 

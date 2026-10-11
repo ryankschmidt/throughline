@@ -16,6 +16,7 @@ import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as ServerConfig from "../config.ts";
+import * as ServerSettings from "../serverSettings.ts";
 import * as Sqlite from "../persistence/Sqlite.ts";
 import * as Runtime from "../persistence/ProviderSessionRuntime.ts";
 import * as ProjectService from "../project/ProjectService.ts";
@@ -191,6 +192,9 @@ const main = Effect.gen(function* () {
     return;
   }
   const runtimeLayer = offlineLayer.pipe(
+    // Offline source bridge: compiled defaults only; profile/project overrides
+    // await a non-secret reader. Never mount the secret-materializing live layer.
+    Layer.provide(ServerSettings.layerTest()),
     Layer.provideMerge(Sqlite.layerConfig),
     Layer.provide(ServerConfig.layer(config)),
     Layer.provideMerge(NodeServices.layer),

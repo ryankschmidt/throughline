@@ -33,6 +33,7 @@ import * as IdAllocator from "@t3tools/provider-core/server/IdAllocator";
 import * as Sqlite from "../../persistence/Sqlite.ts";
 import * as Runtime from "../../persistence/ProviderSessionRuntime.ts";
 import * as ProjectService from "../../project/ProjectService.ts";
+import * as ServerSettings from "../../serverSettings.ts";
 import * as Projection from "../../orchestration-v2/ProjectionStore.ts";
 import * as EventStore from "../../orchestration-v2/EventStore.ts";
 import * as EventSink from "../../orchestration-v2/EventSink.ts";
@@ -423,6 +424,7 @@ it("constructs the actual offline service graph and creates a project with no pr
   const directory = mkdtempSync(join(tmpdir(), "offline-graph-"));
   try {
     const actual = offlineLayer.pipe(
+      Layer.provide(ServerSettings.layerTest()),
       Layer.provideMerge(Sqlite.layerMemory),
       Layer.provideMerge(NodeServices.layer),
     );

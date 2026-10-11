@@ -46,6 +46,8 @@ import * as ProviderReplayHarness from "../../../orchestration-v2/testkit/Provid
 import * as ProviderRegistry from "../../../orchestration-v2/ProviderAdapterRegistry.ts";
 import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementService.ts";
 import * as ThreadMessageIntake from "../../../orchestration-v2/ThreadMessageIntake.ts";
+import * as CommandReceiptStore from "../../../orchestration-v2/CommandReceiptStore.ts";
+import * as ServerSettings from "../../../serverSettings.ts";
 import * as ProjectionStore from "../../../orchestration-v2/ProjectionStore.ts";
 import * as Sqlite from "../../../persistence/Sqlite.ts";
 import * as CheckpointStore from "../../../checkpointing/CheckpointStore.ts";
@@ -547,6 +549,7 @@ export const makeControlledRewindHandler = (
                 offer: () => Effect.void,
                 setModel: () => Effect.void,
                 setPermissionMode: () => Effect.void,
+                stopTask: () => Effect.die("capture fixture must not stop a native task"),
                 interrupt: Effect.void,
                 close: Effect.void,
               })
@@ -1082,7 +1085,15 @@ export const assertNewPostCutCapture = () =>
             runEffectWorker: false,
           },
         );
-        const realIntake = ThreadManagement.layer.pipe(Layer.provideMerge(replay));
+        const realIntake = ThreadManagement.layer.pipe(
+          Layer.provideMerge(replay),
+          Layer.provide(
+            CommandReceiptStore.layer.pipe(
+              Layer.provide(Layer.succeed(SqlClient.SqlClient, yield* SqlClient.SqlClient)),
+            ),
+          ),
+          Layer.provide(ServerSettings.layerTest({ responseStreamingMode: "turn" })),
+        );
         const created = yield* Effect.scoped(
           ThreadMessageIntake.sendToThread({
             projectId: ProjectId.make("project"),

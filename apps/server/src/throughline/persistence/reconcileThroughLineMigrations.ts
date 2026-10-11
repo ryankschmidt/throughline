@@ -9,9 +9,10 @@ const known = new Map([
   [58, "WebhookRelayDeliveries"],
   [59, "McpAppModelContext"],
   [60, "ThreadSnapshotWindowIndexes"],
-  [61, "ThroughLineIdentityPersistence"],
-  [62, "ThroughLineMessageSender"],
-  [63, "ThroughLineRewindCutAndObservation"],
+  [61, "PullRequestReviewGuides"],
+  [62, "ThroughLineIdentityPersistence"],
+  [63, "ThroughLineMessageSender"],
+  [64, "ThroughLineRewindCutAndObservation"],
 ]);
 const legacy = new Map([
   [55, "ThroughLineIdentityPersistence"],

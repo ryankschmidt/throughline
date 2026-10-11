@@ -1,10 +1,12 @@
 import type {
+  OrchestrationV2ProviderTurn,
   OrchestrationV2ProviderTurnTokenUsage,
   OrchestrationV2ProviderThread,
   OrchestrationV2TurnItem,
   ThreadTokenUsageSnapshot,
 } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
+import * as Option from "effect/Option";
 
 function asFiniteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
@@ -22,6 +24,25 @@ export type ContextWindowSnapshot = NullableContextWindowUsage & {
   readonly remainingPercentage: number | null;
   readonly updatedAt: string;
 };
+
+/** Snapshot turn order is per provider thread; newest usage is timestamp-based. */
+export function latestProviderTurnTokenUsage(
+  turns: ReadonlyArray<Pick<OrchestrationV2ProviderTurn, "tokenUsage">>,
+): OrchestrationV2ProviderTurnTokenUsage | null {
+  const epoch = (value: string) =>
+    DateTime.make(value).pipe(
+      Option.map(DateTime.toEpochMillis),
+      Option.getOrElse(() => Number.NaN),
+    );
+  let latest: OrchestrationV2ProviderTurnTokenUsage | null = null;
+  for (const { tokenUsage } of turns) {
+    if (tokenUsage === undefined) continue;
+    // As upstream, ties choose the later live upsert; invalid times compare as NaN.
+    if (latest === null || epoch(tokenUsage.updatedAt) >= epoch(latest.updatedAt))
+      latest = tokenUsage;
+  }
+  return latest;
+}
 
 /** Prefers the provider's live usage report (#8144); falls back to the last compaction item. */
 export function deriveLatestContextWindowSnapshot(

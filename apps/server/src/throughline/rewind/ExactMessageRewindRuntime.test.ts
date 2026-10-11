@@ -135,6 +135,7 @@ const fixture = Effect.gen(function* () {
             offer: () => Effect.void,
             setModel: () => Effect.void,
             setPermissionMode: () => Effect.void,
+            stopTask: () => Effect.die("rewind fixture must not stop a native task"),
             interrupt: Effect.void,
             close: Effect.void,
           };

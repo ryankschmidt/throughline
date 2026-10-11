@@ -4,6 +4,7 @@ import { clientHelloFromMetadata } from "@t3tools/client-runtime/rpc";
 import * as Effect from "effect/Effect";
 import Constants from "expo-constants";
 import { ShellSnapshotLoader } from "@t3tools/client-runtime/state/shell";
+import { PullRequestDiffLoader } from "@t3tools/client-runtime/state/pull-requests";
 import {
   BoundedThreadSnapshotLoader,
   ThreadHistoryController,
@@ -23,6 +24,7 @@ declare const module: { readonly hot?: FoundationHotModule } | undefined;
 const layerProvidedConnectionPlatform = ConnectionPlatform.layer.pipe(Layer.provide(Runtime.layer));
 
 const layerSnapshotLoader = Layer.mergeAll(
+  PullRequestDiffLoader.layer,
   BoundedThreadSnapshotLoader.layer,
   ShellSnapshotLoader.layer,
   ThreadHistoryController.layer,
