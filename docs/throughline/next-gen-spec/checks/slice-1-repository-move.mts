@@ -20,6 +20,9 @@ import {
   manifestOf,
   expectedStep,
   pipelinePaths,
+  stagingSampleFindings,
+  stagingBundleFindings,
+  stagingTraceFindings,
 } from "./slice-1-contracts.mts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -1532,7 +1535,7 @@ export async function runSliceChecks() {
     return f;
   });
 
-  await check("S1-C14", () => {
+  await check("S1-C14", async () => {
     const f: Fail[] = [],
       version = installedVersion(),
       path = COMPONENT + "/_meta/repository-move-2026-10-07/Staging-Probe-" + version + ".json";
@@ -1564,42 +1567,28 @@ export async function runSliceChecks() {
       if (!Number.isFinite(started) || Math.abs(started - Date.parse(p.server.started_at)) > 2000)
         f.push("live process start differs from probe binding");
     }
-    if (p.interval_seconds !== 2 || !Array.isArray(p.samples) || p.samples.length < 30)
-      f.push("not thirty structured samples at the declared two-second interval");
-    for (let i = 0; i < (p.samples ?? []).length; i++) {
-      const s = p.samples[i];
-      if (
-        !s ||
-        !Array.isArray(s.index_entries) ||
-        typeof s.staged_patch_sha256 !== "string" ||
-        !s.preparation_event_id ||
-        s.server_pid !== p.server?.pid ||
-        s.thread_id !== p.thread_id ||
-        !Number.isFinite(Date.parse(s.at))
-      )
-        f.push("sample lacks actual consumer preparation event and index bytes");
-      if (i > 0) {
-        const prev = p.samples[i - 1];
-        if (
-          Math.abs(Date.parse(s.at) - Date.parse(prev.at) - 2000) > 250 ||
-          !same(s.index_entries, prev.index_entries) ||
-          s.staged_patch_sha256 !== prev.staged_patch_sha256
-        )
-          f.push("sample cadence/index bytes drift");
-      }
-    }
+    f.push(...stagingSampleFindings(p));
     if (
       !p.server?.binding_receipt ||
       !existsSync(p.server.binding_receipt) ||
       sha256(p.server.binding_receipt) !== p.server.binding_sha256
     )
       f.push("server/process binding witness missing");
-    if (
-      p.samples?.length &&
-      (!same(p.started_at, p.samples[0].at) ||
-        Date.parse(p.finished_at) < Date.parse(p.samples.at(-1).at))
-    )
-      f.push("probe duration does not bind sample timestamps");
+    try {
+      f.push(...stagingBundleFindings(readFileSync(`${APP}/Contents/Resources/app.asar`)));
+    } catch {
+      f.push("installed app.asar unreadable");
+    }
+    const traces = "/Users/Admin/.t3/userdata/logs";
+    try {
+      const paths = readdirSync(traces)
+        .filter((n) => /^server\.trace\.ndjson(?:\.\d+)?$/.test(n))
+        .sort()
+        .map((n) => join(traces, n));
+      f.push(...(await stagingTraceFindings(paths, p.started_at, p.finished_at)));
+    } catch {
+      f.push("server traces unreadable");
+    }
     return f;
   });
 

@@ -370,7 +370,7 @@ export const CHECKS: Check[] = [
     id: "S1-C14",
     slice: "slice-1",
     title:
-      "A non-builder probe binds a live server, dirty fixture, actual preparation events and unchanged index bytes at the declared cadence",
+      "A non-builder probe binds a live server, dirty fixture and unchanged index bytes, with installed bundle and server-trace backstops",
     kind: "real-disk",
     file: "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/checks/slice-1-repository-move.mts",
     expected_today: "FAIL",
@@ -1699,7 +1699,7 @@ const T1: Task[] = [
     signatures: [
       "ryan throughline ship 0.0.60 --json (the installed spelling today; its rename is pending decision R01)",
       'installed bundle check: grep -rl "prepareCommitContext.addAll" /Applications/ThroughLine.app/Contents/Resources returns nothing and grep -rl "prepareCommitContext.workingTreeSummary" returns at least one file',
-      "Staging-Probe schema throughline.staging-probe.v1 binds installed_version, project, live server pid/start/native-session plus a hashed binding receipt, actual thread id and preparation event id, a known modified tracked/untracked fixture, builder session ids and a distinct observing session. samples is an array of at/index_entries/staged_patch_sha256/server_pid/thread_id/preparation_event_id records, at least thirty at exactly two-second intervals with <=250ms measured jitter; started_at/finished_at bind the samples, and exact index bytes are unchanged. No clean/unused project or builder self-observation passes.",
+      "Staging-Probe schema throughline.staging-probe.v1 binds installed_version, project, live server pid/start/native-session plus a hashed binding receipt, actual thread id, a known modified tracked/untracked fixture, builder session ids and a distinct observing session. samples is an array of at/index_entries/staged_patch_sha256/server_pid/thread_id records, at least thirty at exactly two-second intervals with <=250ms measured jitter; started_at/finished_at bind the samples, and exact index bytes are unchanged. No clean/unused project or builder self-observation passes.",
       "Owning Release-Closure.json and every latest step receipt bind exact NEXT_RELEASE, frozen source commit and run id; release worktree HEAD equals that commit, artifacts have real sha256/address under its release folder, and all installed readbacks bind target payload digests/receipt hashes. shipped_source_hashes includes T1.08 design and T1.09 driver source; manifest source/release equal the frozen run. DMG names or ancestry alone are never installed proof. Append the new release worktree’s creator/run/frozen-head mapping to Move-Record.",
     ],
     failing_checks: ["S1-C13", "S1-C14", "S1-C07"],

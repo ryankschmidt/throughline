@@ -15,10 +15,117 @@ import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 import { isDeepStrictEqual } from "node:util";
+import { createReadStream } from "node:fs";
+import { createInterface } from "node:readline";
 const { load: yamlLoad, dump: yamlDump } = createRequire(import.meta.url)("js-yaml");
 export const SHA40 = /^[0-9a-f]{40}$/,
   SHA256 = /^[0-9a-f]{64}$/;
 export const same = (a: unknown, b: unknown) => isDeepStrictEqual(a, b);
+// S1-C14's idle observation needs no commit-preparation event. Keep the original
+// sample, cadence, binding and byte predicates; installed code/traces backstop it.
+export const stagingSampleFindings = (p: any): string[] => {
+  const f: string[] = [];
+  if (p.interval_seconds !== 2 || !Array.isArray(p.samples) || p.samples.length < 30)
+    f.push("not thirty structured samples at the declared two-second interval");
+  for (let i = 0; i < (p.samples ?? []).length; i++) {
+    const s = p.samples[i];
+    if (
+      !s ||
+      !Array.isArray(s.index_entries) ||
+      typeof s.staged_patch_sha256 !== "string" ||
+      s.server_pid !== p.server?.pid ||
+      s.thread_id !== p.thread_id ||
+      !Number.isFinite(Date.parse(s.at))
+    )
+      f.push("sample lacks consumer binding and index bytes");
+    if (i > 0) {
+      const prev = p.samples[i - 1];
+      if (
+        Math.abs(Date.parse(s.at) - Date.parse(prev.at) - 2000) > 250 ||
+        !same(s.index_entries, prev.index_entries) ||
+        s.staged_patch_sha256 !== prev.staged_patch_sha256
+      )
+        f.push("sample cadence/index bytes drift");
+    }
+  }
+  if (
+    p.samples?.length &&
+    (!same(p.started_at, p.samples[0].at) ||
+      Date.parse(p.finished_at) < Date.parse(p.samples.at(-1).at))
+  )
+    f.push("probe duration does not bind sample timestamps");
+  return f;
+};
+export const stagingBundleFindings = (bytes: Buffer): string[] => {
+  const f: string[] = [];
+  if (!bytes.includes(Buffer.from("prepareCommitContext.workingTreeSummary")))
+    f.push("installed bundle lacks prepareCommitContext.workingTreeSummary");
+  if (bytes.includes(Buffer.from("prepareCommitContext.addAll")))
+    f.push("installed bundle retains prepareCommitContext.addAll");
+  return f;
+};
+export const stagingTraceFindings = async (
+  paths: string[],
+  startedAt: string,
+  finishedAt: string,
+): Promise<string[]> => {
+  const start = Date.parse(startedAt),
+    finish = Date.parse(finishedAt),
+    f: string[] = [];
+  if (!Number.isFinite(start) || !Number.isFinite(finish) || finish < start)
+    return ["probe trace window invalid"];
+  if (!paths.length) return ["server trace files absent"];
+  const from = BigInt(start) * 1000000n,
+    to = BigInt(finish) * 1000000n;
+  const writes = new Set([
+    "GitVcsDriver.prepareCommitContext.addAll",
+    "GitVcsDriver.prepareCommitContext.reset",
+    "GitVcsDriver.prepareCommitContext.addSelected",
+  ]);
+  for (const path of paths) {
+    const input = createReadStream(path),
+      lines = createInterface({ input, crlfDelay: Infinity });
+    let readError: unknown;
+    input.on("error", (e) => {
+      readError = e;
+      lines.close();
+    });
+    try {
+      for await (const line of lines) {
+        if (!line.trim()) continue;
+        let span: any;
+        try {
+          span = JSON.parse(line);
+        } catch {
+          f.push(`server trace malformed: ${basename(path)}`);
+          continue;
+        }
+        if (!writes.has(span?.name)) continue;
+        try {
+          if (
+            !/^\d+$/.test(span.startTimeUnixNano ?? "") ||
+            !/^\d+$/.test(span.endTimeUnixNano ?? "")
+          )
+            throw Error("invalid span clock");
+          const a = BigInt(span.startTimeUnixNano),
+            b = BigInt(span.endTimeUnixNano);
+          if (b < a) throw Error("reversed span clock");
+          // Include partial overlap: a write begun before the observation may end inside it.
+          if (a <= to && b >= from) f.push(`index-writing server span during probe: ${span.name}`);
+        } catch {
+          f.push(`index-writing server span has invalid clock: ${span.name}`);
+        }
+      }
+    } catch {
+      f.push(`server trace unreadable: ${basename(path)}`);
+    } finally {
+      lines.close();
+      input.destroy();
+    }
+    if (readError) f.push(`server trace unreadable: ${basename(path)}`);
+  }
+  return f;
+};
 export const hashBytes = (b: string | Buffer) => createHash("sha256").update(b).digest("hex");
 export const canonical = (path: string): string => {
   let p = resolve(path);

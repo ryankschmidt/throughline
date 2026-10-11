@@ -5,9 +5,9 @@
     <title>ThroughLine next-generation implementation spec — map</title>
     <meta
       name="spec-sha256"
-      content="1e9d05182db225accf0f0caf7fb5cd7cb8820f802eb627e0048bd11f2d04a008"
+      content="44ec0f6bc194d4f59cdf3606a64d6c81cb74600193923c7601be666623bbf9d9"
     />
-    <meta name="spec-version" content="0.4.26" />
+    <meta name="spec-version" content="0.4.27" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       :root {
@@ -483,9 +483,9 @@
         installed in 24 hours.”
       </p>
       <p class="sub">
-        Machine-readable task graph <code>spec.json</code> version 0.4.26. Original design
+        Machine-readable task graph <code>spec.json</code> version 0.4.27. Original design
         authorship: fable-throughline-design (ThroughLine thread
-        44973766-bbeb-4c80-b506-a4b171273e33). Current generation built Oct 11, 2026, 5:31 AM PDT by
+        44973766-bbeb-4c80-b506-a4b171273e33). Current generation built Oct 11, 2026, 5:50 AM PDT by
         codex session 01a1284d-0e7c-7083-a1e6-7e280ab50f69. Bound to ledger sha256 0b260e00b391 (199
         items). Every task names the ledger ids it serves. The technical execution lead,
         lead-execlead-1ad87c0b, works from the JSON; this page is rendered from it.
@@ -2660,14 +2660,12 @@
                       <code
                         >Staging-Probe schema throughline.staging-probe.v1 binds installed_version,
                         project, live server pid/start/native-session plus a hashed binding receipt,
-                        actual thread id and preparation event id, a known modified
-                        tracked/untracked fixture, builder session ids and a distinct observing
-                        session. samples is an array of
-                        at/index_entries/staged_patch_sha256/server_pid/thread_id/preparation_event_id
-                        records, at least thirty at exactly two-second intervals with &lt;=250ms
-                        measured jitter; started_at/finished_at bind the samples, and exact index
-                        bytes are unchanged. No clean/unused project or builder self-observation
-                        passes.</code
+                        actual thread id, a known modified tracked/untracked fixture, builder
+                        session ids and a distinct observing session. samples is an array of
+                        at/index_entries/staged_patch_sha256/server_pid/thread_id records, at least
+                        thirty at exactly two-second intervals with &lt;=250ms measured jitter;
+                        started_at/finished_at bind the samples, and exact index bytes are
+                        unchanged. No clean/unused project or builder self-observation passes.</code
                       >
                     </li>
                     <li>
@@ -18086,8 +18084,8 @@
           <tr id="S1-C14">
             <td><code>S1-C14</code></td>
             <td>
-              A non-builder probe binds a live server, dirty fixture, actual preparation events and
-              unchanged index bytes at the declared cadence
+              A non-builder probe binds a live server, dirty fixture and unchanged index bytes, with
+              installed bundle and server-trace backstops
             </td>
             <td><span class="chip">real-disk</span></td>
             <td><span class="chip fail">expected FAIL</span></td>

@@ -35,10 +35,13 @@ import {
   emptyDirectoryPlan,
   removeEmptyDirectories,
   manifestOf,
+  stagingSampleFindings,
+  stagingBundleFindings,
+  stagingTraceFindings,
 } from "./slice-1-contracts.mts";
 const root = mkdtempSync(join(tmpdir(), "p2-02-slice-fixtures-"));
-const cases: Array<[string, () => void]> = [];
-const test = (name: string, run: () => void) => cases.push([name, run]);
+const cases: Array<[string, () => void | Promise<void>]> = [];
+const test = (name: string, run: () => void | Promise<void>) => cases.push([name, run]);
 const file = (p: string, text = "payload\n") => {
   mkdirSync(join(p, ".."), { recursive: true });
   writeFileSync(p, text);
@@ -323,10 +326,141 @@ test("preserved tree fingerprint binds contents not only filenames", () => {
   file(join(d, "a"), "changed\n");
   assert.notEqual(manifestOf(d).sha256, a.sha256);
 });
+const probeStart = "2026-10-11T13:00:00.000Z",
+  probeFinish = "2026-10-11T13:00:58.000Z";
+const stagingProbe = () => ({
+  interval_seconds: 2,
+  thread_id: "fixture-thread",
+  server: { pid: 12345 },
+  started_at: probeStart,
+  finished_at: probeFinish,
+  samples: Array.from({ length: 30 }, (_, i) => ({
+    at: new Date(Date.parse(probeStart) + i * 2000).toISOString(),
+    index_entries: [],
+    staged_patch_sha256: "a".repeat(64),
+    server_pid: 12345,
+    thread_id: "fixture-thread",
+    preparation_event_id: null,
+  })),
+});
+let stagingTraceFixtureCount = 0;
+const traceFixture = (name: string, start = Date.parse(probeStart) + 1000, end = start + 10) => {
+  const p = join(root, `staging-trace-${++stagingTraceFixtureCount}.ndjson`);
+  file(
+    p,
+    JSON.stringify({
+      type: "span",
+      name,
+      startTimeUnixNano: String(BigInt(start) * 1000000n),
+      endTimeUnixNano: String(BigInt(end) * 1000000n),
+    }) + "\n",
+  );
+  return p;
+};
+test("S1-C14 idle probe passes with null preparation ids, installed read-only signature and no writing spans", async () => {
+  assert.deepEqual(stagingSampleFindings(stagingProbe()), []);
+  assert.deepEqual(
+    stagingBundleFindings(Buffer.from("prepareCommitContext.workingTreeSummary")),
+    [],
+  );
+  assert.deepEqual(
+    await stagingTraceFindings([traceFixture("sql.execute")], probeStart, probeFinish),
+    [],
+  );
+});
+test("S1-C14 installed bundle missing workingTreeSummary refuses", () =>
+  assert.ok(stagingBundleFindings(Buffer.from("unrelated bundle")).length));
+test("S1-C14 installed bundle containing addAll refuses", () =>
+  assert.ok(
+    stagingBundleFindings(
+      Buffer.from("prepareCommitContext.workingTreeSummary prepareCommitContext.addAll"),
+    ).length,
+  ));
+for (const op of ["addAll", "reset", "addSelected"])
+  test(`S1-C14 index-writing ${op} span inside the probe refuses`, async () =>
+    assert.ok(
+      (
+        await stagingTraceFindings(
+          [traceFixture(`GitVcsDriver.prepareCommitContext.${op}`)],
+          probeStart,
+          probeFinish,
+        )
+      ).length,
+    ));
+test("S1-C14 writing spans entirely outside the probe window do not refuse", async () => {
+  const before = traceFixture(
+    "GitVcsDriver.prepareCommitContext.addAll",
+    Date.parse(probeStart) - 20,
+    Date.parse(probeStart) - 10,
+  );
+  const after = traceFixture(
+    "GitVcsDriver.prepareCommitContext.reset",
+    Date.parse(probeFinish) + 10,
+  );
+  assert.deepEqual(await stagingTraceFindings([before, after], probeStart, probeFinish), []);
+});
+test("S1-C14 writing span overlapping the probe boundary refuses", async () =>
+  assert.ok(
+    (
+      await stagingTraceFindings(
+        [
+          traceFixture(
+            "GitVcsDriver.prepareCommitContext.addSelected",
+            Date.parse(probeStart) - 10,
+            Date.parse(probeStart) + 10,
+          ),
+        ],
+        probeStart,
+        probeFinish,
+      )
+    ).length,
+  ));
+test("S1-C14 missing trace evidence refuses", async () =>
+  assert.ok((await stagingTraceFindings([], probeStart, probeFinish)).length));
+test("S1-C14 malformed trace evidence refuses", async () => {
+  const p = join(root, "bad-staging-trace.ndjson");
+  file(p, "not-json\n");
+  assert.ok((await stagingTraceFindings([p], probeStart, probeFinish)).length);
+});
+test("S1-C14 unreadable trace evidence refuses", async () =>
+  assert.ok(
+    (await stagingTraceFindings([join(root, "missing-trace.ndjson")], probeStart, probeFinish))
+      .length,
+  ));
+test("S1-C14 invalid trace window refuses", async () =>
+  assert.ok(
+    (await stagingTraceFindings([traceFixture("sql.execute")], "not-a-time", probeFinish)).length,
+  ));
+test("S1-C14 index-writing span with invalid clock refuses", async () => {
+  const p = join(root, "bad-clock.ndjson");
+  file(
+    p,
+    JSON.stringify({
+      name: "GitVcsDriver.prepareCommitContext.reset",
+      startTimeUnixNano: "bad",
+      endTimeUnixNano: "bad",
+    }) + "\n",
+  );
+  assert.ok((await stagingTraceFindings([p], probeStart, probeFinish)).length);
+});
+for (const key of ["at", "index_entries", "staged_patch_sha256", "server_pid", "thread_id"])
+  test(`S1-C14 sample still requires ${key}`, () => {
+    const p = stagingProbe();
+    delete (p.samples[0] as any)[key];
+    assert.ok(stagingSampleFindings(p).length);
+  });
+test("S1-C14 sample cadence and index drift still refuse", () => {
+  const p = stagingProbe();
+  p.samples[1].at = new Date(Date.parse(probeStart) + 2300).toISOString();
+  assert.ok(stagingSampleFindings(p).length);
+  p.samples[1].at = new Date(Date.parse(probeStart) + 2000).toISOString();
+  p.samples[1].staged_patch_sha256 = "b".repeat(64);
+  assert.ok(stagingSampleFindings(p).length);
+});
 let bad = 0;
 for (const [name, run] of cases) {
   try {
-    run();
+    await run();
     console.log("OK   " + name);
   } catch (e) {
     bad++;
