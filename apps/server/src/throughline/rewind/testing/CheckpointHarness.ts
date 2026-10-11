@@ -1092,7 +1092,16 @@ export const assertNewPostCutCapture = () =>
               Layer.provide(Layer.succeed(SqlClient.SqlClient, yield* SqlClient.SqlClient)),
             ),
           ),
-          Layer.provide(ServerSettings.layerTest({ responseStreamingMode: "turn" })),
+          Layer.provide(
+            ServerSettings.layerTest({
+              responseStreamingMode: "turn",
+              projectSettingsOverrides: {
+                [ProjectId.make("project")]: {
+                  providerInstances: { [ProviderInstanceId.make("claude")]: { enabled: true } },
+                },
+              },
+            }),
+          ),
         );
         const created = yield* Effect.scoped(
           ThreadMessageIntake.sendToThread({

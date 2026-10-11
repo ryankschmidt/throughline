@@ -12,6 +12,10 @@ import * as Layer from "effect/Layer";
 import * as References from "effect/References";
 import { vi } from "vite-plus/test";
 import * as NodeServices from "@effect/platform-node/NodeServices";
+import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
+import * as EventStore from "../../orchestration-v2/EventStore.ts";
+import * as EventSink from "../../orchestration-v2/EventSink.ts";
+import * as SqlClient from "effect/sql/SqlClient";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as ServerConfig from "../../config.ts";
 import * as HttpServer from "effect/http/HttpServer";
@@ -252,10 +256,13 @@ export interface ActualServerFixture {
   }>;
   readonly events: (
     threadId: string,
-  ) => readonly { readonly sequence: number; readonly type: string; readonly payload: unknown }[];
+  ) => Promise<
+    readonly { readonly sequence: number; readonly type: string; readonly payload: unknown }[]
+  >;
   readonly waitForRun: (
     threadId: string,
   ) => Promise<{ readonly status: string | null; readonly timedOut: boolean }>;
+  readonly nativeMilestones: () => Promise<readonly unknown[]>;
 }
 
 export async function withActualServer<A>(
@@ -320,6 +327,16 @@ export async function withActualServer<A>(
           ),
           Layer.provideMerge(NodeServices.layer),
         );
+        const retainedGraphSql: SqlClient.SqlClient extends Layer.Success<typeof actual>
+          ? true
+          : false = true;
+        // The approved same-layer provideMerge now exposes the real sink.
+        // Prior negative output-contract witness remains in the recorded red.
+        const retainedGraphSink: EventSink.EventSinkV2 extends Layer.Success<typeof actual>
+          ? true
+          : false = true;
+        void retainedGraphSql;
+        void retainedGraphSink;
         const result = await Effect.runPromise(
           Effect.scoped(
             Effect.gen(function* () {
@@ -336,6 +353,18 @@ export async function withActualServer<A>(
               // Test-owned scope awaits the actual public first-generation
               // conjunction once. No polling, sleep, fabricated flag or seeding.
               yield* Effect.promise(() => runtime.ready);
+              // Public finite persisted reader on an independent connection to
+              // this same fixture file. No migration, raw JSON guessing or store mock.
+              const eventReaderServices = yield* Layer.build(
+                EventStore.layer.pipe(
+                  Layer.provide(
+                    NodeSqliteClient.layer({ filename: prepared.config.dbPath }).pipe(
+                      Layer.provide(NodeServices.layer),
+                    ),
+                  ),
+                ),
+              );
+              const eventReader = Context.get(eventReaderServices, EventStore.EventStoreV2);
               const issued = yield* sessions.issue();
               // Opaque, fixture-issued cookie remains only in this callback closure.
               const cookie = `${sessions.cookieName}=${encodeURIComponent(issued.token)}`;
@@ -442,30 +471,17 @@ export async function withActualServer<A>(
                       ),
                       databaseName: await database.query("SELECT current_database()"),
                     }),
-                    events: (threadId) => {
-                      const sqlite = new DatabaseSync(prepared.config.dbPath, { readOnly: true });
-                      try {
-                        return sqlite
-                          .prepare(
-                            "SELECT sequence, event_type AS type, payload_json FROM orchestration_v2_events WHERE thread_id = ? ORDER BY sequence",
-                          )
-                          .all(threadId)
-                          .map((row) => {
-                            if (
-                              typeof row.sequence !== "number" ||
-                              typeof row.type !== "string" ||
-                              typeof row.payload_json !== "string"
-                            )
-                              throw new Error("Fixture journal row shape changed.");
-                            return {
-                              sequence: row.sequence,
-                              type: row.type,
-                              payload: JSON.parse(row.payload_json) as unknown,
-                            };
-                          });
-                      } finally {
-                        sqlite.close();
-                      }
+                    events: async (threadId) => {
+                      const stored = await Effect.runPromise(
+                        eventReader
+                          .read({ threadId: ThreadId.make(threadId) })
+                          .pipe(Stream.runCollect),
+                      );
+                      return stored.map((row) => ({
+                        sequence: row.sequence,
+                        type: row.event.type,
+                        payload: row.event.payload,
+                      }));
                     },
                     waitForRun: async (threadId) => {
                       const result = await Effect.runPromiseWith(services)(
@@ -479,6 +495,17 @@ export async function withActualServer<A>(
                         }),
                       );
                       return { status: result.run?.status ?? null, timedOut: result.timedOut };
+                    },
+                    nativeMilestones: async () => {
+                      const text = await NodeFS.readFile(
+                        NodePath.join(prepared.root, "native-milestones.jsonl"),
+                        "utf8",
+                      );
+                      return text
+                        .trim()
+                        .split("\n")
+                        .filter(Boolean)
+                        .map((line) => JSON.parse(line) as unknown);
                     },
                     wireHello: (input) =>
                       runRpc((client) => client[WS_METHODS.throughlineHello](input)).then(
@@ -633,12 +660,62 @@ export async function withPreparedFixture<A>(
       validateFixtureDirectory(root, path);
     const binary = NodePath.join(root, "fixture-codex");
     const peer = NodePath.join(root, "codex-peer.ts");
-    await NodeFS.copyFile(
-      NodePath.resolve(
-        import.meta.dirname,
-        "../../../../../packages/effect-codex-app-server/test/fixtures/codex-app-server-mock-peer.ts",
-      ),
+    // The existing native client decodes these frames against its current
+    // generated protocol. Only this external fixture executable is controlled;
+    // admission, projections, SQL and the provider adapter remain the real graph.
+    await NodeFS.writeFile(
       peer,
+      String.raw`
+import { DatabaseSync } from "node:sqlite";
+import { appendFileSync } from "node:fs";
+import { createInterface } from "node:readline";
+const database = ${JSON.stringify(config.dbPath)};
+const root = ${JSON.stringify(root)};
+let nativeId = "fixture-native-thread";
+let appThreadId = "";
+const write = (value: unknown) => process.stdout.write(JSON.stringify(value) + "\n");
+const respond = (id: unknown, result: unknown) => write({ id, result });
+const refuse = (id: unknown, message: string) => write({ id, error: { code: -32601, message } });
+const current = () => {
+  const sql = new DatabaseSync(database, { readOnly: true });
+  try {
+    const row = sql.prepare("SELECT t.thread_id,r.run_id,m.message_id,t.payload_json AS thread_json,m.payload_json AS message_json FROM orchestration_v2_projection_threads t JOIN orchestration_v2_projection_runs r ON r.thread_id=t.thread_id JOIN orchestration_v2_projection_messages m ON m.run_id=r.run_id WHERE m.role='user' ORDER BY r.ordinal DESC LIMIT 1").get();
+    if (!row || typeof row.thread_id !== "string" || typeof row.run_id !== "string" || typeof row.message_id !== "string" || typeof row.thread_json !== "string" || typeof row.message_json !== "string") throw new Error("Fixture materialization absent before native request.");
+    return { ...row, thread: JSON.parse(row.thread_json), message: JSON.parse(row.message_json) };
+  } finally { sql.close(); }
+};
+const turn = (status: "inProgress" | "completed") => ({ id: "fixture-native-turn", items: [], itemsView: "notLoaded", status, error: null, startedAt: 1782622440, completedAt: status === "completed" ? 1782622450 : null, durationMs: null });
+createInterface({ input: process.stdin }).on("line", line => {
+  const message = JSON.parse(line);
+  const params = message.params ?? {};
+  try {
+    switch (message.method) {
+      case "initialize": respond(message.id, { userAgent: "fixture-codex-app-server", codexHome: root, platformFamily: "unix", platformOs: "macos" }); return;
+      case "initialized": return;
+      case "account/read": respond(message.id, { account: { type: "chatgpt", email: "fixture@example.invalid", planType: "plus" }, requiresOpenaiAuth: false }); return;
+      case "skills/list": respond(message.id, { data: [{ cwd: root, errors: [], skills: [] }] }); return;
+      case "thread/start": {
+        const row = current(); appThreadId = row.thread_id; nativeId = "fixture-native-" + appThreadId;
+        if (params.model !== "gpt-5-codex") throw new Error("Fixture refused changed native model.");
+        respond(message.id, { thread: { id: nativeId, sessionId: nativeId, projectId: null, forkedFromId: null, preview: "", ephemeral: false, modelProvider: "openai", createdAt: 1782622440, updatedAt: 1782622440, status: { type: "idle" }, path: root + "/fixture-native.jsonl", cwd: root, cliVersion: "0.144.0", source: "vscode", threadSource: null, agentNickname: null, agentRole: null, gitInfo: null, name: null, turns: [] }, model: "gpt-5-codex", modelProvider: "openai", serviceTier: null, cwd: root, instructionSources: [], approvalPolicy: "never", approvalsReviewer: "user", sandbox: { type: "dangerFullAccess" }, reasoningEffort: "medium" }); return;
+      }
+      case "turn/start": {
+        const row = current();
+        if (row.thread_id !== appThreadId || params.threadId !== nativeId || params.model !== "gpt-5-codex") throw new Error("Fixture native turn identity/model mismatch.");
+        const expected = row.thread_id === "thread-bootstrap-existing" ? "retry after an uncertain first send" : "start only after the thread exists";
+        const expectedId = row.thread_id === "thread-bootstrap-existing" ? "msg-bootstrap-existing" : "msg-bootstrap-materialization-race";
+        if (row.message_id !== expectedId || row.message.text !== expected || !(params.input ?? []).some((item: { type: string; text?: string }) => item.type === "text" && item.text === expected)) throw new Error("Fixture refused changed original message.");
+        // Actual committed state is checked BEFORE the native acknowledgement.
+        appendFileSync(root + "/native-milestones.jsonl", JSON.stringify({ method: "turn/start", model: params.model, threadId: row.thread_id, messageId: row.message_id, runId: row.run_id, materializedBeforeAck: true }) + "\n");
+        respond(message.id, { turn: turn("inProgress") });
+        write({ method: "turn/started", params: { threadId: nativeId, turn: turn("inProgress") } });
+        setImmediate(() => write({ method: "turn/completed", params: { threadId: nativeId, turn: turn("completed") } })); return;
+      }
+      default: if (message.id !== undefined) refuse(message.id, "Unsupported controlled fixture method.");
+    }
+  } catch { refuse(message.id, "Fixture native contract or materialization check refused."); }
+});
+`,
     );
     const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
     await NodeFS.writeFile(

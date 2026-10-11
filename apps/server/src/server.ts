@@ -1116,6 +1116,7 @@ export const layerMakeServer = Layer.unwrap(
       Layer.provideMerge(
         AbsurdRuntimeInProcessLive.pipe(Layer.provide(RuntimeLayer.layerEventSink)),
       ),
+      Layer.provideMerge(RuntimeLayer.layerEventSink),
       Layer.provideMerge(layerRuntimeServices),
       Layer.provideMerge(
         McpSessionRegistry.layer.pipe(

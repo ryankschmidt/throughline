@@ -5,7 +5,7 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { AuthStandardClientScopes } from "@t3tools/contracts";
+import { AuthAdministrativeScopes, AuthStandardClientScopes } from "@t3tools/contracts";
 import * as NetService from "@t3tools/shared/Net";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import { assert, describe, expect, it } from "@effect/vitest";
@@ -145,7 +145,7 @@ const withDescriptorServer = <A, E, R>(run: (origin: string) => Effect.Effect<A,
   );
 
 describe("t3 pair", () => {
-  it.effect("mints a token and prints a QR pairing URL for a live server", () =>
+  const mintPairScenario = (standard: boolean) =>
     withDescriptorServer((origin) =>
       Effect.gen(function* () {
         const baseDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "t3-pair-test-"));
@@ -159,7 +159,9 @@ describe("t3 pair", () => {
           }),
         });
 
-        const output = yield* captureStdout(runCli(["pair", "--base-dir", baseDir]));
+        const output = yield* captureStdout(
+          runCli(["pair", "--base-dir", baseDir, ...(standard ? ["--standard"] : [])]),
+        );
 
         assert.include(output, `Pairing with pair-test (${origin})`);
         assert.include(output, `Pairing URL: ${origin}/pair#token=`);
@@ -180,7 +182,10 @@ describe("t3 pair", () => {
         }>;
         assert.equal(credentials.length, 1);
         assert.equal(credentials[0]?.label, "t3 pair");
-        assert.deepEqual(credentials[0]?.scopes, AuthStandardClientScopes);
+        assert.deepEqual(
+          credentials[0]?.scopes,
+          standard ? AuthStandardClientScopes : AuthAdministrativeScopes,
+        );
       }),
     ).pipe(
       Effect.provide(NodeServices.layer),
@@ -197,7 +202,13 @@ describe("t3 pair", () => {
         on: () => undefined,
         off: () => undefined,
       }),
-    ),
+    );
+
+  it.effect("mints a token and prints a QR pairing URL for a live server", () =>
+    mintPairScenario(false),
+  );
+  it.effect("explicit --standard retains the exact narrower pairing scopes", () =>
+    mintPairScenario(true),
   );
 
   it.effect("mints a pairing grant with only the selected scopes", () =>

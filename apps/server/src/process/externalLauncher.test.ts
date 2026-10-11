@@ -63,6 +63,7 @@ function makeMockDetachedHandle(input: MockSpawnResult & { readonly onUnref?: ()
 const layerTest = (input: {
   readonly platform: NodeJS.Platform;
   readonly env?: Record<string, string>;
+  readonly fileSystem?: FileSystem.FileSystem;
   readonly resolveExecutable?: (command: string) => string | undefined;
   readonly onSpawn?: (command: ChildProcess.StandardCommand) => void;
   readonly onUnref?: () => void;
@@ -86,7 +87,17 @@ const layerTest = (input: {
   );
 
   return Layer.mergeAll(
-    ExternalLauncher.layer.pipe(Layer.provide(Layer.merge(NodeServices.layer, layerSpawner))),
+    ExternalLauncher.layer.pipe(
+      Layer.provide(
+        Layer.mergeAll(
+          NodeServices.layer,
+          layerSpawner,
+          input.fileSystem === undefined
+            ? Layer.empty
+            : Layer.succeed(FileSystem.FileSystem, input.fileSystem),
+        ),
+      ),
+    ),
     Layer.succeed(HostProcess.Platform, input.platform),
     Layer.succeed(
       SpawnExecutableResolution,
@@ -1159,6 +1170,15 @@ it.effect("keeps the macOS VS Code Insiders bundle out of stable VS Code", () =>
       Effect.provide(
         layerTest({
           platform: "darwin",
+          fileSystem: {
+            ...fs,
+            stat: (p) =>
+              p === "/Applications" || p.startsWith("/Applications/")
+                ? fs.stat(path.join(home, "not-installed"))
+                : fs.stat(p),
+            readDirectory: (p) =>
+              p === "/Applications" ? Effect.succeed([]) : fs.readDirectory(p),
+          },
           env: { HOME: home, PATH: path.join(home, "empty") },
           onSpawn: (command) => {
             spawned = command;

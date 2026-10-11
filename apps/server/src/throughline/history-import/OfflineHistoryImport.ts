@@ -428,6 +428,7 @@ export const deleteImportedThread = Effect.fn("throughline.history-import.delete
 );
 
 /** Original 0.0.60 parser and selection bodies retained byte-for-byte. */
+// prettier-ignore
 export function makeLegacySessionReader(args: {
   source: string;
   limit: string;
@@ -442,211 +443,212 @@ export function makeLegacySessionReader(args: {
   };
   // ── JSONL session parsing ──────────────────────────────────────────────
 
-  type ParsedMessage = {
-    readonly role: "user" | "assistant";
-    readonly uuid: string;
-    readonly text: string;
-    readonly timestamp: string;
-  };
+type ParsedMessage = {
+  readonly role: "user" | "assistant";
+  readonly uuid: string;
+  readonly text: string;
+  readonly timestamp: string;
+};
 
-  type ParsedSession = {
-    readonly sessionId: string;
-    readonly filePath: string;
-    readonly mtimeMs: number;
-    readonly cwd: string | null;
-    readonly summary: string | null;
-    readonly messages: ReadonlyArray<ParsedMessage>;
-    readonly userTurnCount: number;
-    readonly lastAssistantUuid: string | null;
-    readonly lastTimestamp: string | null;
-  };
+type ParsedSession = {
+  readonly sessionId: string;
+  readonly filePath: string;
+  readonly mtimeMs: number;
+  readonly cwd: string | null;
+  readonly summary: string | null;
+  readonly messages: ReadonlyArray<ParsedMessage>;
+  readonly userTurnCount: number;
+  readonly lastAssistantUuid: string | null;
+  readonly lastTimestamp: string | null;
+};
 
-  function extractText(content: unknown): string {
-    if (typeof content === "string") return content;
-    if (!Array.isArray(content)) return "";
-    const parts: string[] = [];
-    for (const block of content) {
-      if (block && typeof block === "object" && (block as { type?: string }).type === "text") {
-        const text = (block as { text?: unknown }).text;
-        if (typeof text === "string") parts.push(text);
-      }
+function extractText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  const parts: string[] = [];
+  for (const block of content) {
+    if (block && typeof block === "object" && (block as { type?: string }).type === "text") {
+      const text = (block as { text?: unknown }).text;
+      if (typeof text === "string") parts.push(text);
     }
-    return parts.join("\n");
+  }
+  return parts.join("\n");
+}
+
+/** Noise wrappers that are transcripts of local command plumbing, not prompts. */
+function isNoiseUserText(text: string): boolean {
+  const trimmed = text.trimStart();
+  return (
+    trimmed.length === 0 ||
+    trimmed.startsWith("<local-command-stdout>") ||
+    trimmed.startsWith("<command-name>") ||
+    trimmed.startsWith("<local-command-caveat>") ||
+    trimmed.startsWith("Caveat: The messages below were generated")
+  );
+}
+
+/** Pure line-set parser; the caller owns file IO. */
+function parseSessionLines(
+  sessionId: string,
+  filePath: string,
+  mtimeMs: number,
+  lines: ReadonlyArray<string>,
+): ParsedSession | null {
+  const messages: ParsedMessage[] = [];
+  let cwd: string | null = null;
+  let summary: string | null = null;
+  let userTurnCount = 0;
+  let lastAssistantUuid: string | null = null;
+  let lastTimestamp: string | null = null;
+
+  for (const line of lines) {
+    if (line.length === 0) continue;
+    let entry: Record<string, unknown>;
+    try {
+      entry = JSON.parse(line) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    const type = entry["type"];
+    if (type === "summary" && typeof entry["summary"] === "string" && summary === null) {
+      summary = entry["summary"];
+      continue;
+    }
+    if (type !== "user" && type !== "assistant") continue;
+    if (entry["isMeta"] === true) continue;
+    const message = entry["message"] as { role?: string; content?: unknown } | undefined;
+    const uuid = typeof entry["uuid"] === "string" ? entry["uuid"] : null;
+    const timestamp = typeof entry["timestamp"] === "string" ? entry["timestamp"] : null;
+    if (!message || !uuid || !timestamp) continue;
+    if (cwd === null && typeof entry["cwd"] === "string") cwd = entry["cwd"];
+
+    if (type === "user" && message.role === "user") {
+      const text = extractText(message.content);
+      if (isNoiseUserText(text)) continue;
+      messages.push({ role: "user", uuid, text: text.slice(0, MAX_MESSAGE_CHARS), timestamp });
+      userTurnCount += 1;
+      lastTimestamp = timestamp;
+    } else if (type === "assistant" && message.role === "assistant") {
+      const text = extractText(message.content);
+      if (text.trim().length === 0) continue;
+      messages.push({ role: "assistant", uuid, text, timestamp });
+      lastAssistantUuid = uuid;
+      lastTimestamp = timestamp;
+    }
   }
 
-  /** Noise wrappers that are transcripts of local command plumbing, not prompts. */
-  function isNoiseUserText(text: string): boolean {
-    const trimmed = text.trimStart();
-    return (
-      trimmed.length === 0 ||
-      trimmed.startsWith("<local-command-stdout>") ||
-      trimmed.startsWith("<command-name>") ||
-      trimmed.startsWith("<local-command-caveat>") ||
-      trimmed.startsWith("Caveat: The messages below were generated")
+  if (userTurnCount < MIN_USER_TURNS) return null;
+  return {
+    sessionId,
+    filePath,
+    mtimeMs,
+    cwd,
+    summary,
+    messages,
+    userTurnCount,
+    lastAssistantUuid,
+    lastTimestamp,
+  };
+}
+
+/**
+ * Collapse the raw message stream into turns: each user message opens a turn;
+ * every assistant message until the next user message merges into ONE reply
+ * (id + timestamp of the LAST fragment, so resume anchors stay real uuids).
+ */
+type Turn = {
+  readonly user: ParsedMessage;
+  readonly assistant: ParsedMessage | null;
+};
+
+function toTurns(messages: ReadonlyArray<ParsedMessage>): Turn[] {
+  const turns: Turn[] = [];
+  let currentUser: ParsedMessage | null = null;
+  let assistantParts: ParsedMessage[] = [];
+  const flush = () => {
+    if (currentUser === null) return;
+    const last = assistantParts.at(-1);
+    const assistant: ParsedMessage | null = last
+      ? {
+          role: "assistant",
+          uuid: last.uuid,
+          timestamp: last.timestamp,
+          text: assistantParts
+            .map((part) => part.text)
+            .join("\n\n")
+            .slice(0, MAX_MESSAGE_CHARS),
+        }
+      : null;
+    turns.push({ user: currentUser, assistant });
+  };
+  for (const message of messages) {
+    if (message.role === "user") {
+      flush();
+      currentUser = message;
+      assistantParts = [];
+    } else if (currentUser !== null) {
+      assistantParts.push(message);
+    }
+  }
+  flush();
+  return turns;
+}
+
+// ── Selection (FileSystem service) ─────────────────────────────────────
+
+const selectSessions = Effect.fn(function* () {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const source = args.source!;
+
+  const excluded = new Set<string>([...(args.exclude ?? [])]);
+  const envSession = process.env["CLAUDE_CODE_SESSION_ID"];
+  if (envSession) excluded.add(envSession);
+
+  const names = yield* fs.readDirectory(source);
+  const candidates: Array<{ filePath: string; sessionId: string; mtimeMs: number }> = [];
+  for (const name of names) {
+    if (!name.endsWith(".jsonl")) continue;
+    const sessionId = name.replace(/\.jsonl$/, "");
+    if (excluded.has(sessionId)) continue;
+    const filePath = path.join(source, name);
+    const info = yield* fs.stat(filePath).pipe(
+      Effect.map(Option.some),
+      Effect.catch(() => Effect.succeed(Option.none<FileSystem.File.Info>())),
     );
+    if (Option.isNone(info)) continue;
+    const mtimeMs = Option.match(info.value.mtime, {
+      onNone: () => 0,
+      onSome: (mtime) => mtime.getTime(),
+    });
+    candidates.push({ filePath, sessionId, mtimeMs });
   }
+  candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
 
-  /** Pure line-set parser; the caller owns file IO. */
-  function parseSessionLines(
-    sessionId: string,
-    filePath: string,
-    mtimeMs: number,
-    lines: ReadonlyArray<string>,
-  ): ParsedSession | null {
-    const messages: ParsedMessage[] = [];
-    let cwd: string | null = null;
-    let summary: string | null = null;
-    let userTurnCount = 0;
-    let lastAssistantUuid: string | null = null;
-    let lastTimestamp: string | null = null;
-
-    for (const line of lines) {
-      if (line.length === 0) continue;
-      let entry: Record<string, unknown>;
-      try {
-        entry = JSON.parse(line) as Record<string, unknown>;
-      } catch {
-        continue;
-      }
-      const type = entry["type"];
-      if (type === "summary" && typeof entry["summary"] === "string" && summary === null) {
-        summary = entry["summary"];
-        continue;
-      }
-      if (type !== "user" && type !== "assistant") continue;
-      if (entry["isMeta"] === true) continue;
-      const message = entry["message"] as { role?: string; content?: unknown } | undefined;
-      const uuid = typeof entry["uuid"] === "string" ? entry["uuid"] : null;
-      const timestamp = typeof entry["timestamp"] === "string" ? entry["timestamp"] : null;
-      if (!message || !uuid || !timestamp) continue;
-      if (cwd === null && typeof entry["cwd"] === "string") cwd = entry["cwd"];
-
-      if (type === "user" && message.role === "user") {
-        const text = extractText(message.content);
-        if (isNoiseUserText(text)) continue;
-        messages.push({ role: "user", uuid, text: text.slice(0, MAX_MESSAGE_CHARS), timestamp });
-        userTurnCount += 1;
-        lastTimestamp = timestamp;
-      } else if (type === "assistant" && message.role === "assistant") {
-        const text = extractText(message.content);
-        if (text.trim().length === 0) continue;
-        messages.push({ role: "assistant", uuid, text, timestamp });
-        lastAssistantUuid = uuid;
-        lastTimestamp = timestamp;
-      }
-    }
-
-    if (userTurnCount < MIN_USER_TURNS) return null;
-    return {
-      sessionId,
-      filePath,
-      mtimeMs,
-      cwd,
-      summary,
-      messages,
-      userTurnCount,
-      lastAssistantUuid,
-      lastTimestamp,
-    };
-  }
-
-  /**
-   * Collapse the raw message stream into turns: each user message opens a turn;
-   * every assistant message until the next user message merges into ONE reply
-   * (id + timestamp of the LAST fragment, so resume anchors stay real uuids).
-   */
-  type Turn = {
-    readonly user: ParsedMessage;
-    readonly assistant: ParsedMessage | null;
-  };
-
-  function toTurns(messages: ReadonlyArray<ParsedMessage>): Turn[] {
-    const turns: Turn[] = [];
-    let currentUser: ParsedMessage | null = null;
-    let assistantParts: ParsedMessage[] = [];
-    const flush = () => {
-      if (currentUser === null) return;
-      const last = assistantParts.at(-1);
-      const assistant: ParsedMessage | null = last
-        ? {
-            role: "assistant",
-            uuid: last.uuid,
-            timestamp: last.timestamp,
-            text: assistantParts
-              .map((part) => part.text)
-              .join("\n\n")
-              .slice(0, MAX_MESSAGE_CHARS),
-          }
-        : null;
-      turns.push({ user: currentUser, assistant });
-    };
-    for (const message of messages) {
-      if (message.role === "user") {
-        flush();
-        currentUser = message;
-        assistantParts = [];
-      } else if (currentUser !== null) {
-        assistantParts.push(message);
-      }
-    }
-    flush();
-    return turns;
-  }
-
-  // ── Selection (FileSystem service) ─────────────────────────────────────
-
-  const selectSessions = Effect.fn(function* () {
-    const fs = yield* FileSystem.FileSystem;
-    const path = yield* Path.Path;
-    const source = args.source!;
-
-    const excluded = new Set<string>([...(args.exclude ?? [])]);
-    const envSession = process.env["CLAUDE_CODE_SESSION_ID"];
-    if (envSession) excluded.add(envSession);
-
-    const names = yield* fs.readDirectory(source);
-    const candidates: Array<{ filePath: string; sessionId: string; mtimeMs: number }> = [];
-    for (const name of names) {
-      if (!name.endsWith(".jsonl")) continue;
-      const sessionId = name.replace(/\.jsonl$/, "");
-      if (excluded.has(sessionId)) continue;
-      const filePath = path.join(source, name);
-      const info = yield* fs.stat(filePath).pipe(
-        Effect.map(Option.some),
-        Effect.catch(() => Effect.succeed(Option.none<FileSystem.File.Info>())),
-      );
-      if (Option.isNone(info)) continue;
-      const mtimeMs = Option.match(info.value.mtime, {
-        onNone: () => 0,
-        onSome: (mtime) => mtime.getTime(),
-      });
-      candidates.push({ filePath, sessionId, mtimeMs });
-    }
-    candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
-
-    const selected: ParsedSession[] = [];
-    for (const candidate of candidates) {
-      if (selected.length >= LIMIT) break;
-      const parsed = yield* fs.readFileString(candidate.filePath).pipe(
-        Effect.map((content) =>
-          parseSessionLines(
-            candidate.sessionId,
-            candidate.filePath,
-            candidate.mtimeMs,
-            content.split(/\r?\n/),
-          ),
+  const selected: ParsedSession[] = [];
+  for (const candidate of candidates) {
+    if (selected.length >= LIMIT) break;
+    const parsed = yield* fs.readFileString(candidate.filePath).pipe(
+      Effect.map((content) =>
+        parseSessionLines(
+          candidate.sessionId,
+          candidate.filePath,
+          candidate.mtimeMs,
+          content.split(/\r?\n/),
         ),
-        Effect.catch((error) =>
-          Effect.sync(() => {
-            logLine(`[import] skipping unreadable ${candidate.filePath}: ${String(error)}`);
-            return null;
-          }),
-        ),
-      );
-      if (parsed) selected.push(parsed);
-    }
-    return selected;
-  });
+      ),
+      Effect.catch((error) =>
+        Effect.sync(() => {
+          logLine(`[import] skipping unreadable ${candidate.filePath}: ${String(error)}`);
+          return null;
+        }),
+      ),
+    );
+    if (parsed) selected.push(parsed);
+  }
+  return selected;
+});
 
-  return { parseSessionLines, toTurns, selectSessions };
+
+return {parseSessionLines,toTurns,selectSessions};
 }

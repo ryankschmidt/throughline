@@ -6,9 +6,9 @@ import {
   type OrchestrationV2DomainEvent,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
+import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Layer from "effect/Layer";
-import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/sql/SqlClient";
 import * as ProjectionStore from "../../orchestration-v2/ProjectionStore.ts";
@@ -27,6 +27,16 @@ export interface ObservationOptions {
   ) => Promise<string | undefined>;
 }
 
+/** Fixture-only observation; no setting, environment variable or factory can enable it. */
+export type ApplyProbeCallback = (input: {
+  readonly event: OrchestrationV2DomainEvent;
+  readonly client: SqlClient.SqlClient;
+}) => Effect.Effect<void>;
+export const ApplyProbe = Context.Reference<ApplyProbeCallback | undefined>(
+  "t3/throughline/observation/ApplyProbe",
+  { defaultValue: () => undefined },
+);
+
 export class CaptureAfterCutRefusal extends Schema.TaggedError<CaptureAfterCutRefusal>()(
   "CaptureAfterCutRefusal",
   { runId: RunId, eventType: Schema.String },
@@ -36,7 +46,7 @@ export class CaptureAfterCutRefusal extends Schema.TaggedError<CaptureAfterCutRe
   }
 }
 /** Called before base.apply on the transaction client; stale capture cannot resurrect a cut run. */
-export const guardCaptureAfterCut = (event: OrchestrationV2DomainEvent) =>
+export const guardCaptureAfterCut = (event: OrchestrationV2DomainEvent, sql: SqlClient.SqlClient) =>
   Effect.gen(function* () {
     if (event.type === "checkpoint.captured" && event.payload.status === "stale") return;
     const runId =
@@ -46,7 +56,6 @@ export const guardCaptureAfterCut = (event: OrchestrationV2DomainEvent) =>
           ? event.payload.id
           : undefined;
     if (runId === undefined || runId === null) return;
-    const sql = yield* SqlClient.SqlClient;
     const rows = yield* sql<{
       status: string;
     }>`SELECT status FROM orchestration_v2_projection_runs WHERE run_id=${runId}`;
@@ -55,12 +64,12 @@ export const guardCaptureAfterCut = (event: OrchestrationV2DomainEvent) =>
   });
 
 /** Projection metadata, not a second event log. Requested models never become observed models. */
-export const observeEvents = (
+const observeEventsWithClient = (
   events: readonly Pick<OrchestrationV2StoredEvent, "event">[],
-  _options: ObservationOptions = {},
+  _options: ObservationOptions,
+  sql: SqlClient.SqlClient,
 ) =>
   Effect.gen(function* () {
-    const sql = yield* SqlClient.SqlClient;
     const sender = yield* CurrentAuthenticatedSender;
     const legacyThreads = new Set<string>();
     for (const stored of events) {
@@ -135,27 +144,30 @@ export const observeEvents = (
     for (const threadId of legacyThreads) yield* backfillLegacyImportSenders(threadId);
   });
 
-/** SQL-only apply: caller's transaction client is resolved per invocation. */
+/** Compatibility surface for callers that explicitly supply their persistence context. */
+export const observeEvents = (
+  events: readonly Pick<OrchestrationV2StoredEvent, "event">[],
+  options: ObservationOptions = {},
+) => Effect.flatMap(SqlClient.SqlClient, (sql) => observeEventsWithClient(events, options, sql));
+
+/** Captures only the owning service instance; its private connection tag is resolved at execution. */
 export const makeObservedProjectionStore = (
   base: ProjectionStore.ProjectionStoreV2Shape,
+  sql: SqlClient.SqlClient,
 ): ProjectionStore.ProjectionStoreV2Shape => ({
   ...base,
   apply: (event) =>
     Effect.gen(function* () {
-      const sql = yield* Effect.serviceOption(SqlClient.SqlClient);
-      if (Option.isNone(sql))
-        return yield* new ProjectionStore.ProjectionStoreApplyEventError({
-          eventType: event.type,
-          cause: "Transaction SqlClient unavailable",
-        });
-      yield* guardCaptureAfterCut(event).pipe(
-        Effect.provideService(SqlClient.SqlClient, sql.value),
-      );
+      yield* guardCaptureAfterCut(event, sql);
       yield* validateHeadroomTransition(event).pipe(
-        Effect.provideService(SqlClient.SqlClient, sql.value),
+        Effect.provideService(SqlClient.SqlClient, sql),
       );
       yield* base.apply(event);
-      yield* observeEvents([{ event }]).pipe(Effect.provideService(SqlClient.SqlClient, sql.value));
+      yield* observeEventsWithClient([{ event }], {}, sql).pipe(
+        Effect.provideService(SqlClient.SqlClient, sql),
+      );
+      const probe = yield* ApplyProbe;
+      if (probe !== undefined) yield* probe({ event, client: sql });
     }).pipe(
       Effect.mapError(
         (cause) =>
@@ -165,5 +177,9 @@ export const makeObservedProjectionStore = (
 });
 export const layer = Layer.effect(
   ProjectionStore.ProjectionStoreV2,
-  Effect.map(ProjectionStore.ProjectionStoreV2, makeObservedProjectionStore),
+  Effect.gen(function* () {
+    const base = yield* ProjectionStore.ProjectionStoreV2;
+    const sql = yield* SqlClient.SqlClient;
+    return makeObservedProjectionStore(base, sql);
+  }),
 );

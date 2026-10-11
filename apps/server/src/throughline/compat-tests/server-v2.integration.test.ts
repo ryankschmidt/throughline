@@ -193,7 +193,12 @@ describe("actual isolated production graph (no store or admission mocks)", () =>
         ...base,
         commandId: CommandId.make("fixture-existing-thread-create"),
       });
-      const result = await fixture.launch({
+      expect(await fixture.projection(threadId)).toMatchObject({ thread: { id: threadId } });
+      const creationsBefore = (await fixture.events(threadId)).filter(
+        (event) => event.type === "thread.created",
+      ).length;
+      expect(creationsBefore).toBe(1);
+      const request = {
         ...base,
         reuseExistingThread: true,
         commandId: CommandId.make("cmd-bootstrap-turn-start-existing"),
@@ -202,9 +207,12 @@ describe("actual isolated production graph (no store or admission mocks)", () =>
           text: "retry after an uncertain first send",
           attachments: [],
         },
-      });
+      };
+      const result = await fixture.launch(request);
       expect(result.threadId).toBe(threadId);
-      expect(result.resumed).toBe(true);
+      expect(
+        (await fixture.events(threadId)).filter((event) => event.type === "thread.created"),
+      ).toHaveLength(creationsBefore);
       expect(result.projection.messages).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -213,9 +221,45 @@ describe("actual isolated production graph (no store or admission mocks)", () =>
           }),
         ]),
       );
+      expect(
+        result.projection.messages.filter((message) => message.id === "msg-bootstrap-existing"),
+      ).toHaveLength(1);
       expect(result.projection.runs).toHaveLength(1);
       expect(await fixture.waitForRun(threadId)).toEqual({ status: "completed", timedOut: false });
-      const journal = fixture.events(threadId);
+      expect(await fixture.nativeMilestones()).toEqual([
+        expect.objectContaining({
+          method: "turn/start",
+          model: "gpt-5-codex",
+          threadId,
+          messageId: "msg-bootstrap-existing",
+          runId: result.projection.runs[0]!.id,
+          materializedBeforeAck: true,
+        }),
+      ]);
+      const replay = await fixture.launch(request);
+      expect(replay.threadId).toBe(threadId);
+      expect(replay.projection.messages.map((message) => message.id)).toEqual(
+        result.projection.messages.map((message) => message.id),
+      );
+      expect(replay.projection.runs.map((run) => run.id)).toEqual(
+        result.projection.runs.map((run) => run.id),
+      );
+      const persisted = await fixture.projection(threadId);
+      expect(persisted).toMatchObject({
+        thread: {
+          id: threadId,
+          branch: "main",
+          modelSelection: { instanceId: "codex", model: "gpt-5-codex" },
+        },
+        messages: [
+          expect.objectContaining({
+            id: "msg-bootstrap-existing",
+            text: "retry after an uncertain first send",
+          }),
+        ],
+        runs: [expect.objectContaining({ id: result.projection.runs[0]!.id })],
+      });
+      const journal = await fixture.events(threadId);
       expect(journal.filter((event) => event.type === "thread.created")).toHaveLength(1);
       expect(fixture.brokerAttempts()).toBe(0);
     });
@@ -253,7 +297,17 @@ describe("actual isolated production graph (no store or admission mocks)", () =>
         status: "completed",
         timedOut: false,
       });
-      const journal = fixture.events(result.threadId);
+      expect(await fixture.nativeMilestones()).toEqual([
+        expect.objectContaining({
+          method: "turn/start",
+          model: "gpt-5-codex",
+          threadId: result.threadId,
+          messageId: "msg-bootstrap-materialization-race",
+          runId: result.projection.runs[0]!.id,
+          materializedBeforeAck: true,
+        }),
+      ]);
+      const journal = await fixture.events(result.threadId);
       expect(journal.findIndex((event) => event.type === "thread.created")).toBeLessThan(
         journal.findIndex((event) => event.type === "run.created"),
       );

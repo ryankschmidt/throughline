@@ -19,6 +19,11 @@ const legacyReaders = ["orchestration-v2/legacy/", "persistence/Migrations/"] as
 const legacyReaderFiles: Record<string, string> = {
   // Provider history for settings migration reads V1 thread sessions once at load.
   "serverSettings.ts": "one-time provider history for settings migration",
+  // R3-1/4: bounded metadata carry, not a V1 runtime. Source: /Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/Fable-Delta-Upstream-V2-R3.json
+  "throughline/identity/legacyImportSenderBackfill.ts":
+    "one-time immutable sender metadata carry after public legacy import",
+  "throughline/identity/sender-stamp.ts":
+    "legacy sender predecessor test API only; production use forbidden below",
 };
 const retiredPaths = [
   "orchestration",
@@ -87,5 +92,19 @@ it("keeps the legacy importer out of reach of new code", () => {
     "orchestration-v2/runtimeLayer.ts",
     "project/ProjectService.ts",
     "serverRuntimeStartup.ts",
+    // R3-4 offline facade and R3-1 metadata carry: same source cited above.
+    "throughline/history-import/OfflineHistoryImport.ts",
+    "throughline/identity/legacyImportSenderBackfill.ts",
   ]);
+});
+
+it("keeps predecessor sender table APIs test-only", () => {
+  const users = relativeSources
+    .filter(
+      ({ path, source }) =>
+        path !== "throughline/identity/sender-stamp.ts" &&
+        /\b(?:readMessageSender|stampMessageSender)\b/.test(source),
+    )
+    .map(({ path }) => path);
+  assert.deepEqual(users, []);
 });

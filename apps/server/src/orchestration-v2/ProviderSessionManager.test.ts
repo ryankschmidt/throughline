@@ -1890,7 +1890,7 @@ it.effect(
         const resolved = yield* registry.resolve(token!);
         assert.deepEqual(
           resolved?.capabilities,
-          new Set(["orchestration", "worktree", "pull-requests"]),
+          new Set(["orchestration", "worktree", "pull-requests", "device"]),
         );
 
         yield* manager.close(providerSessionId);
