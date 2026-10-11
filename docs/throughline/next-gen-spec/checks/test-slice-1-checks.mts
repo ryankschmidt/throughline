@@ -35,10 +35,12 @@ import {
   emptyDirectoryPlan,
   removeEmptyDirectories,
   manifestOf,
+  stagingSampleFindings,
+  stagingBundleFindings,
 } from "./slice-1-contracts.mts";
 const root = mkdtempSync(join(tmpdir(), "p2-02-slice-fixtures-"));
-const cases: Array<[string, () => void]> = [];
-const test = (name: string, run: () => void) => cases.push([name, run]);
+const cases: Array<[string, () => void | Promise<void>]> = [];
+const test = (name: string, run: () => void | Promise<void>) => cases.push([name, run]);
 const file = (p: string, text = "payload\n") => {
   mkdirSync(join(p, ".."), { recursive: true });
   writeFileSync(p, text);
@@ -323,10 +325,56 @@ test("preserved tree fingerprint binds contents not only filenames", () => {
   file(join(d, "a"), "changed\n");
   assert.notEqual(manifestOf(d).sha256, a.sha256);
 });
+const probeStart = "2026-10-11T13:00:00.000Z",
+  probeFinish = "2026-10-11T13:00:58.000Z";
+const stagingProbe = () => ({
+  interval_seconds: 2,
+  thread_id: "fixture-thread",
+  server: { pid: 12345 },
+  started_at: probeStart,
+  finished_at: probeFinish,
+  samples: Array.from({ length: 30 }, (_, i) => ({
+    at: new Date(Date.parse(probeStart) + i * 2000).toISOString(),
+    index_entries: [],
+    staged_patch_sha256: "a".repeat(64),
+    server_pid: 12345,
+    thread_id: "fixture-thread",
+    preparation_event_id: null,
+  })),
+});
+test("S1-C14 idle probe passes with null preparation ids, installed read-only signature", async () => {
+  assert.deepEqual(stagingSampleFindings(stagingProbe()), []);
+  assert.deepEqual(
+    stagingBundleFindings(Buffer.from("prepareCommitContext.workingTreeSummary")),
+    [],
+  );
+});
+test("S1-C14 installed bundle missing workingTreeSummary refuses", () =>
+  assert.ok(stagingBundleFindings(Buffer.from("unrelated bundle")).length));
+test("S1-C14 installed bundle containing addAll refuses", () =>
+  assert.ok(
+    stagingBundleFindings(
+      Buffer.from("prepareCommitContext.workingTreeSummary prepareCommitContext.addAll"),
+    ).length,
+  ));
+for (const key of ["at", "index_entries", "staged_patch_sha256", "server_pid", "thread_id"])
+  test(`S1-C14 sample still requires ${key}`, () => {
+    const p = stagingProbe();
+    delete (p.samples[0] as any)[key];
+    assert.ok(stagingSampleFindings(p).length);
+  });
+test("S1-C14 sample cadence and index drift still refuse", () => {
+  const p = stagingProbe();
+  p.samples[1].at = new Date(Date.parse(probeStart) + 2300).toISOString();
+  assert.ok(stagingSampleFindings(p).length);
+  p.samples[1].at = new Date(Date.parse(probeStart) + 2000).toISOString();
+  p.samples[1].staged_patch_sha256 = "b".repeat(64);
+  assert.ok(stagingSampleFindings(p).length);
+});
 let bad = 0;
 for (const [name, run] of cases) {
   try {
-    run();
+    await run();
     console.log("OK   " + name);
   } catch (e) {
     bad++;

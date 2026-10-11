@@ -20,6 +20,8 @@ import {
   manifestOf,
   expectedStep,
   pipelinePaths,
+  stagingSampleFindings,
+  stagingBundleFindings,
 } from "./slice-1-contracts.mts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -136,6 +138,7 @@ const present = (p: string) => {
 const regularFile = (p: unknown): p is string =>
   typeof p === "string" && isAbsolute(p) && existsSync(p) && lstatSync(p).isFile();
 const oldHomeAliasFindings = (m: any): Fail[] => {
+  if (beforeClose) return present(OLD_HOME) ? ["old-home alias remains before closure"] : [];
   if (m.admission_state === "moved") {
     if (!present(OLD_HOME)) return ["old-home compatibility alias is required while moved"];
     if (!lstatSync(OLD_HOME).isSymbolicLink() || canonical(OLD_HOME) !== canonical(HOME))
@@ -154,6 +157,74 @@ const boundDisposition = (m: any, row: any) => {
     (frozen.branch ?? null) === (row.branch ?? null) &&
     (!fingerprint || FP_KEYS.every((k) => row.fingerprint?.[k] === fingerprint[k]))
   );
+};
+// A worktree removed after its work landed on main: its last chain head is merged, a hash-bound reclaim
+// receipt records the clean removal, and nothing for that folder follows the retirement row.
+const RECLAIM_RECEIPT_SCHEMA = "worktree-reclaim-receipt.v1";
+const chainHead = (row: any, path: string): string | undefined =>
+  row.kind === "rebased" && row.path === path
+    ? row.new_head
+    : row.kind === "addition-freeze" && row.path === path
+      ? row.head
+      : row.kind === "disposition" &&
+          ((row.disposition === "kept" && row.before === path) ||
+            (row.disposition === "moved" && row.after === path))
+        ? row.frozen_head
+        : undefined;
+const retirementFindings = (row: any, rows: any[]): Fail[] => {
+  const path = row.path;
+  if (
+    typeof path !== "string" ||
+    !isAbsolute(path) ||
+    !under(path, WORKTREES) ||
+    typeof row.branch !== "string" ||
+    !SHA40.test(row.final_head ?? "") ||
+    row.merged_into?.branch !== "main" ||
+    !SHA40.test(row.merged_into?.commit ?? "") ||
+    !regularFile(row.retirement_receipt) ||
+    !/^[0-9a-f]{64}$/.test(row.retirement_receipt_sha256 ?? "") ||
+    typeof row.evidence?.command !== "string"
+  )
+    return [`worktree retirement row incomplete: ${path}`];
+  const f: Fail[] = [],
+    at = rows.indexOf(row);
+  const heads = rows
+    .slice(0, at)
+    .map((r) => chainHead(r, path))
+    .filter((h): h is string => typeof h === "string");
+  if (!heads.length)
+    f.push(`worktree retirement has no earlier freeze, disposition or rebase: ${path}`);
+  else if (heads[heads.length - 1] !== row.final_head)
+    f.push(`worktree retirement final head is not the chain's last head: ${path}`);
+  if (rows.filter((r) => r.kind === "merged-and-retired" && r.path === path).length !== 1)
+    f.push(`worktree retirement repeated: ${path}`);
+  if (rows.slice(at + 1).some((r) => r.path === path || r.before === path || r.after === path))
+    f.push(`annotation appended after a worktree retirement: ${path}`);
+  let receipt: any;
+  try {
+    const bytes = readFileSync(row.retirement_receipt);
+    if (createHash("sha256").update(bytes).digest("hex") !== row.retirement_receipt_sha256)
+      throw Error("hash");
+    receipt = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    return [...f, `worktree retirement receipt missing or not the hashed bytes: ${path}`];
+  }
+  const removed = (receipt.removed ?? []).find((r: any) => r.path === path);
+  if (
+    receipt.schema !== RECLAIM_RECEIPT_SCHEMA ||
+    !removed ||
+    removed.head !== row.final_head ||
+    removed.branch !== row.branch ||
+    removed.status_clean !== true ||
+    removed.head_on_origin !== true
+  )
+    f.push(`worktree retirement receipt does not record this clean removal: ${path}`);
+  if (
+    !ancestor(HOME, row.final_head, row.merged_into.commit) ||
+    !ancestor(HOME, row.merged_into.commit, "main")
+  )
+    f.push(`retired worktree's final head is not merged into main: ${path}`);
+  return f;
 };
 const annotationFindings = (m: any, rows: any[]): Fail[] => {
   const f: Fail[] = [],
@@ -209,7 +280,8 @@ const annotationFindings = (m: any, rows: any[]): Fail[] => {
           (m.worktrees ?? []).some((w: any) => w.path === path))
       )
         f.push(`worktree addition-freeze malformed: ${path}`);
-    } else f.push(`unknown worktree annotation kind: ${row.kind}`);
+    } else if (row.kind === "merged-and-retired") f.push(...retirementFindings(row, rows));
+    else f.push(`unknown worktree annotation kind: ${row.kind}`);
   }
   return f;
 };
@@ -582,11 +654,22 @@ export async function runSliceChecks() {
     if (!repo) return [...f, "no repository at old or new home"];
     for (const w of worktrees(repo))
       if (under(w.path, VAULT)) f.push(`registered worktree under vault: ${w.path}`);
-    const scan = (dir: string, depth: number) => {
+    const scan = (dir: string, depth: number, followLinks = true) => {
       try {
         const root = lstatSync(dir);
         if (root.isSymbolicLink()) {
-          f.push(`symlink scan root: ${dir}`);
+          if (!followLinks) return;
+          let target: string;
+          try {
+            target = realpathSync(dir);
+          } catch {
+            f.push(`unresolved scan alias: ${dir}`);
+            return;
+          }
+          if (!under(target, VAULT)) f.push(`out-of-vault scan alias: ${dir}`);
+          else if (under(target, OLD_HOME) || under(target, HOME) || under(target, WORKTREES))
+            f.push(`repository scan alias: ${dir}`);
+          else scan(target, depth, false);
           return;
         }
         if (!root.isDirectory()) return;
@@ -600,13 +683,19 @@ export async function runSliceChecks() {
         else if (url === ORIGIN) f.push(`clone under vault: ${dir}`);
       }
       if (depth <= 0) return;
-      for (const name of readdirSync(dir)) {
+      let names: string[];
+      try {
+        names = readdirSync(dir);
+      } catch {
+        f.push(`unreadable clone candidate: ${dir}`);
+        return;
+      }
+      for (const name of names) {
         if (name === ".git" || name === "node_modules") continue;
         const p = join(dir, name);
         try {
           const st = lstatSync(p);
-          if (st.isSymbolicLink()) f.push(`unresolved scan alias: ${p}`);
-          else if (st.isDirectory()) scan(p, depth - 1);
+          if (st.isSymbolicLink() || st.isDirectory()) scan(p, depth - 1, followLinks);
         } catch {
           f.push(`unreadable clone candidate: ${p}`);
         }
@@ -637,9 +726,21 @@ export async function runSliceChecks() {
     const annotations = worktreeAnnotations();
     f.push(...annotationFindings(m, annotations));
     f.push(...oldHomeAliasFindings(m));
+    const retired = annotations.filter((row) => row.kind === "merged-and-retired");
     for (const row of annotations.filter((row) => row.kind === "rebased"))
-      if (!list.some((w) => canonical(w.path) === canonical(row.path)))
+      if (
+        !list.some((w) => canonical(w.path) === canonical(row.path)) &&
+        !retired.some(
+          (r) => typeof r.path === "string" && canonical(r.path) === canonical(row.path),
+        )
+      )
         f.push(`rebase row has no current worktree: ${row.path}`);
+    for (const row of retired)
+      if (
+        typeof row.path === "string" &&
+        (existsSync(row.path) || list.some((w) => canonical(w.path) === canonical(row.path)))
+      )
+        f.push(`retired worktree is still present or registered: ${row.path}`);
     for (const w of list) {
       if (w.prunable || !existsSync(w.path)) {
         f.push(`invalid worktree: ${w.path}`);
@@ -1276,9 +1377,45 @@ export async function runSliceChecks() {
     for (const path of [HOME, WORKTREES, BACKUP_NEW, WORKTREES + "/README.md"])
       if (!existsSync(path)) f.push(`destination absent: ${path}`);
     const rows = ledgerRows();
+    const annotations = new Map<string, any>(jsonlRows(ANNOTATIONS).map((a: any) => [a.path, a]));
     for (const fp of m.fingerprints ?? []) {
-      if (fp.disposition === "archived-and-removed") {
+      const annotation = annotations.get(fp.path);
+      // Use S1-C06's precedence over the read-only frozen witness, including
+      // archived staging links and worktree moves used by preservedFindings.
+      const linkArchive =
+        !annotation &&
+        rows.find(
+          (row) =>
+            row.source === fp.path &&
+            fp.file_count === 0 &&
+            fp.symlink_count === 1 &&
+            fp.entry_count === 1 &&
+            archiveMatches(row, { ...fp, archive: row.archive }),
+        );
+      if (linkArchive) {
+        if (present(fp.path)) f.push(`archived staging link still present: ${fp.path}`);
+      } else if (annotation) {
+        if (!sameFingerprint(annotation.fingerprint, fp))
+          f.push(`annotation does not match the frozen entry on path and fingerprint: ${fp.path}`);
+        else if (annotation.disposition === "archived-and-removed") {
+          if (present(fp.path)) f.push(`archived entry still present: ${fp.path}`);
+          if (
+            annotation.is_container &&
+            !archiveMatches(
+              rows.find(
+                (row) =>
+                  row.source === annotation.archive_ledger_source &&
+                  row.archive === annotation.archive,
+              ),
+              { ...fp, path: annotation.archive_ledger_source, archive: annotation.archive },
+            )
+          )
+            f.push(`container has no passing archive ledger row: ${fp.path}`);
+        } else if (annotation.disposition === "moved-and-preserved")
+          f.push(...preservedFindings(m, fp));
+      } else if (fp.disposition === "archived-and-removed") {
         if (
+          present(fp.path) ||
           !archiveMatches(
             rows.find((r) => r.source === fp.path && r.archive === fp.archive),
             fp,
@@ -1286,17 +1423,7 @@ export async function runSliceChecks() {
         )
           f.push(`archive identity/count mismatch: ${fp.path}`);
       } else if (fp.disposition === "moved-and-preserved") {
-        if (!fp.target || !existsSync(fp.target) || !under(fp.target, WORKTREES))
-          f.push("preserved tree missing");
-        else {
-          const got = manifestOf(fp.target);
-          if (
-            !["sha256", "file_count", "symlink_count", "entry_count", "bytes"].every(
-              (k) => got[k as keyof typeof got] === fp[k],
-            )
-          )
-            f.push("preserved tree content/count drift");
-        }
+        f.push(...preservedFindings(m, fp));
       } else f.push("unknown retained/archive disposition");
     }
     const version = installedVersion();
@@ -1305,14 +1432,19 @@ export async function runSliceChecks() {
         if (!existsSync(x.path) || sha256(x.path) !== x.sha256)
           f.push(`installed payload changed without release: ${x.path}`);
     } else {
-      const a = latestAttempt(
-        EVIDENCE_ROOT + "/release-" + version.replaceAll(".", "-"),
-        "install-mac",
+      const closure = readJson(
+        join(EVIDENCE_ROOT, "release-" + version.replaceAll(".", "-"), "Release-Closure.json"),
       );
+      const mac = closure.installed_readbacks?.find((x: any) => x.target === "mac");
       if (
-        a?.row?.outcome !== "passed" ||
-        !a.installed_payloads?.length ||
-        a.installed_payloads.some((x: any) => !existsSync(x.path) || sha256(x.path) !== x.sha256)
+        closure.outcome !== "passed" ||
+        mac?.release !== version ||
+        typeof mac?.receipt_path !== "string" ||
+        !existsSync(mac.receipt_path) ||
+        sha256(mac.receipt_path) !== mac.receipt_sha256 ||
+        typeof mac?.payload_path !== "string" ||
+        !existsSync(mac.payload_path) ||
+        sha256(mac.payload_path) !== mac.payload_sha256
       )
         f.push("changed installed payload lacks exact owning install receipt");
     }
@@ -1353,7 +1485,7 @@ export async function runSliceChecks() {
     return f;
   });
 
-  await check("S1-C13", () => {
+  await check("S1-C13", async () => {
     const f: Fail[] = [],
       version = installedVersion();
     if (version !== NEXT_RELEASE)
@@ -1362,23 +1494,40 @@ export async function runSliceChecks() {
     if (!existsSync(run)) return ["release evidence absent"];
     const pipeline = readJson(PIPELINE);
     f.push(...rpiPipelineFindings(pipeline));
+    const wt = join(WORKTREES, version);
+    // Ruling-Release-Closure-Contract.txt item 2: the run's source identity comes only from the release tool's
+    // admitted source-revision resolver. Its effective commit binds the worktree, every step and the closure;
+    // the original commit is source-commit.json's and heads the admitted chain. The run id is run-binding.json's.
+    let source: { commit: string; original_commit: string; admitted_repair: boolean };
+    try {
+      const { resolveRunSource } = await import(
+        pathToFileURL(SHIP_TOOL_INSTALLED + "/dist/source-revision.js").href
+      );
+      source = resolveRunSource(pipeline, run, wt, version);
+    } catch (e: any) {
+      return [...f, `admitted source-revision resolver refuses the run: ${e?.message ?? e}`];
+    }
+    if (!existsSync(join(run, "run-binding.json"))) return [...f, "run binding absent"];
     const sc = readJson(join(run, "source-commit.json")),
-      commit = sc.commit,
+      binding = readJson(join(run, "run-binding.json")),
+      commit = source.commit,
+      chain = source.admitted_repair ? [source.original_commit, commit] : [commit],
       closure = readJson(join(run, "Release-Closure.json"));
+    if (!SHA40.test(commit) || chain[0] !== sc.commit || chain[chain.length - 1] !== commit)
+      f.push("original commit does not head the admitted revision chain");
     if (
-      !SHA40.test(commit) ||
       closure.release !== version ||
       closure.source_commit !== commit ||
-      closure.run_id !== sc.run_id ||
+      closure.original_commit !== sc.commit ||
+      closure.run_id !== binding.run_id ||
       closure.outcome !== "passed"
     )
       f.push("owning closure/release/run/source identity mismatch");
-    const wt = join(WORKTREES, version);
     if (
       tryGit(wt, "rev-parse", "HEAD") !== commit ||
       tryGit(wt, "branch", "--show-current") !== `release/${version}`
     )
-      f.push("release worktree not exactly the frozen source");
+      f.push("release worktree is not the effective source");
     for (const step of [
       "vault-clean",
       "install-tower",
@@ -1389,12 +1538,13 @@ export async function runSliceChecks() {
       "publish-docs",
       "rewind-live-proof",
     ]) {
-      const a = latestAttempt(run, step);
+      // The release tool writes each attempt's bindings in its row, where the resolver reads them.
+      const row = latestAttempt(run, step)?.row;
       if (
-        a?.row?.outcome !== "passed" ||
-        a.source_commit !== commit ||
-        a.release !== version ||
-        a.run_id !== closure.run_id
+        row?.outcome !== "passed" ||
+        row.source_commit !== commit ||
+        row.release !== version ||
+        row.run_id !== binding.run_id
       )
         f.push(`step does not bind current release/source/run: ${step}`);
     }
@@ -1432,7 +1582,7 @@ export async function runSliceChecks() {
     return f;
   });
 
-  await check("S1-C14", () => {
+  await check("S1-C14", async () => {
     const f: Fail[] = [],
       version = installedVersion(),
       path = COMPONENT + "/_meta/repository-move-2026-10-07/Staging-Probe-" + version + ".json";
@@ -1464,42 +1614,18 @@ export async function runSliceChecks() {
       if (!Number.isFinite(started) || Math.abs(started - Date.parse(p.server.started_at)) > 2000)
         f.push("live process start differs from probe binding");
     }
-    if (p.interval_seconds !== 2 || !Array.isArray(p.samples) || p.samples.length < 30)
-      f.push("not thirty structured samples at the declared two-second interval");
-    for (let i = 0; i < (p.samples ?? []).length; i++) {
-      const s = p.samples[i];
-      if (
-        !s ||
-        !Array.isArray(s.index_entries) ||
-        typeof s.staged_patch_sha256 !== "string" ||
-        !s.preparation_event_id ||
-        s.server_pid !== p.server?.pid ||
-        s.thread_id !== p.thread_id ||
-        !Number.isFinite(Date.parse(s.at))
-      )
-        f.push("sample lacks actual consumer preparation event and index bytes");
-      if (i > 0) {
-        const prev = p.samples[i - 1];
-        if (
-          Math.abs(Date.parse(s.at) - Date.parse(prev.at) - 2000) > 250 ||
-          !same(s.index_entries, prev.index_entries) ||
-          s.staged_patch_sha256 !== prev.staged_patch_sha256
-        )
-          f.push("sample cadence/index bytes drift");
-      }
-    }
+    f.push(...stagingSampleFindings(p));
     if (
       !p.server?.binding_receipt ||
       !existsSync(p.server.binding_receipt) ||
       sha256(p.server.binding_receipt) !== p.server.binding_sha256
     )
       f.push("server/process binding witness missing");
-    if (
-      p.samples?.length &&
-      (!same(p.started_at, p.samples[0].at) ||
-        Date.parse(p.finished_at) < Date.parse(p.samples.at(-1).at))
-    )
-      f.push("probe duration does not bind sample timestamps");
+    try {
+      f.push(...stagingBundleFindings(readFileSync(`${APP}/Contents/Resources/app.asar`)));
+    } catch {
+      f.push("installed app.asar unreadable");
+    }
     return f;
   });
 
@@ -1700,6 +1826,9 @@ async function runRepositoryMoveFixtures(): Promise<void> {
     old_backup_root: join(root, "backup"),
     retired_folder: join(root, "retired"),
     old_home: join(root, "retired/old-home"),
+    vault: join(root, "vault"),
+    component_folder: join(root, "vault/component"),
+    backup_root: join(root, "new-backup"),
   });
   const rr = spec.tasks.find((t: any) => t.id === "T1.05").record_retention;
   rr.address = join(root, "retained");
@@ -1708,10 +1837,10 @@ async function runRepositoryMoveFixtures(): Promise<void> {
   json(specPath, spec);
   const rows = (values: unknown[]) =>
     file(annotations, values.map((x) => JSON.stringify(x)).join("\n") + "\n");
-  const run = (id: string, expected: number, reason?: string) => {
+  const run = (id: string, expected: number, reason?: string, flags: string[] = []) => {
     const r = spawnSync(
       process.execPath,
-      [join(HERE, "slice-1-repository-move.mts"), "--spec", specPath, "--only", id],
+      [join(HERE, "slice-1-repository-move.mts"), "--spec", specPath, ...flags, "--only", id],
       {
         encoding: "utf8",
         env: { ...process.env, PATH: join(root, "bin") + ":" + process.env.PATH },
@@ -1723,6 +1852,315 @@ async function runRepositoryMoveFixtures(): Promise<void> {
   };
   const cases: Array<[string, () => void]> = [];
   const test = (name: string, fn: () => void) => cases.push([name, fn]);
+  const withOldHomeAlias = (fn: () => void) => {
+    mkdirSync(dirname(spec.repository.old_home), { recursive: true });
+    symlinkSync(home, spec.repository.old_home);
+    try {
+      fn();
+    } finally {
+      unlinkSync(spec.repository.old_home);
+    }
+  };
+  // Pre-close reader regressions: real links, repository identities and hash-bound
+  // closure files, all under this disposable fixture root.
+  git(home, "remote", "add", "origin", spec.repository.origin);
+  const component = spec.repository.component_folder,
+    plain = join(spec.repository.vault, "plain"),
+    link = join(component, "evidence-link");
+  mkdirSync(component, { recursive: true });
+  mkdirSync(plain);
+  const withLink = (target: string, fn: () => void) => {
+    symlinkSync(target, link);
+    try {
+      fn();
+    } finally {
+      unlinkSync(link);
+    }
+  };
+  test("S1-C02 accepts a link to a plain vault directory", () =>
+    withLink(plain, () => run("S1-C02", 0)));
+  test("S1-C02 refuses a dangling link", () =>
+    withLink(join(plain, "missing"), () => run("S1-C02", 1, "unresolved scan alias")));
+  test("S1-C02 refuses an out-of-vault link", () =>
+    withLink(records, () => run("S1-C02", 1, "out-of-vault scan alias")));
+  test("S1-C02 refuses an old-home link even inside the vault", () => {
+    const old = spec.repository.old_home;
+    spec.repository.old_home = join(plain, "old-home");
+    mkdirSync(spec.repository.old_home);
+    json(specPath, spec);
+    try {
+      withLink(spec.repository.old_home, () => run("S1-C02", 1, "repository scan alias"));
+    } finally {
+      spec.repository.old_home = old;
+      json(specPath, spec);
+    }
+  });
+  test("S1-C02 refuses a link resolving to the repository", () =>
+    withLink(home, () => run("S1-C02", 1)));
+  test("S1-C02 scans a linked vault target for a matching-origin clone", () => {
+    const clone = join(plain, "clone");
+    mkdirSync(clone);
+    git(clone, "init", "-q");
+    git(clone, "remote", "add", "origin", spec.repository.origin);
+    try {
+      withLink(plain, () => run("S1-C02", 1, "clone under vault"));
+    } finally {
+      const clean = (p: string) => {
+        const st = lstatSync(p);
+        if (st.isDirectory() && !st.isSymbolicLink()) {
+          for (const n of readdirSync(p)) clean(join(p, n));
+          rmdirSync(p);
+        } else unlinkSync(p);
+      };
+      clean(clone);
+    }
+  });
+  test("S1-C02 does not follow further links inside a resolved target", () => {
+    const cycle = join(plain, "cycle");
+    symlinkSync(plain, cycle);
+    try {
+      withLink(plain, () => run("S1-C02", 0));
+    } finally {
+      unlinkSync(cycle);
+    }
+  });
+  const archiveAnnotations = join(records, "Archive-Annotations.jsonl"),
+    closePayload = join(records, "installer.pkg"),
+    closeReceipt = join(records, "installed-readback.json"),
+    closurePath = join(spec.repository.evidence_root, "release-1-2-3/Release-Closure.json");
+  const digest = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
+  file(closePayload, "installer payload\n");
+  json(closeReceipt, { outcome: "passed", release: "1.2.3" });
+  mkdirSync(spec.repository.backup_root);
+  file(join(trees, "README.md"), "Fixture collection\n");
+  const closeFixture = () => {
+    rows([]);
+    file(archiveAnnotations, "");
+    json(spec.repository.archive_ledger, { schema: "mac-disk-archive-ledger.v1", moves: [] });
+    const m: any = {
+      ...move,
+      head: a,
+      admission_state: "moved",
+      started_at: at,
+      fingerprints: [],
+      installed_app: {
+        version: "1.2.3",
+        payloads: [{ path: closePayload, sha256: digest(closePayload) }],
+      },
+      task_done_receipts: [
+        "T1.01",
+        "T1.02",
+        "T1.03",
+        "T1.04",
+        "T1.05",
+        "T1.06",
+        "T1.08",
+        "T1.09",
+        "T1.10",
+      ].map((task) => ({
+        task,
+        path: closeReceipt,
+        sha256: digest(closeReceipt),
+        exit_code: 0,
+        finished_at: at,
+      })),
+    };
+    const closure: any = {
+      outcome: "passed",
+      installed_readbacks: [
+        {
+          target: "mac",
+          release: "1.2.3",
+          payload_path: closePayload,
+          payload_sha256: digest(closePayload),
+          receipt_path: closeReceipt,
+          receipt_sha256: digest(closeReceipt),
+        },
+      ],
+    };
+    const runClose = (expected: number, reason?: string) => {
+      json(movePath, m);
+      json(closurePath, closure);
+      run("S1-C12", expected, reason, ["--before-close"]);
+    };
+    return { m, closure, runClose };
+  };
+  const archivedCloseFixture = () => {
+    const f = closeFixture(),
+      source = join(records, "now-archived"),
+      target = join(trees, "absent-preserved"),
+      archive = "rpi:/mnt/storage/archives/fixture";
+    file(join(source, "payload.txt"), "archived tree\n");
+    const fp = { path: source, target, disposition: "moved-and-preserved", ...manifestOf(source) };
+    unlinkSync(join(source, "payload.txt"));
+    rmdirSync(source);
+    f.m.fingerprints = [fp];
+    const annotation: any = {
+      path: source,
+      fingerprint: fp,
+      disposition: "archived-and-removed",
+      is_container: true,
+      archive,
+      archive_ledger_source: source,
+    };
+    const ledger: any = {
+      source,
+      archive,
+      ...fp,
+      status: "ARCHIVED_AND_REMOVED",
+      verify_result: "PASS",
+      rsync_checksum_verified: true,
+      remote_file_count: fp.file_count,
+      remote_symlink_count: fp.symlink_count,
+    };
+    const runArchived = (expected: number, reason?: string) => {
+      file(archiveAnnotations, JSON.stringify(annotation) + "\n");
+      json(spec.repository.archive_ledger, {
+        schema: "mac-disk-archive-ledger.v1",
+        moves: [ledger],
+      });
+      f.runClose(expected, reason);
+    };
+    return { ...f, annotation, ledger, runArchived };
+  };
+  test("S1-C12 accepts a formerly preserved tree with a bound archive annotation and ledger", () =>
+    archivedCloseFixture().runArchived(0));
+  test("S1-C12 refuses an archive annotation fingerprint mismatch", () => {
+    const f = archivedCloseFixture();
+    f.annotation.fingerprint = { ...f.annotation.fingerprint, sha256: "0".repeat(64) };
+    f.runArchived(1, "annotation does not match");
+  });
+  test("S1-C12 refuses an annotated archive without passing ledger proof", () => {
+    const f = archivedCloseFixture();
+    f.ledger.verify_result = "FAIL";
+    f.runArchived(1, "passing archive ledger");
+  });
+  for (const annotated of [false, true]) {
+    test(`S1-C12 preserved tree follows worktree move annotation (archive annotation ${annotated})`, () => {
+      const f = closeFixture(),
+        target = join(trees, "preserved-close");
+      file(join(target, "payload.txt"), "preserved bytes\n");
+      const fp = {
+        path: join(records, "frozen-preserved"),
+        target: join(records, "old-preserved"),
+        disposition: "moved-and-preserved",
+        ...manifestOf(target),
+      };
+      f.m.fingerprints = [fp];
+      f.m.worktrees = [{ path: fp.target, branch: "preserved-close", head: a }];
+      rows([
+        {
+          schema,
+          kind: "disposition",
+          before: fp.target,
+          after: target,
+          frozen_head: a,
+          branch: "preserved-close",
+          disposition: "moved",
+          evidence: { command: "fixture move" },
+        },
+      ]);
+      if (annotated)
+        file(
+          archiveAnnotations,
+          JSON.stringify({ path: fp.path, fingerprint: fp, disposition: "moved-and-preserved" }) +
+            "\n",
+        );
+      try {
+        f.runClose(0);
+      } finally {
+        unlinkSync(join(target, "payload.txt"));
+        rmdirSync(target);
+      }
+    });
+  }
+  test("S1-C12 accepts changed installed version with owning mac closure readback", () => {
+    const f = closeFixture();
+    f.m.installed_app.version = "1.2.2";
+    f.runClose(0);
+  });
+  for (const [name, mutate] of [
+    [
+      "no mac row",
+      (f: any) => {
+        f.closure.installed_readbacks[0].target = "tower";
+      },
+    ],
+    [
+      "failed closure",
+      (f: any) => {
+        f.closure.outcome = "failed";
+      },
+    ],
+    [
+      "wrong release",
+      (f: any) => {
+        f.closure.installed_readbacks[0].release = "1.2.2";
+      },
+    ],
+    [
+      "receipt hash drift",
+      (f: any) => {
+        f.closure.installed_readbacks[0].receipt_sha256 = "0".repeat(64);
+      },
+    ],
+    [
+      "payload hash drift",
+      (f: any) => {
+        f.closure.installed_readbacks[0].payload_sha256 = "0".repeat(64);
+      },
+    ],
+    [
+      "missing receipt",
+      (f: any) => {
+        f.closure.installed_readbacks[0].receipt_path += ".absent";
+      },
+    ],
+    [
+      "missing payload",
+      (f: any) => {
+        f.closure.installed_readbacks[0].payload_path += ".absent";
+      },
+    ],
+  ] as Array<[string, (f: any) => void]>)
+    test(`S1-C12 refuses changed release with ${name}`, () => {
+      const f = closeFixture();
+      f.m.installed_app.version = "1.2.2";
+      mutate(f);
+      f.runClose(1, "owning install receipt");
+    });
+  test("S1-C03 moved before-close accepts the absent old-home alias", () => {
+    json(movePath, { ...move, admission_state: "moved" });
+    rows(chain);
+    run("S1-C03", 0, undefined, ["--before-close"]);
+  });
+  test("S1-C03 moved before-close refuses a present old-home alias", () => {
+    json(movePath, { ...move, admission_state: "moved" });
+    rows(chain);
+    withOldHomeAlias(() =>
+      run("S1-C03", 1, "old-home alias remains before closure", ["--before-close"]),
+    );
+  });
+  test("S1-C03 ordinary moved accepts the repository-resolving old-home alias", () => {
+    json(movePath, { ...move, admission_state: "moved" });
+    rows(chain);
+    withOldHomeAlias(() => run("S1-C03", 0));
+  });
+  test("S1-C03 ordinary moved still refuses an absent old-home alias", () => {
+    json(movePath, { ...move, admission_state: "moved" });
+    rows(chain);
+    run("S1-C03", 1, "old-home compatibility alias is required while moved");
+  });
+  test("S1-C03 closed accepts the absent old-home alias", () => {
+    json(movePath, { ...move, admission_state: "closed" });
+    rows(chain);
+    run("S1-C03", 0);
+  });
+  test("S1-C03 closed still refuses a present old-home alias", () => {
+    json(movePath, { ...move, admission_state: "closed" });
+    rows(chain);
+    withOldHomeAlias(() => run("S1-C03", 1, "old-home alias remains after closure"));
+  });
   test("S1-C03 valid two-rebase chain with exact passing reviews", () => {
     json(movePath, move);
     rows(chain);
@@ -1796,6 +2234,106 @@ async function runRepositoryMoveFixtures(): Promise<void> {
       git(task, "checkout", "task");
     }
   });
+  // merged-and-retired: a rebased folder removed after its final head reached main
+  const gone = join(trees, "retired-work"),
+    merged = git(home, "commit-tree", tree, "-p", a, "-m", "retired work"),
+    reviewM = join(records, "review-m.json"),
+    receiptPath = join(records, "reclaim-receipt.json");
+  json(reviewM, { verdict: "PASS", head: merged });
+  const receiptOf = (removed: unknown[]) => {
+    json(receiptPath, { schema: "worktree-reclaim-receipt.v1", removed });
+    return createHash("sha256").update(readFileSync(receiptPath)).digest("hex");
+  };
+  const cleanRemoval = {
+    path: gone,
+    branch: "retired-work",
+    head: merged,
+    status_clean: true,
+    head_on_origin: true,
+  };
+  const goneRows = (retirement: Record<string, unknown> = {}) => [
+    { ...freeze, path: gone, branch: "retired-work" },
+    { ...chain[1], path: gone, new_head: merged, review: reviewM },
+    {
+      schema,
+      kind: "merged-and-retired",
+      path: gone,
+      branch: "retired-work",
+      final_head: merged,
+      merged_into: { branch: "main", commit: merged },
+      retirement_receipt: receiptPath,
+      retirement_receipt_sha256: receiptOf([cleanRemoval]),
+      observed_at: at,
+      evidence: { command: "git worktree list --porcelain", output_path: custody },
+      ...retirement,
+    },
+  ];
+  const onMain = (fn: () => void) => {
+    git(home, "update-ref", "refs/heads/main", merged);
+    try {
+      fn();
+    } finally {
+      git(home, "update-ref", "refs/heads/main", a);
+    }
+  };
+  test("S1-C03 a merged-and-retired folder with a hash-bound receipt passes", () =>
+    onMain(() => {
+      json(movePath, move);
+      rows([...chain, ...goneRows()]);
+      run("S1-C03", 0);
+    }));
+  test("S1-C03 a missing rebased folder without a retirement row still refuses", () =>
+    onMain(() => {
+      json(movePath, move);
+      rows([...chain, ...goneRows().slice(0, 2)]);
+      run("S1-C03", 1, "rebase row has no current worktree");
+    }));
+  test("S1-C03 retirement whose final head is not on main refuses", () => {
+    json(movePath, move);
+    rows([...chain, ...goneRows()]);
+    run("S1-C03", 1, "not merged into main");
+  });
+  for (const [name, edit] of [
+    ["receipt bytes changed after hashing", () => ({ retirement_receipt_sha256: "0".repeat(64) })],
+    ["final head is not the chain's last head", () => ({ final_head: a })],
+    ["receipt without this folder", () => ({ retirement_receipt_sha256: receiptOf([]) })],
+    [
+      "receipt records a dirty removal",
+      () => ({ retirement_receipt_sha256: receiptOf([{ ...cleanRemoval, status_clean: false }]) }),
+    ],
+    ["merge target missing", () => ({ merged_into: undefined })],
+  ] as Array<[string, () => Record<string, unknown>]>)
+    test(`S1-C03 retirement with ${name} refuses`, () =>
+      onMain(() => {
+        json(movePath, move);
+        const r = goneRows();
+        r[2] = { ...r[2], ...edit() };
+        rows([...chain, ...r]);
+        run("S1-C03", 1, "retire");
+      }));
+  test("S1-C03 nothing may be appended after a retirement", () =>
+    onMain(() => {
+      json(movePath, move);
+      rows([
+        ...chain,
+        ...goneRows(),
+        { ...chain[1], path: gone, previous_head: merged, new_head: merged, review: reviewM },
+      ]);
+      run("S1-C03", 1, "after a worktree retirement");
+    }));
+  test("S1-C03 a live worktree cannot be retired", () =>
+    onMain(() => {
+      json(movePath, move);
+      rows([...chain, { ...goneRows()[2], path: task, branch: "task", final_head: c }]);
+      run("S1-C03", 1, "retire");
+    }));
+  test("S1-C03 a folder is retired once", () =>
+    onMain(() => {
+      json(movePath, move);
+      const r = goneRows();
+      rows([...chain, ...r, r[2]]);
+      run("S1-C03", 1, "retire");
+    }));
 
   for (const id of ["S1-C03", "S1-M01", "S1-C06"]) {
     test(id + " moved stage requires the compatibility alias", () => {
@@ -2490,6 +3028,7 @@ async function runDeferredRpiFixtures(): Promise<void> {
   const { default: assert } = await import("node:assert/strict");
   const {
     chmodSync,
+    copyFileSync,
     lstatSync,
     mkdirSync,
     mkdtempSync,
@@ -2502,7 +3041,7 @@ async function runDeferredRpiFixtures(): Promise<void> {
   } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { dirname, join } = await import("node:path");
-  const { fileURLToPath } = await import("node:url");
+  const { fileURLToPath, pathToFileURL } = await import("node:url");
   const { createHash } = await import("node:crypto");
   const { execFileSync, spawnSync } = await import("node:child_process");
   const { expectedStep } = await import("./slice-1-contracts.mts");
@@ -2530,6 +3069,17 @@ async function runDeferredRpiFixtures(): Promise<void> {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     }).trim();
+  // The installed release tool's resolver and repair admission, used as the real run uses them.
+  const TOOL_DIST = join(original.repository.monorepo, "src/tools/throughline-ship/dist");
+  const RESOLVER_FILES = [
+    "source-revision.js",
+    "evidence-guard.js",
+    "core.js",
+    "release-source.js",
+  ];
+  const { sourceRevision } = await import(
+    pathToFileURL(join(TOOL_DIST, "source-revision.js")).href
+  );
   let sequence = 0;
   const fixture = () => {
     const d = join(root, String(++sequence)),
@@ -2570,6 +3120,7 @@ async function runDeferredRpiFixtures(): Promise<void> {
     };
     const p: any = {
       checkout: R.home,
+      seam_file: "{checkout}/throughline-seam.json",
       source: {
         worktrees_root: R.worktrees,
         release_checkout: R.worktrees + "/{release}",
@@ -2635,7 +3186,12 @@ async function runDeferredRpiFixtures(): Promise<void> {
       assert.match(r.stdout, new RegExp(`^${expected === 0 ? "PASS" : "FAIL"}  ${id} `, "m"));
       if (reason) assert.ok(r.stdout.includes(reason), r.stdout);
     };
-    const release = (includeRpiReceipt = false) => {
+    // A passed run as the release tool writes it. With repair, the tests gate fails on the frozen commit, a seam-owned
+    // repair is committed, the release tool's own sourceRevision admits it, and every later record names the repair.
+    const release = (includeRpiReceipt = false, repair = false) => {
+      const version = R.next_release;
+      for (const name of RESOLVER_FILES)
+        copyFileSync(join(TOOL_DIST, name), join(installed, "dist", name));
       mkdirSync(R.home);
       mkdirSync(R.worktrees);
       git(R.home, "init", "-q", "-b", "main");
@@ -2646,27 +3202,86 @@ async function runDeferredRpiFixtures(): Promise<void> {
         R.spec_home_in_repository + "/spec.json",
       ];
       for (const source of sources) file(join(R.home, source), "fixture source\n");
-      git(R.home, "add", "--", ...sources);
+      file(join(R.home, "package.json"), JSON.stringify({ version }));
+      file(
+        join(R.home, "apps/mobile/app.config.ts"),
+        `export default { version: "${version}" };\n`,
+      );
+      file(
+        join(R.home, "throughline-seam.json"),
+        JSON.stringify({
+          rules: [{ pattern: "apps/server/src/vcs/**", rule: "fork", inferred: false }],
+        }),
+      );
+      file(join(R.home, ".gitignore"), "release/\n");
+      git(
+        R.home,
+        "add",
+        "--",
+        ...sources,
+        "package.json",
+        "apps/mobile/app.config.ts",
+        "throughline-seam.json",
+        ".gitignore",
+      );
       git(R.home, "commit", "-qm", "disposable release fixture");
-      const commit = git(R.home, "rev-parse", "HEAD"),
-        wt = join(R.worktrees, "0.0.60"),
+      const frozen = git(R.home, "rev-parse", "HEAD"),
+        wt = join(R.worktrees, version),
         runId = "fixture-release",
-        runDir = join(R.evidence_root, "release-0-0-60");
-      git(R.home, "worktree", "add", "-qb", "release/0.0.60", wt);
-      json(join(runDir, "source-commit.json"), { commit, run_id: runId });
+        runDir = join(R.evidence_root, "release-" + version.replaceAll(".", "-"));
+      git(R.home, "worktree", "add", "-qb", "release/" + version, wt);
+      json(join(runDir, "source-commit.json"), { commit: frozen, release: version, checkout: wt });
+      json(join(runDir, "run-binding.json"), { release: version, run_id: runId });
+      const attempt = (step: string, n: number, outcome: string, at: string) =>
+        json(join(runDir, `${step}.attempt-${n}.json`), {
+          row: { outcome, step_id: step, source_commit: at, release: version, run_id: runId },
+        });
+      let commit = frozen;
+      if (repair) {
+        p.source.version_surfaces = ["package.json"];
+        p.source.mobile_config = "apps/mobile/app.config.ts";
+        p.steps.unshift(
+          { id: "tests", action: "execute", platform: "fork", privilege: "none" },
+          {
+            id: "build-mac",
+            kind: "signed-build",
+            action: "execute",
+            platform: "mac",
+            privilege: "none",
+          },
+        );
+        attempt("tests", 1, "failed", frozen);
+        file(join(wt, "apps/server/src/vcs/GitVcsDriverCore.ts"), "repaired fixture source\n");
+        git(wt, "commit", "-qam", "source repair inside the seam");
+        commit = git(wt, "rev-parse", "HEAD");
+        json(join(runDir, "source-sync/sync-state.json"), {
+          status: "passed",
+          seam_sha256: sha(join(wt, "throughline-seam.json")),
+        });
+        sourceRevision(
+          { ...p, seam_file: p.seam_file.replaceAll("{checkout}", wt) },
+          runDir,
+          wt,
+          version,
+          true,
+        );
+        attempt("tests", 2, "passed", commit);
+        attempt("build-mac", 1, "passed", commit);
+      }
       const artifact = join(wt, "release/fixture.dmg"),
         readback = join(runDir, "readback.json");
       file(artifact, "fixture installer bytes\n");
       json(readback, { fixture: true });
       json(join(runDir, "Release-Closure.json"), {
-        release: "0.0.60",
+        release: version,
         source_commit: commit,
+        original_commit: frozen,
         run_id: runId,
         outcome: "passed",
         artifacts: [{ path: artifact, sha256: sha(artifact) }],
         installed_readbacks: [
           {
-            release: "0.0.60",
+            release: version,
             source_commit: commit,
             payload_sha256: sha(artifact),
             receipt_path: readback,
@@ -2674,7 +3289,12 @@ async function runDeferredRpiFixtures(): Promise<void> {
           },
         ],
         shipped_source_hashes: Object.fromEntries(
-          sources.map((source) => [source, sha(join(R.home, source))]),
+          sources.map((source) => [
+            source,
+            createHash("sha256")
+              .update(execFileSync("/usr/bin/git", ["-C", R.home, "show", commit + ":" + source]))
+              .digest("hex"),
+          ]),
         ),
       });
       const steps = [
@@ -2687,14 +3307,9 @@ async function runDeferredRpiFixtures(): Promise<void> {
         "rewind-live-proof",
         ...(includeRpiReceipt ? ["install-rpi-headless"] : []),
       ];
-      for (const step of steps)
-        json(join(runDir, step + ".attempt-1.json"), {
-          row: { outcome: "passed" },
-          source_commit: commit,
-          release: "0.0.60",
-          run_id: runId,
-        });
-      json(join(R.vault_copy.destination, "repository.json"), { commit, release: "0.0.60" });
+      for (const step of steps) attempt(step, 1, "passed", commit);
+      json(join(R.vault_copy.destination, "repository.json"), { commit, release: version });
+      return { frozen, commit, wt, runDir, runId };
     };
     return { spec, p, deferred, run, release };
   };
@@ -2781,6 +3396,70 @@ async function runDeferredRpiFixtures(): Promise<void> {
     const f = fixture();
     [f.p.required_steps[2], f.p.required_steps[3]] = [f.p.required_steps[3], f.p.required_steps[2]];
     f.run("S1-C05", 1, "install order");
+  });
+  const editJson = (path: string, change: (value: any) => void) => {
+    const value = JSON.parse(readFileSync(path, "utf8"));
+    change(value);
+    writeFileSync(path, JSON.stringify(value));
+  };
+  // Ruling-Release-Closure-Contract.txt item 2: every reader goes through the admitted source-revision resolver.
+  test("S1-C13 an admitted source repair binds the worktree, steps and closure to the effective commit", () => {
+    const f = fixture();
+    const r = f.release(false, true);
+    assert.notEqual(r.commit, r.frozen);
+    f.run("S1-C13", 0);
+  });
+  test("S1-C13 a closure naming the original commit after a repair refuses", () => {
+    const f = fixture();
+    const r = f.release(false, true);
+    editJson(join(r.runDir, "Release-Closure.json"), (c) => (c.source_commit = r.frozen));
+    f.run("S1-C13", 1, "closure/release/run/source identity mismatch");
+  });
+  test("S1-C13 a closure without the original commit refuses", () => {
+    const f = fixture();
+    const r = f.release(false, true);
+    editJson(join(r.runDir, "Release-Closure.json"), (c) => delete c.original_commit);
+    f.run("S1-C13", 1, "closure/release/run/source identity mismatch");
+  });
+  test("S1-C13 a step bound to the original commit after a repair refuses", () => {
+    const f = fixture();
+    const r = f.release(false, true);
+    editJson(join(r.runDir, "install-mac.attempt-1.json"), (a) => (a.row.source_commit = r.frozen));
+    f.run("S1-C13", 1, "step does not bind current release/source/run: install-mac");
+  });
+  test("S1-C13 a changed repair receipt refuses through the resolver", () => {
+    const f = fixture();
+    const r = f.release(false, true);
+    editJson(join(r.runDir, "source-revision.json"), (x) => (x.changed_paths = []));
+    f.run("S1-C13", 1, "admitted source-revision resolver refuses the run");
+  });
+  test("S1-C13 a worktree moved off the effective commit refuses through the resolver", () => {
+    const f = fixture();
+    const r = f.release(false, true);
+    git(r.wt, "commit", "-q", "--allow-empty", "-m", "drift");
+    f.run("S1-C13", 1, "admitted source-revision resolver refuses the run");
+  });
+  test("S1-C13 step bindings outside the attempt row refuse", () => {
+    const f = fixture();
+    const r = f.release();
+    editJson(join(r.runDir, "publish-docs.attempt-1.json"), (a) => {
+      const { source_commit, release, run_id } = a.row;
+      a.row = { outcome: "passed", step_id: "publish-docs" };
+      Object.assign(a, { source_commit, release, run_id });
+    });
+    f.run("S1-C13", 1, "step does not bind current release/source/run: publish-docs");
+  });
+  test("S1-C13 the run id comes from run-binding.json", () => {
+    const f = fixture();
+    const r = f.release();
+    editJson(join(r.runDir, "Release-Closure.json"), (c) => (c.run_id = "another-run"));
+    f.run("S1-C13", 1, "closure/release/run/source identity mismatch");
+  });
+  test("S1-C13 a run without run-binding.json refuses", () => {
+    const f = fixture();
+    const r = f.release();
+    unlinkSync(join(r.runDir, "run-binding.json"));
+    f.run("S1-C13", 1, "run binding absent");
   });
   test("S1-C13 paused hardware needs no fabricated Raspberry Pi installation receipt", () => {
     const f = fixture();

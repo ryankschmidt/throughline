@@ -1,6 +1,16 @@
 // The ThroughLine next-generation implementation spec, authored as typed data.
 // Edit this file, run `node build-spec.mts`, never edit spec.json by hand.
 // Every hard decision names the ledger item whose first Ryan-spoken source quote the builder copies byte-true.
+import {
+  MESSAGING_SOURCES,
+  RECORD_RULE,
+  CUTOVER_WINDOW,
+  RETIREMENT_CHECK,
+  COVERAGE_CHECK,
+  DEVICE_IDENTITY,
+  DEVICE_CHECK,
+  DRIVER_RETIREMENT,
+} from "./messaging-data.mts";
 
 export type Side =
   | "fork-namespace"
@@ -359,7 +369,7 @@ export const CHECKS: Check[] = [
     id: "S1-C13",
     slice: "slice-1",
     title:
-      "The pinned acceptance release binds owning run, exact frozen source, real artifacts and installed readbacks",
+      "The pinned acceptance release binds owning run, the admitted effective source, real artifacts and installed readbacks",
     kind: "real-disk",
     file: "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/checks/slice-1-repository-move.mts",
     expected_today: "FAIL",
@@ -370,7 +380,7 @@ export const CHECKS: Check[] = [
     id: "S1-C14",
     slice: "slice-1",
     title:
-      "A non-builder probe binds a live server, dirty fixture, actual preparation events and unchanged index bytes at the declared cadence",
+      "A non-builder probe binds a live server, dirty fixture and unchanged index bytes, with installed bundle backstop",
     kind: "real-disk",
     file: "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/checks/slice-1-repository-move.mts",
     expected_today: "FAIL",
@@ -1125,6 +1135,23 @@ const T1: Task[] = [
           custody_evidence: "absolute path of an existing custody evidence file",
           observed_at: "ISO time the row was appended",
         },
+        merged_and_retired_row: {
+          schema: '"throughline.worktree-move-annotation.v1"',
+          kind: '"merged-and-retired"',
+          path: "the removed worktree path, under the worktrees collection; absent on disk and not registered",
+          branch: "its branch when removed",
+          final_head:
+            "40-hex head it was removed at; equal to the last head its freeze, disposition or rebased rows name",
+          merged_into:
+            '{branch: "main", commit}: a 40-hex main commit that contains final_head and is contained in current main',
+          retirement_receipt:
+            "absolute path of the worktree-reclaim-receipt.v1 file whose removed[] entry for this path records head = final_head, the branch, status_clean true and head_on_origin true",
+          retirement_receipt_sha256:
+            "64-hex SHA-256 of the receipt bytes when the row was appended",
+          observed_at: "ISO time the row was appended",
+          evidence:
+            "{command, output_path}: the command whose output shows the folder gone and unregistered",
+        },
       },
       coordination:
         "keys adopted from the move worker's proposal (execution/phase-03/delivery-2026-10-09/Worktree-Annotation-Census.json), with the lead's three dispositions; \"removed-with-reason\" is not a disposition",
@@ -1133,6 +1160,7 @@ const T1: Task[] = [
         "a worktree frozen as detached (branch null) is valid when it is still detached at the same head",
         "integration worktrees created after the freeze are additions with their own freeze row, not failures",
         "Rebase rows are appended in chain order; previous_head must equal the preceding bound head, each review must pass its exact new_head, and the newest rebase row must name the current HEAD. Never rewrite an old row or replace the freeze to hide a failed review.",
+        "A worktree removed after its work reached main appends exactly one merged-and-retired row as the last row for its path. S1-C03 lets a folder named by a rebased row be missing only with that row, its hash-matching reclaim receipt and its final head merged into main; a rebased-row folder missing without it still refuses. Folders named only by an addition-freeze, a disposition or a mapping stay governed by the existing move contract and are not presence-checked by S1-C03 (lead orchestrator ruling on review F1, Oct 10, 2026).",
         "Unrebased branch worktrees retain the frozen-head ancestry check. A frozen detached worktree must stay detached at its bound head; a reviewed rebase chain binds its new exact head without changing branch or common-repository identity.",
         "The old-home compatibility symlink must resolve to repository.home while the move state is moved and must be physically gone when closed (T1.07). S1-C03, S1-M01 and S1-C06 enforce the same rule; no annotation may waive it.",
       ],
@@ -1681,7 +1709,7 @@ const T1: Task[] = [
     signatures: [
       "ryan throughline ship 0.0.60 --json (the installed spelling today; its rename is pending decision R01)",
       'installed bundle check: grep -rl "prepareCommitContext.addAll" /Applications/ThroughLine.app/Contents/Resources returns nothing and grep -rl "prepareCommitContext.workingTreeSummary" returns at least one file',
-      "Staging-Probe schema throughline.staging-probe.v1 binds installed_version, project, live server pid/start/native-session plus a hashed binding receipt, actual thread id and preparation event id, a known modified tracked/untracked fixture, builder session ids and a distinct observing session. samples is an array of at/index_entries/staged_patch_sha256/server_pid/thread_id/preparation_event_id records, at least thirty at exactly two-second intervals with <=250ms measured jitter; started_at/finished_at bind the samples, and exact index bytes are unchanged. No clean/unused project or builder self-observation passes.",
+      "Staging-Probe schema throughline.staging-probe.v1 binds installed_version, project, live server pid/start/native-session plus a hashed binding receipt, actual thread id, a known modified tracked/untracked fixture, builder session ids and a distinct observing session. samples is an array of at/index_entries/staged_patch_sha256/server_pid/thread_id records, at least thirty at exactly two-second intervals with <=250ms measured jitter; started_at/finished_at bind the samples, and exact index bytes are unchanged. No clean/unused project or builder self-observation passes.",
       "Owning Release-Closure.json and every latest step receipt bind exact NEXT_RELEASE, frozen source commit and run id; release worktree HEAD equals that commit, artifacts have real sha256/address under its release folder, and all installed readbacks bind target payload digests/receipt hashes. shipped_source_hashes includes T1.08 design and T1.09 driver source; manifest source/release equal the frozen run. DMG names or ancestry alone are never installed proof. Append the new release worktree’s creator/run/frozen-head mapping to Move-Record.",
     ],
     failing_checks: ["S1-C13", "S1-C14", "S1-C07"],
@@ -12395,3 +12423,133 @@ export const JEV_COST_ROUTER_DELTA = {
     "S3-C13 and S9-C06 stay planned checks (file_ready false) and are not added to spec.checks.",
   ],
 };
+
+// Current operator sources supersede the Sep-10 CLI-only reading.
+const messagingTask = (id: string) => TASKS.find((t) => t.id === id)!;
+const currentComs = DECISIONS.find((d) => d.id === "D07")!;
+currentComs.title = "Original upstream ComsNet socket delivery; Absurd owns every message record";
+currentComs.statement =
+  "ComsNet is the original upstream HTTP/live-stream socket design, not MCP or an ad hoc agent-built relay. ThroughLine keeps delivery and peer identity; Absurd owns records under D27's step/task/event rule. CLI is a possible client, not the target or Codex's mandated only door. D26-D28 supersede contrary Sep-10 details; merged-code routing awaits the required Fable design pass.";
+delete currentComs.quote_from;
+DECISIONS.push(
+  {
+    id: "D26",
+    title: "Ryan's byte-exact four-part messaging target and cutover release",
+    statement: Object.values(CUTOVER_WINDOW).join(" "),
+    serves: ["NG-028", "NG-017", "NG-003"],
+  },
+  {
+    id: "D27",
+    title: "Three records, Ryan included; retired avenues route onto the one rail",
+    statement:
+      Object.values(RECORD_RULE).join(" ") +
+      " Other paths are retired, not deleted: not advertised or independently usable. Attempts route into ComsNet and Absurd; upstream code is preserved. A Fable design pass on the merged, upstream-reconciled code decides how; this amendment does not invent that design.",
+    serves: ["NG-028", "NG-003"],
+  },
+  {
+    id: "D28",
+    title: "Ryan and each device have identities on the same rails as agents",
+    statement: DEVICE_IDENTITY.rule,
+    serves: ["NG-060", "NG-061", "NG-028"],
+  },
+);
+for (const id of ["T3.01", "T5.01", "T5.02", "T7.01", "T7.02", "T7.03", "T7.04"]) {
+  const t = messagingTask(id);
+  t.governing_shapes = [
+    ...new Set([...(t.governing_shapes ?? []), MESSAGING_SOURCES.oct10, MESSAGING_SOURCES.oct11]),
+  ];
+}
+const identity = messagingTask("T5.01");
+identity.what += " " + DEVICE_IDENTITY.rule;
+identity.device_identity = DEVICE_IDENTITY;
+identity.done_when.expect +=
+  " Ryan's iPhone, Android, Mac and tower each resolve to a distinct durable device identity on the same alias rails; no device identity is shared.";
+const sender = messagingTask("T5.02");
+sender.what += " " + DEVICE_IDENTITY.rule;
+sender.device_identity = DEVICE_IDENTITY;
+sender.planned_checks = [...((sender.planned_checks as any[]) ?? []), DEVICE_CHECK];
+sender.done_when.expect += " " + DEVICE_CHECK.expect;
+messagingTask("T7.01").what +=
+  " D07 now anchors transport/envelope fidelity to the original upstream ComsNet hub, not an invented MCP relay; preserve fixtures for any retained coms.ts client.";
+const rail = messagingTask("T7.03");
+for (const id of ["T3.03", "T5.02", "T7.04"]) {
+  for (const entry of (messagingTask(id).fork_state as any[]) ?? [])
+    if (entry.ref === "30f8e3e388")
+      entry.reason =
+        "Reuse authenticated claims/refusals and sender fixtures behind the authoritative admission/record transaction. D26-D28 replace the earlier CLI-only/MCP-retention guidance: all alternative paths retire by routing; upstream code is preserved pending merged-code Fable design.";
+}
+rail.rollback =
+  "Before cutover, a failed build restores the previous working transport in the old build environment only. After cutover, automatic release rollback restores the previous release; no accepted candidate may retain MCP or an off-rail alternative.";
+rail.what = rail.what.replace(
+  "A message received on the socket",
+  "A reply-expecting request received on the socket",
+);
+rail.what +=
+  " " +
+  Object.values(RECORD_RULE).join(" ") +
+  " Each ComsNet work request uses its request ID as the task idempotency key and its reply as the result. Signal-only no_model notices are events, not missing work-request tasks. The same classification covers Ryan's messages. " +
+  CUTOVER_WINDOW.install_day;
+rail.planned_checks = [...((rail.planned_checks as any[]) ?? []), COVERAGE_CHECK];
+rail.done_when.expect += " " + COVERAGE_CHECK.expect;
+const retire = messagingTask("T7.04");
+retire.title =
+  "Retire alternative messaging at the post-0.0.60 cutover; adapters use only native ComsNet and Absurd";
+retire.what =
+  "Harness clients, including any CLI and Pi extension, use ComsNet's original upstream socket transport and the same admitted record. CLI is optional, not a mandated exclusive harness door; no MCP toolkit or ad hoc relay is advertised. " +
+  Object.values(CUTOVER_WINDOW).join(" ");
+retire.planned_checks = [RETIREMENT_CHECK];
+retire.done_when = {
+  host: "Mac, tower, iPhone and Android; installed release and all active agent runtimes; non-builder",
+  command: RETIREMENT_CHECK.command + " " + COVERAGE_CHECK.command,
+  expect: RETIREMENT_CHECK.expect + " " + COVERAGE_CHECK.expect,
+};
+retire.retained_protection =
+  "Old build-only tools remain only until installed parts 1-3 coverage succeeds; same-window Ship Warden retirement and post-retirement probes precede acceptance. Existing admission/authentication/idempotency/unknown-effect refusals remain; preserve the old JSON store read-only.";
+retire.failure_test = RETIREMENT_CHECK.fixtures.fail;
+retire.failing_check_first =
+  "Run P4 against installed 0.0.60: alternatives remain advertised and usable off-rail, so retirement fails. Calibrate the new executable on its passing/failing fixtures before gating release work.";
+retire.rollback =
+  "Automatic release rollback restores the previous working build/tools only if cutover fails; never accept an alternative live channel. Preserve old record data read-only.";
+for (const entry of (retire.fork_state as any[]) ?? [])
+  entry.reason =
+    "Reuse authenticated claims/refusals and sender fixtures behind admission; D26-D28 supersede CLI-only/MCP-refusal guidance. Legacy adapters retire by routing; upstream code is preserved pending merged-code Fable design.";
+messagingTask("T3.01").what +=
+  " Under D26-D27, retired messaging avenues route to ComsNet/Absurd instead of executing directly; missing/forged authentication still refuses. P4's async answers, server reissues and history imports are admission-only cases, not alternative agent messaging paths.";
+for (const id of ["T1.04", "T13.04"]) {
+  const t = messagingTask(id);
+  t.what +=
+    " Messaging cutover acceptance is D26-D28: " +
+    CUTOVER_WINDOW.before_install +
+    " " +
+    CUTOVER_WINDOW.install_day +
+    " " +
+    CUTOVER_WINDOW.after_coverage;
+  t.done_when.expect += " " + RETIREMENT_CHECK.expect + " " + COVERAGE_CHECK.expect;
+}
+export const MESSAGING_CUTOVER = {
+  decisions: ["D26", "D27", "D28"],
+  record_rule: RECORD_RULE,
+  window: CUTOVER_WINDOW,
+  devices: DEVICE_IDENTITY,
+  checks: [RETIREMENT_CHECK, COVERAGE_CHECK, DEVICE_CHECK],
+  sources: MESSAGING_SOURCES,
+};
+
+// Independent review S1: slice-10 cannot retain a CLI-only route or delay P4 messaging retirement.
+const driverRetirement = messagingTask("T10.06");
+driverRetirement.title =
+  "Retire P4 messaging at cutover; retire remaining non-messaging driver functions after replacement";
+driverRetirement.what = DRIVER_RETIREMENT.what;
+driverRetirement.messaging_retirement_owner = DRIVER_RETIREMENT.messaging_owner;
+driverRetirement.non_messaging_retirement_prerequisite =
+  DRIVER_RETIREMENT.non_messaging_prerequisite;
+driverRetirement.done_when = DRIVER_RETIREMENT.done_when;
+driverRetirement.signatures = [
+  `Declared cold acceptance interface: ${DRIVER_RETIREMENT.done_when.command} => ${DRIVER_RETIREMENT.done_when.expect}`,
+];
+driverRetirement.planned_checks = [DRIVER_RETIREMENT.protect];
+driverRetirement.proof_limits = [
+  "T10.03 delays only non-messaging driver functions, never P4 messaging retirement; spec declarations do not prove either removal is installed.",
+];
+driverRetirement.rollback =
+  "Automatic release rollback through the owning ship lane; never restore an off-rail alternative in an accepted cutover release.";

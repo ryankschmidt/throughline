@@ -19,6 +19,24 @@ if (!decisionSourceFile) throw Error("missing authored decision-selector source 
 const { DECISION_SOURCES: authoredDecisionSources } = await import(
   pathToFileURL(resolve(HERE, decisionSourceFile)).href
 );
+const {
+  readMessagingSources,
+  RECORD_RULE,
+  CUTOVER_WINDOW,
+  RETIREMENT_CHECK,
+  COVERAGE_CHECK,
+  DEVICE_IDENTITY,
+  DEVICE_CHECK,
+  DRIVER_RETIREMENT,
+} = await import(
+  pathToFileURL(
+    resolve(
+      HERE,
+      spec.generated_by.source_files.find((x: any) => x.path.endsWith("/messaging-data.mts")).path,
+    ),
+  ).href
+);
+const messagingSources = readMessagingSources();
 type Fail = string;
 const results: Array<{ id: string; title: string; fails: Fail[] }> = [];
 const check = (id: string, title: string, fn: () => Fail[]) => {
@@ -212,6 +230,14 @@ check(
         f.push(`${d.id}: authored message-specific selection missing or changed`);
       if (!d.ryan_quote && !d.fable_call) f.push(`${d.id}: neither quote nor Fable call`);
       if (d.ryan_quote) {
+        if (expected?.canonical_quote) {
+          if (
+            JSON.stringify(d.ryan_quote) !==
+            JSON.stringify(messagingSources.quotes[expected.canonical_quote])
+          )
+            f.push(`${d.id}: canonical operator quote/source bytes changed`);
+          continue;
+        }
         const item: any = byId.get(d.ryan_quote.ledger_item);
         const q = d.ryan_quote;
         const admitted =
@@ -1816,6 +1842,103 @@ check(
       f.push("new tasks are not in the source author's dependency order");
     if (spec.checks.some((c: any) => c.id === "S3-C13" || c.id === "S9-C06"))
       f.push("a planned check entered spec.checks before its file exists");
+    return f;
+  },
+);
+
+check("X28", "messaging quotes and complete P4 retirement contract remain source-bound", () => {
+  const f: string[] = [],
+    m = spec.messaging_cutover;
+  if (!m) return ["messaging cutover absent"];
+  for (const [field, expected] of Object.entries({
+    record_rule: RECORD_RULE,
+    window: CUTOVER_WINDOW,
+    inventory: messagingSources.inventory,
+  }))
+    if (JSON.stringify(m[field]) !== JSON.stringify(expected)) f.push(field + " changed/missing");
+  for (const id of ["D07", "D26", "D27", "D28"]) {
+    const d = spec.decisions.find((d: any) => d.id === id);
+    if (!d || JSON.stringify(d.ryan_quote) !== JSON.stringify(messagingSources.quotes[id]))
+      f.push(id + " source quotation changed/missing");
+  }
+  const retirement = spec.tasks.find((t: any) => t.id === "T7.04");
+  if (
+    JSON.stringify(retirement?.planned_checks?.find((c: any) => c.id === RETIREMENT_CHECK.id)) !==
+    JSON.stringify(RETIREMENT_CHECK)
+  )
+    f.push("retirement check/fixture polarities changed");
+  if (/Codex's only door|Ryan, Sep 10|refusal naming the CLI/.test(retirement?.what ?? ""))
+    f.push("stale CLI-only authority");
+  const driver = spec.tasks.find((t: any) => t.id === "T10.06");
+  for (const [field, expected] of Object.entries({
+    what: DRIVER_RETIREMENT.what,
+    done_when: DRIVER_RETIREMENT.done_when,
+    messaging_retirement_owner: DRIVER_RETIREMENT.messaging_owner,
+    non_messaging_retirement_prerequisite: DRIVER_RETIREMENT.non_messaging_prerequisite,
+    signatures: [
+      `Declared cold acceptance interface: ${DRIVER_RETIREMENT.done_when.command} => ${DRIVER_RETIREMENT.done_when.expect}`,
+    ],
+    planned_checks: [DRIVER_RETIREMENT.protect],
+  }))
+    if (JSON.stringify(driver?.[field]) !== JSON.stringify(expected))
+      f.push("T10.06 " + field + " conflicts with cutover/optional CLI");
+  return f;
+});
+check(
+  "X29",
+  "request coverage and release refusal bind both fixture polarities; no spec-green shipping claim",
+  () => {
+    const f: string[] = [];
+    const t = spec.tasks.find((t: any) => t.id === "T7.03");
+    if (
+      JSON.stringify(t?.planned_checks?.find((c: any) => c.id === COVERAGE_CHECK.id)) !==
+      JSON.stringify(COVERAGE_CHECK)
+    )
+      f.push("request coverage/fixture polarities changed");
+    if (
+      JSON.stringify(spec.messaging_cutover?.checks) !==
+      JSON.stringify([RETIREMENT_CHECK, COVERAGE_CHECK, DEVICE_CHECK])
+    )
+      f.push("checks changed");
+    for (const id of ["T1.04", "T13.04"]) {
+      const release = spec.tasks.find((t: any) => t.id === id);
+      for (const clause of [
+        CUTOVER_WINDOW.before_install,
+        CUTOVER_WINDOW.install_day,
+        CUTOVER_WINDOW.after_coverage,
+      ])
+        if (!release?.what.includes(clause)) f.push(id + " cutover acceptance missing");
+    }
+    if (
+      !spec.acceptance?.rule.includes(
+        "Each new product check must pass known-good and fail known-bad fixtures",
+      )
+    )
+      f.push("calibration obligation missing");
+    return f;
+  },
+);
+check(
+  "X30",
+  "four authenticated device identities and recipient context ride existing identity tasks",
+  () => {
+    const f: string[] = [];
+    if (JSON.stringify(spec.messaging_cutover?.devices) !== JSON.stringify(DEVICE_IDENTITY))
+      f.push("device contract changed");
+    for (const id of DEVICE_IDENTITY.owner) {
+      const t = spec.tasks.find((t: any) => t.id === id);
+      if (
+        JSON.stringify(t?.device_identity) !== JSON.stringify(DEVICE_IDENTITY) ||
+        !t?.what.includes(DEVICE_IDENTITY.rule)
+      )
+        f.push(id + " identity contract changed");
+    }
+    const sender = spec.tasks.find((t: any) => t.id === "T5.02");
+    if (
+      JSON.stringify(sender?.planned_checks?.find((c: any) => c.id === DEVICE_CHECK.id)) !==
+      JSON.stringify(DEVICE_CHECK)
+    )
+      f.push("sender/device fixtures changed");
     return f;
   },
 );

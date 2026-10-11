@@ -1151,7 +1151,125 @@ cases.push({
   },
 });
 
+// The valid-copy case is the passing fixture for each new structural check.
+for (const c of [
+  {
+    name: "target quote byte changed",
+    checks: ["X07", "X28"],
+    mutate: (s: any) => {
+      s.decisions.find((d: any) => d.id === "D26").ryan_quote.quote += "!";
+    },
+  },
+  {
+    name: "Oct11 quote omitted",
+    checks: ["X28"],
+    mutate: (s: any) => {
+      s.decisions = s.decisions.filter((d: any) => d.id !== "D27");
+    },
+  },
+  {
+    name: "P4 path omitted",
+    checks: ["X28"],
+    mutate: (s: any) => {
+      s.messaging_cutover.inventory.paths_to_retire.pop();
+    },
+  },
+  {
+    name: "upstream deletion required",
+    checks: ["X28"],
+    mutate: (s: any) => {
+      s.messaging_cutover.window.before_cut = "Delete upstream code";
+    },
+  },
+  {
+    name: "retirement failing fixture missing",
+    checks: ["X28"],
+    mutate: (s: any) => {
+      delete s.tasks.find((t: any) => t.id === "T7.04").planned_checks[0].fixtures.fail;
+    },
+  },
+  {
+    name: "coverage passing fixture missing",
+    checks: ["X29"],
+    mutate: (s: any) => {
+      delete s.tasks
+        .find((t: any) => t.id === "T7.03")
+        .planned_checks.find((c: any) => c.id === "T7.03-request-record").fixtures.pass;
+    },
+  },
+  {
+    name: "request key/result altered",
+    checks: ["X29"],
+    mutate: (s: any) => {
+      s.tasks
+        .find((t: any) => t.id === "T7.03")
+        .planned_checks.find((c: any) => c.id === "T7.03-request-record").expect =
+        "dispatched is done";
+    },
+  },
+  {
+    name: "release refusal removed",
+    checks: ["X29"],
+    mutate: (s: any) => {
+      s.tasks.find((t: any) => t.id === "T1.04").what = "install regardless of P4";
+    },
+  },
+  {
+    name: "tower device omitted",
+    checks: ["X30"],
+    mutate: (s: any) => {
+      s.messaging_cutover.devices.devices.pop();
+    },
+  },
+  {
+    name: "device failing fixture missing",
+    checks: ["X30"],
+    mutate: (s: any) => {
+      delete s.tasks
+        .find((t: any) => t.id === "T5.02")
+        .planned_checks.find((c: any) => c.id === "T5.02-device").fixtures.fail;
+    },
+  },
+  {
+    name: "sender device context removed",
+    checks: ["X30"],
+    mutate: (s: any) => {
+      s.tasks.find((t: any) => t.id === "T5.02").device_identity.rule = "sender only";
+    },
+  },
+])
+  cases.push({ ...c, expect: "FAIL" });
+
+cases.push(
+  {
+    name: "T10.06 mandates CLI again",
+    expect: "FAIL",
+    checks: ["X28"],
+    mutate: (s: any) => {
+      s.tasks.find((t: any) => t.id === "T10.06").planned_checks[0].command =
+        "every return route is a ComsNet CLI call";
+    },
+  },
+  {
+    name: "T10.06 delays messaging until durable waits",
+    expect: "FAIL",
+    checks: ["X28"],
+    mutate: (s: any) => {
+      s.tasks.find((t: any) => t.id === "T10.06").messaging_retirement_owner = "T10.03";
+    },
+  },
+);
 let bad = 0;
+cases.push({
+  name: "T10.06 stale signature still requires CLI",
+  expect: "FAIL",
+  checks: ["X28"],
+  mutate: (s: any) => {
+    s.tasks.find((t: any) => t.id === "T10.06").signatures = [
+      "Declared cold acceptance interface: reply through the CLI",
+    ];
+  },
+});
 for (const c of cases) {
   const dir = mkdtempSync(join(tmpdir(), "ngspec-check-"));
   for (const f of FILES) cpSync(join(HERE, f), join(dir, f));

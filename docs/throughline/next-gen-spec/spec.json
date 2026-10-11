@@ -1,6 +1,101 @@
 {
   "schema": "throughline.next-gen-spec.v1",
-  "version": "0.4.22",
+  "version": "0.4.31",
+  "messaging_cutover": {
+    "decisions": ["D26", "D27", "D28"],
+    "record_rule": {
+      "step": "A message inside one conversation, including Ryan's typed message, its reply and tool calls, is a step of that conversation's task.",
+      "task": "A request asking another agent for work and expecting a reply is a task on the receiver's queue, keyed by its request id, with the reply as its result; peers and parent/child use the same rule.",
+      "event": "A signal with no reply is an event; no relationship-based classification and no carve-out for Ryan."
+    },
+    "window": {
+      "release": "The next ThroughLine release after 0.0.60 carrying the reconciled upstream merge is the cutover release.",
+      "before_cut": "Retire every P4 alternative in the candidate: neither advertised nor independently usable. Route attempted retired/unapproved avenues into ComsNet and Absurd. Preserve upstream code; a Fable design pass on the merged code decides routing without upstream tax. Fork-only relay code may be removed. The old JSON store is retained read-only, never a live message record.",
+      "before_install": "The release refuses if any P4 path is advertised or independently usable in the release or its accepted agent environments, if any path lacks a measured probe, or if the checks lack known-good passing and known-bad failing fixtures. Existing build-only tools may remain in the old build environment until installed coverage succeeds; they are not allowed in the accepted candidate environment.",
+      "install_day": "On Mac, tower, iPhone and Android, a non-builder measures every actual agent-to-agent request against Absurd: exactly one task, idempotency key equal to request id, reply equal to task result, no completed dispatched-only tasks and zero unmatched requests/replies. Repeat a request id and prove one task and one reply; a real request/reply is required on each device, so zero rows never pass.",
+      "after_coverage": "Immediately after installed parts 1-3 pass, retire agent-instruments send/thread-create and dependent wakes/relays from active runtimes through Ship Warden in the same install window. Any retained command compatibility routes only into ComsNet/Absurd and is never an alternative channel. Post-retirement non-builder probes are required before release closure; rollback is automatic and agent-run.",
+      "proof_limit": "These are spec requirements and planned installed-product checks, not evidence that messaging has shipped or that any installed path is retired."
+    },
+    "devices": {
+      "owner": ["T5.01", "T5.02"],
+      "devices": ["iPhone", "Android", "Mac", "tower"],
+      "rule": "Each of Ryan's four devices has its own durable unique public identity on the same identity/alias rails as agents, bound to Ryan as sender. Every message records the authenticated sender and device, retains both across replay, relay and dictation/optimization, and exposes them as context to receiving agents. Same thread, consecutive iPhone and Mac messages: same Ryan sender, different device identities. Payload fields cannot spoof sender or device."
+    },
+    "checks": [
+      {
+        "id": "T7.04-cutover",
+        "kind": "contract-test",
+        "command": "Before cut/install and after runtime retirement, inventory advertised tools, candidate code routing and active agent runtimes; probe each of the nine P4 paths for advertisement, direct delivery and routed delivery; bind outcomes to the pinned release source and environment.",
+        "expect": "Every P4 alternative is absent from advertisement and cannot deliver off-rail. Attempts through retained compatibility code arrive only through authenticated ComsNet and Absurd. Missing/unprobed paths refuse; admission-only exclusions remain covered by T3.01. Upstream code need not be deleted.",
+        "fixtures": {
+          "pass": "All nine paths measured, no alternatives advertised/usable; retained upstream HTTP code routes the attempt onto the rail and the read-only old store cannot accept writes.",
+          "fail": "For each P4 path separately, advertise it or allow off-rail delivery: release refuses. Omit a path's probe: release refuses. Keep a build-only relay in an accepted agent runtime: release refuses."
+        },
+        "spec_projection": {
+          "kind": "real-disk",
+          "expected_today": "measure on first run",
+          "file_ready": false,
+          "note": "Planned product check; add to spec.checks only after its executable exists (X05). Calibrate both fixture polarities before gating an install."
+        }
+      },
+      {
+        "id": "T7.03-request-record",
+        "kind": "contract-test",
+        "command": "On install day a non-builder sends and awaits replies on each active device, compares the complete observed request/reply census with Absurd tasks through the record read API, and repeats a request id; include peers and parent/child, plus a conversation step and a no-reply signal event from Ryan and an agent.",
+        "expect": "Mac, tower, iPhone and Android each have a nonzero actual sample; every reply-expecting request has exactly one receiver task keyed by request id whose result is the reply. Retry creates no second task/reply. Conversation messages are steps and signals events for Ryan and agents alike. No dispatched-only completion and no unmatched request or reply.",
+        "fixtures": {
+          "pass": "Each of four devices sends one request with a terminal reply result; peers and parent/child have matching request-id keys; duplicate reuses its task; Ryan/agent conversation steps and signal events are recorded.",
+          "fail": "Missing task, wrong request-id key, reply missing/different, dispatched-only completion, duplicate task/reply, missing device, empty census, builder witness, peer request stored only as a step, or Ryan message outside the record: each refuses."
+        },
+        "spec_projection": {
+          "kind": "real-disk",
+          "expected_today": "measure on first run",
+          "file_ready": false,
+          "note": "Planned product check; add to spec.checks only after its executable exists (X05). Calibrate both fixture polarities before gating an install."
+        }
+      },
+      {
+        "id": "T5.02-device",
+        "kind": "contract-test",
+        "command": "A non-builder sends from each of Ryan's four devices and an agent, then sends consecutively from iPhone and Mac into one thread; read the admitted record and recipient context; forge a sender/device, replay and relay a message, dictate and optimize one.",
+        "expect": "Four distinct stable device public identities using T5.01 rails; every record/context carries actual sender and source device. Ryan remains Ryan when changing device; a relay never becomes Ryan. Forged sender/device refuses; replay and optimization preserve authenticated origin.",
+        "fixtures": {
+          "pass": "Four devices with distinct ids, same Ryan sender, and an agent sender; iPhone-to-Mac switch in one thread, replay, relay and optimized message preserve origin and recipient context.",
+          "fail": "Missing/shared device id, spoofed sender/device accepted, relay stamped as Ryan, phone stamped as desktop, or record correct but recipient context missing device: each refuses."
+        },
+        "spec_projection": {
+          "kind": "real-disk",
+          "expected_today": "measure on first run",
+          "file_ready": false,
+          "note": "Planned product check; add to spec.checks only after its executable exists (X05). Calibrate both fixture polarities before gating an install."
+        }
+      }
+    ],
+    "sources": {
+      "order": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/Order-Phase-4-Delivery-Lead.txt",
+      "oct10": "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-10-ryan-comsnet-is-the-original-socket-design-and-absurd-owns-the-message-record.yaml",
+      "oct11": "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml",
+      "inventory": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/substrate-design-check/Design-vs-Installed.json",
+      "rubric": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/lead-transfer/Process-Vs-Delivery-Rubric-20261011.txt"
+    },
+    "inventory": {
+      "source_path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/substrate-design-check/Design-vs-Installed.json",
+      "source_sha256": "7875902adf18c4a0432d3815c9ffac89c0199ff456438638e068b0cc4c687ad5",
+      "row": "P4",
+      "paths_to_retire": [
+        "1. The legacy JSON-file relay: apps/server/src/mcp/ComsNetTransport.ts (imports JsonFileComsNetStore from @ryan/agent-mcp-relay and ReceiverTurnRelay from throughline/legacyRelay.ts)",
+        "2. apps/server/src/throughline/legacyRelay.ts and the vendored package @ryan/agent-mcp-relay (apps/server/package.json: file:vendor/agent-mcp-relay-0.3.0.tgz)",
+        "3. The five ComsNet MCP tools advertised to every seat (comsnet_peers, comsnet_send, comsnet_result, comsnet_status, comsnet_subscribe; apps/server/src/mcp/toolkits/comsnet/tools.ts and handlers.ts); comsnet_send starts the receiver's turn straight in the engine. These tools are in this seat's own tool list tonight.",
+        "4. The store ~/.t3/userdata/coms-net/requests.json (340 requests)",
+        "5. HTTP POST /api/orchestration/dispatch as an agent door for thread.turn.start (apps/server/src/orchestration/http.ts handler 'dispatch'; upstream file)",
+        "6. agent-instruments send --thread and its alias throughline-wake --thread (dist/thread.js posts thread.turn.start to path 5); throughline-wake also has a legacy socket mode (--via capability-socket)",
+        "7. agent-instruments thread-create (dist/thread.js creates a thread and posts its first thread.turn.start to path 5)",
+        "8. agent-instruments commands that send through 6 and 7: report-post (receiver-verified send), dispatch (composes and sends a kickoff); and the driver daemon's wakes (drive.js, driver.js and healer.js reference the thread-send functions; INFERRED from a name search, not traced line by line)",
+        "9. agent-instruments send --pane (terminal-pane delivery, a retired surface)"
+      ],
+      "admission_only_exclusion": "Not agent messaging, found while searching every turn-start caller: answers to a pending question (decider.ts, async-answer:<request>, 1 in 24 h, no task), the server's after-compaction reissue (ProviderCommandReactor.ts), and history import (import-claude-sessions.ts, AgentSessionImporter.ts). They start turns off the admission point and belong to T3.01, not to the messaging cutover."
+    }
+  },
   "instruction_coverage": {
     "source": {
       "path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/lead-transfer/Ryan-Instruction-Coverage.json",
@@ -335,8 +430,8 @@
     ]
   },
   "revision": {
-    "from": "0.4.21",
-    "reason": "Current 0.4.22: apply Fable's JEV cost-router delta verbatim (execution/phase-05/Fable-Delta-JEV-Cost-Router.json, decision D25): a route slot inside the one admission decision (new task T3.08 in Phase 4, code-only rules, a policy floor file only Ryan edits, no wake on a notice, one wake per sleeping seat, reset re-check) and its JEV conditions behind K07 in Phase 5 (new task T9.06); appends to K07, T3.01, T3.02, T7.03, T8.01, T9.02, T9.04, T11.02 and T11.04. Prior 0.4.21: apply Fable's R3 verbatim for independent review F1-F3 of 0.4.20 (Review-Spec-0.4.20-8c4bf0d8fd.json): T4.07 reads environment names only through the source-owned env-names helper (authored by T4.05, contract and seven fixtures bound byte-equal by X21) and proves the Raspberry Pi provider route with a route-probe thread during its turn, depending on T4.04 and T4.05 and never on the T12.08 responder; T12.08 cites that receipt; T4.06 relocates the record TLS certificate and key to /etc/throughline/record-tls/ (root:throughline-record) in the same batch with rehearsal, old-home rejection under ProtectHome=yes and rollback; T4.01 states the two ssl_*_file lines that do not travel unchanged. Prior unlanded 0.4.20: bind B1 built-candidate browser-preview cold capture tests, mandatory failed-before/passing-after screenshot pair and same-diagnosis reopen before final install; no screenshot fix claimed. Prior unlanded 0.4.19: apply the final R2 state-scoped rehearsal probe and rehearsal-only twr grant; preserve production-unit isolation, before/after receipts and every prior fixture. Prior unlanded 0.4.18: apply Ryan instruction coverage IC-049/052/056/002/008: Phase 4 upstream reconciliation first, installed target-ID-only succession after provider adapters, one target API for Claude/Codex/Pi, command grammar and caller preservation, and Raspberry Pi pause with archive/watcher exceptions. Also incorporate R2 source follow-through. Prior unlanded 0.4.17: Apply corrected watcher/server/reboot design delta: locked server and record accounts, the Raspberry Pi responder recovery island and provider route, explicit tiered incidents, encrypted-disk reboot constraints and a non-install unlock proposal. Source decisions remain pinned; no runtime change is claimed. 0.4.16 was: Fixture path consolidation preserves every case inside the admitted slice-1 checker and removes the separate fixture paths without changing seam ceilings or the self-test. S1-C05 ports the approved deferred.rpi contract from frozen 0.4.12; S1-C13 follows the same explicit deferral instead of demanding a paused-device install receipt. T1.10 carries the original pause declaration; hardware and pipeline remain untouched. 0.4.15 was: Disposition proof correction for independent review F1 (Review-Spec-Archive-Readers-de292cef67.json): annotated and unannotated preserved entries share the same real-target existence, collection-containment and all-five-fingerprint proof. The failed head and its evidence remain preserved. 0.4.14 was: Reader-only repair: S1-C06 consumes archive annotations, pre-copy addenda and dropped third-party record rows; S1-C09 recognizes bound frozen-worktree dispositions and detached freezes and validates archive annotation shapes. Existing rebase custody and retained-link checks are unchanged; frozen witnesses stay read-only. 0.4.13 was: Three approved repository-spec changes, preserving the required old-home compatibility link while moved and its removal at closure: append-only reviewed rebase rows (including the prerequisite worktree annotation contract from the frozen 0.4.12 record); preserved release targets follow move annotations and archived staging links retain exact ledger proof; done_when commands preserve their intended folders. Repository baseline was 0.4.7; unrelated frozen-record amendments are not imported. 0.4.7 was: T1.05 record retention (execution/phase-03/delivery-2026-10-09/Move-Remainder-Receipt.json, question records-inside-build-output): each build container is archived whole with its frozen fingerprint; its records are first copied to retained-records under the evidence root with sanitized names and a manifest; S1-C06 checks no build-named directory, a passing ledger row per container, and every record at its new path with its SHA-256. 0.4.6 was: Rename on Ryan's direction: the vendored relay is @ryan/agent-mcp-relay at apps/server/vendor/agent-mcp-relay-0.3.0.tgz (was @ryan/coms-net at apps/server/vendor/ryan-coms-net-0.3.0-legacy-mcp-relay.tgz); T1.04 and T7.04, including the T7.04 gone-check, use the new names. 0.4.5 was: Release tool literal (execution/phase-03/Delivery-State.json): Ship Warden binds one payload per version, so T1.04 and S1-C05 accept throughline-ship 0.4.1 or later instead of 0.4.0. 0.4.4 was: Path correction (execution/phase-03/delivery-2026-10-09/Order-Coms-Net-Vendor.txt): the vendored relay tarball and its README live under apps/server/vendor/, where pnpm resolves file:vendor/...; every path in T1.04 and T7.04, including the T7.04 gone-check, now names apps/server/vendor/. 0.4.3 was: @ryan/coms-net (the legacy MCP relay, not ComsNet) is a frozen tarball in the repository, decision D3 (execution/phase-03/delivery-2026-10-09/D3-Coms-Net-Decision.json): T1.04 drops the rpi-coms-net.tar transfer and the tower coms-net presence check; T7.04 deletes the tarball, vendor/README.md and the dependency line and checks they are gone. 0.4.2 was: GitHub repository renamed ryankschmidt/t3code to ryankschmidt/throughline on Oct 9, 2026 under Ryan's order (execution/phase-03/repo-home-2026-10-09/Repo-Home-Receipt.json): origin and the publish-docs source_repository literal, R02 carried out, S1-C01 and S1-C09 accept the pre-rename frozen origin, S1-C04 and S1-C09 compare tags by target type, T1.04 records the Mac node 24.13.1 selection. 0.4.1 was: Exit-check corrections, Oct 9, 2026 (execution/phase-02/closeout-2026-10-09/P2-Exit-Check-0.4.0.json defects P2-01, P2-02, P2-03): T3.06 deferred outside the first-install graph on K03, the T10.04 edge removed and the first-install acceptance limited to live input unavailable on the Mac; T6.02 no longer waits on slice 13 and depends on T1.10, provider evidence stays with its owners; T3.01 refuses HTTP turn starts at the decorator through the unchanged http.ts with a behavioral test and checks non-increase against the real stock-file set. 0.4.0 was: Phase 2 close-out, Oct 9, 2026, single design writer (thread a96357c8): G2 five-target acceptance contract (T13.04, X20), G3 one Codex provider and no auto-compaction for Claude, Codex and Pi (T8.02, T10.10, T11.02), G4 map wording, G5 real starting state and release 0.0.60 (T1.01, T1.04, T1.10, fork_state), G6 provider enforcement folds, G1 second-look folds, and Fable-Delta-Enforcement.json and Fable-Delta-Hosts.json applied verbatim (new outline task T3.06); record in execution/phase-02/closeout-2026-10-09/Writer-Changes-0.4.0.json. 0.3.0 was: second pass, Oct 8, 2026: every item of the fidelity review (F01-F13), the architecture review (A01-A14), its addenda (A15-A18), the slice-1 judge round 2 and the overlapping shape-alignment items carries a disposition; seventeen cross-cutting contracts settle the consequential choices; every ledger item has a disposition; the five-device matrix, the decision source roles and the whole-design acceptance node are added; the checker gains closed enums and unique ids, the combined task-slice-precondition graph, a baseline non-increase and rendered-generation binding",
+    "from": "0.4.23",
+    "reason": "Current 0.4.31: Independent review S1 repairs T10.06: return clients use the target rail with CLI optional; T7.04 owns same-window P4 messaging retirement and T10.03 gates only non-messaging driver functions. X28 and two refusing fixtures protect this retained-task seam. Failed 0.4.30 review remains preserved. Prior 0.4.30: Source-bound four-part messaging target, Oct 11 ruling, retired-and-routed cutover and four device identities. D07 CLI-only reading superseded; no sender-unverified ledger source promoted. Three structural checks calibrated both ways, and planned installed-product checks carry pass/fail cases. Spec-green is not install proof. Prior 0.4.29: Remove S1-C14 live server-trace window dependency and its trace-only helper/fixtures (Ruling-S1-C14-Trace-Window-20261011.txt supersedes earlier item 3). Keep installed bundle markers, thirty two-second unchanged-index samples, live process/start/thread binding, dirty fixture and non-builder identity unchanged; no re-probe or app restart. Prior 0.4.28: S1-C02 resolves vault links and scans their targets at the remaining depth without following further links, refusing dangling, unreadable, out-of-vault and repository/old-home/clone targets. S1-C12 uses S1-C06 archive/worktree annotation precedence for frozen fingerprints and binds a changed Mac release to its owning passed Release-Closure.json mac installed_readback receipt and payload hashes (Ruling-Preclose-Checks-rev049-20261011.json CHECK-DEFECT entries only). Disposable fixtures cover both polarities and retained refusals; S1-C05 and real records are unchanged; no app quit or restart. Prior 0.4.27: S1-C14 no longer requires per-sample preparation event ids in the idle staging probe; all other sample fields, cadence, unchanged index bytes and live/non-builder bindings remain. The check directly reads the installed app.asar signatures and streamed server traces, refusing index-writing preparation spans overlapping the probe window (Ruling-S1-C14-Preparation-Event-20261011.txt items 1-4). Retained span END timestamps must bracket the complete probe window (spans export when they end; an old start on a long-running span is not coverage); expired or empty trace evidence refuses and asks for a fresh probe before readback (independent review F1). Disposable fixtures cover the new bundle/trace failures, coverage loss and a passing idle probe without preparation ids; no app quit or restart. Prior 0.4.26: oldHomeAliasFindings applies the absent-alias final endpoint under --before-close, while ordinary moved still requires the alias to resolve to the repository and closed still refuses it (Ruling-T107-Close-Blockers-20261011.txt item 2); six disposable repository-move fixtures cover all states and both polarities; no other check changes. Prior 0.4.25 (0.4.24 was cancelled unmerged): S1-C13 reads the run's source identity through the release tool's admitted source-revision resolver (Ruling-Release-Closure-Contract.txt item 2): the effective commit binds the release worktree, every step and the closure's source_commit; the original commit equals source-commit.json, heads the admitted chain and is the closure's original_commit; the run id comes from run-binding.json and step bindings from each attempt's row, as the release tool writes them (both approved by the lead); the Raspberry Pi rule is unchanged; nine new release fixtures, including a real repair admitted by the release tool's own sourceRevision. Prior 0.4.23: worktree annotation contract gains the merged-and-retired row (T1.03, S1-C03): a folder named by a rebased row may be missing only with one final row bound to a hash-matching worktree-reclaim receipt that records its clean removal at the chain's last head, with that head merged into main; a rebased-row folder missing without it still refuses; folders named only by freeze or disposition rows stay governed by the existing move contract (lead ruling on review F1); ten new repository-move fixtures. Requested by worker-diskoff-1cb8d5ff for the five clean pushed folders the Oct 10 reclaim removed. Prior 0.4.22: apply Fable's JEV cost-router delta verbatim (execution/phase-05/Fable-Delta-JEV-Cost-Router.json, decision D25): a route slot inside the one admission decision (new task T3.08 in Phase 4, code-only rules, a policy floor file only Ryan edits, no wake on a notice, one wake per sleeping seat, reset re-check) and its JEV conditions behind K07 in Phase 5 (new task T9.06); appends to K07, T3.01, T3.02, T7.03, T8.01, T9.02, T9.04, T11.02 and T11.04. Prior 0.4.21: apply Fable's R3 verbatim for independent review F1-F3 of 0.4.20 (Review-Spec-0.4.20-8c4bf0d8fd.json): T4.07 reads environment names only through the source-owned env-names helper (authored by T4.05, contract and seven fixtures bound byte-equal by X21) and proves the Raspberry Pi provider route with a route-probe thread during its turn, depending on T4.04 and T4.05 and never on the T12.08 responder; T12.08 cites that receipt; T4.06 relocates the record TLS certificate and key to /etc/throughline/record-tls/ (root:throughline-record) in the same batch with rehearsal, old-home rejection under ProtectHome=yes and rollback; T4.01 states the two ssl_*_file lines that do not travel unchanged. Prior unlanded 0.4.20: bind B1 built-candidate browser-preview cold capture tests, mandatory failed-before/passing-after screenshot pair and same-diagnosis reopen before final install; no screenshot fix claimed. Prior unlanded 0.4.19: apply the final R2 state-scoped rehearsal probe and rehearsal-only twr grant; preserve production-unit isolation, before/after receipts and every prior fixture. Prior unlanded 0.4.18: apply Ryan instruction coverage IC-049/052/056/002/008: Phase 4 upstream reconciliation first, installed target-ID-only succession after provider adapters, one target API for Claude/Codex/Pi, command grammar and caller preservation, and Raspberry Pi pause with archive/watcher exceptions. Also incorporate R2 source follow-through. Prior unlanded 0.4.17: Apply corrected watcher/server/reboot design delta: locked server and record accounts, the Raspberry Pi responder recovery island and provider route, explicit tiered incidents, encrypted-disk reboot constraints and a non-install unlock proposal. Source decisions remain pinned; no runtime change is claimed. 0.4.16 was: Fixture path consolidation preserves every case inside the admitted slice-1 checker and removes the separate fixture paths without changing seam ceilings or the self-test. S1-C05 ports the approved deferred.rpi contract from frozen 0.4.12; S1-C13 follows the same explicit deferral instead of demanding a paused-device install receipt. T1.10 carries the original pause declaration; hardware and pipeline remain untouched. 0.4.15 was: Disposition proof correction for independent review F1 (Review-Spec-Archive-Readers-de292cef67.json): annotated and unannotated preserved entries share the same real-target existence, collection-containment and all-five-fingerprint proof. The failed head and its evidence remain preserved. 0.4.14 was: Reader-only repair: S1-C06 consumes archive annotations, pre-copy addenda and dropped third-party record rows; S1-C09 recognizes bound frozen-worktree dispositions and detached freezes and validates archive annotation shapes. Existing rebase custody and retained-link checks are unchanged; frozen witnesses stay read-only. 0.4.13 was: Three approved repository-spec changes, preserving the required old-home compatibility link while moved and its removal at closure: append-only reviewed rebase rows (including the prerequisite worktree annotation contract from the frozen 0.4.12 record); preserved release targets follow move annotations and archived staging links retain exact ledger proof; done_when commands preserve their intended folders. Repository baseline was 0.4.7; unrelated frozen-record amendments are not imported. 0.4.7 was: T1.05 record retention (execution/phase-03/delivery-2026-10-09/Move-Remainder-Receipt.json, question records-inside-build-output): each build container is archived whole with its frozen fingerprint; its records are first copied to retained-records under the evidence root with sanitized names and a manifest; S1-C06 checks no build-named directory, a passing ledger row per container, and every record at its new path with its SHA-256. 0.4.6 was: Rename on Ryan's direction: the vendored relay is @ryan/agent-mcp-relay at apps/server/vendor/agent-mcp-relay-0.3.0.tgz (was @ryan/coms-net at apps/server/vendor/ryan-coms-net-0.3.0-legacy-mcp-relay.tgz); T1.04 and T7.04, including the T7.04 gone-check, use the new names. 0.4.5 was: Release tool literal (execution/phase-03/Delivery-State.json): Ship Warden binds one payload per version, so T1.04 and S1-C05 accept throughline-ship 0.4.1 or later instead of 0.4.0. 0.4.4 was: Path correction (execution/phase-03/delivery-2026-10-09/Order-Coms-Net-Vendor.txt): the vendored relay tarball and its README live under apps/server/vendor/, where pnpm resolves file:vendor/...; every path in T1.04 and T7.04, including the T7.04 gone-check, now names apps/server/vendor/. 0.4.3 was: @ryan/coms-net (the legacy MCP relay, not ComsNet) is a frozen tarball in the repository, decision D3 (execution/phase-03/delivery-2026-10-09/D3-Coms-Net-Decision.json): T1.04 drops the rpi-coms-net.tar transfer and the tower coms-net presence check; T7.04 deletes the tarball, vendor/README.md and the dependency line and checks they are gone. 0.4.2 was: GitHub repository renamed ryankschmidt/t3code to ryankschmidt/throughline on Oct 9, 2026 under Ryan's order (execution/phase-03/repo-home-2026-10-09/Repo-Home-Receipt.json): origin and the publish-docs source_repository literal, R02 carried out, S1-C01 and S1-C09 accept the pre-rename frozen origin, S1-C04 and S1-C09 compare tags by target type, T1.04 records the Mac node 24.13.1 selection. 0.4.1 was: Exit-check corrections, Oct 9, 2026 (execution/phase-02/closeout-2026-10-09/P2-Exit-Check-0.4.0.json defects P2-01, P2-02, P2-03): T3.06 deferred outside the first-install graph on K03, the T10.04 edge removed and the first-install acceptance limited to live input unavailable on the Mac; T6.02 no longer waits on slice 13 and depends on T1.10, provider evidence stays with its owners; T3.01 refuses HTTP turn starts at the decorator through the unchanged http.ts with a behavioral test and checks non-increase against the real stock-file set. 0.4.0 was: Phase 2 close-out, Oct 9, 2026, single design writer (thread a96357c8): G2 five-target acceptance contract (T13.04, X20), G3 one Codex provider and no auto-compaction for Claude, Codex and Pi (T8.02, T10.10, T11.02), G4 map wording, G5 real starting state and release 0.0.60 (T1.01, T1.04, T1.10, fork_state), G6 provider enforcement folds, G1 second-look folds, and Fable-Delta-Enforcement.json and Fable-Delta-Hosts.json applied verbatim (new outline task T3.06); record in execution/phase-02/closeout-2026-10-09/Writer-Changes-0.4.0.json. 0.3.0 was: second pass, Oct 8, 2026: every item of the fidelity review (F01-F13), the architecture review (A01-A14), its addenda (A15-A18), the slice-1 judge round 2 and the overlapping shape-alignment items carries a disposition; seventeen cross-cutting contracts settle the consequential choices; every ledger item has a disposition; the five-device matrix, the decision source roles and the whole-design acceptance node are added; the checker gains closed enums and unique ids, the combined task-slice-precondition graph, a baseline non-increase and rendered-generation binding",
     "audits": [
       "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/_meta/fidelity-review-01a11989/Initial-Findings.json",
       "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/_meta/architecture-review-01a1198a/Initial-Findings.json",
@@ -352,24 +447,28 @@
       "outcome": "round-2 verdict FAIL on 0.2.0; its findings are disposed as J2 in audit_dispositions"
     }
   },
-  "generated_at": "2026-10-10T20:28:52.691Z",
+  "generated_at": "2026-10-11T17:06:03.762Z",
   "generated_by": {
     "note": "the seat that ran the builder, read from its environment at build time; the design author is authored_by",
-    "runtime": "claude",
-    "session_uuid": "c444cd86-00b3-4271-8234-db778fe7438b",
+    "runtime": "codex",
+    "session_uuid": "01a12b7f-41c9-7190-83e1-4d3df4fb1363",
     "builder": "build-spec.mts",
     "source_files": [
       {
         "path": "./spec-data.mts",
-        "sha256": "e8fd6134333e83dada7a015baa6da09bc173978b29ce0d807a3f7181aada2413"
+        "sha256": "f48d317d8c258b4fa5d8c21146a0e5892dd6c0e83d2b34fa9906938b00dd9da6"
       },
       {
         "path": "./contracts-data.mts",
-        "sha256": "484c880dd90780361ba6edd029063ec53a61e6e11a6b057e5aa3441977231c1f"
+        "sha256": "09149510cc1aea1daf90866e8ef70d6620f82f93d4b37c35b74b097d77a90dfb"
       },
       {
         "path": "./build-spec.mts",
-        "sha256": "f5f0970d973deff7a427d8138075e202aa9e0ce998af8ff2f01a9920dbb3675b"
+        "sha256": "a0e192dd40122a66143841664e6d9472472c8ee5b1b20e9c563ca255260e3982"
+      },
+      {
+        "path": "./messaging-data.mts",
+        "sha256": "1871fa31ce4f1b269179a5d9be3f170682a99089faa4d4c8b93de83c305c892a"
       }
     ]
   },
@@ -398,7 +497,7 @@
   },
   "ledger": {
     "path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/intent/ledger/ThroughLine-Next-Gen-Ledger.json",
-    "sha256": "0b260e00b391647482c4fc5eaad87a8c560956f3b4551474443afa8c37f073c6",
+    "sha256": "326eab2f065d66a8fd7f6a6939dfe39863bf3abf74111db7a01360ea0add10b5",
     "items": 199,
     "rule": "every task names the ledger ids it serves; the ledger is the picture of what is decided, this spec is the campaign; the two never drift because they join by id"
   },
@@ -630,18 +729,23 @@
     },
     {
       "id": "D07",
-      "title": "ComsNet socket messaging is Ryan's fork of coms.ts; agents reach it by a mod, a CLI and the Pi extension, never an injected MCP toolkit",
-      "statement": "The socket carries the message, Absurd owns its outcome; the HTTP-and-SSE hub is the cross-device candidate to explore.",
+      "title": "Original upstream ComsNet socket delivery; Absurd owns every message record",
+      "statement": "ComsNet is the original upstream HTTP/live-stream socket design, not MCP or an ad hoc agent-built relay. ThroughLine keeps delivery and peer identity; Absurd owns records under D27's step/task/event rule. CLI is a possible client, not the target or Codex's mandated only door. D26-D28 supersede contrary Sep-10 details; merged-code routing awaits the required Fable design pass.",
       "serves": ["NG-017", "NG-028", "NG-195"],
       "ryan_quote": {
-        "quote": "I like socket, I like CLI, I like my 1st class command layer, I like the steps substrate.",
-        "thread_id": "b29affbb-1fe6-4f2d-8e60-f13f9600e359",
-        "message_id": "5cf60252-4264-49fc-81ab-24e535213be9",
-        "created_at": "2026-10-05T17:53:31.288Z",
-        "ledger_item": "NG-028"
+        "quote": "Hi I was simply saying in general I prefer CLI over MCP but I've always said repeatedly that I want comsnet to be the original socket design, not that it has to be CLI and I think there is nuance with the absurd messaging I think some messages are sent as a task depending on who is sending it I think if it's a parent sending it to a child I think it sends as a task and other relationships I think it sends as a step that's why whatever it is whatever the native designers for absurd that's what I want every message doesn't have to be forced into a task if that's not the original design if it's whatever the original design is if it's step messages and and then under and then certain certain messages are sent as a task depending on whatever the criteria is then fine whatever that is I just don't want it to be the mcps I don't want to be something agents bill that's just ad hoc I want it to be commsnet that I downloaded from upstream on GitHub open source the socket agent socket to socket the rest of my message messaging Target I still want the rest of it we're absurd owns the record and through line keeps calm's net and agent identity I think that's what we said and everything else gets retired all other messaging options get retired until I see through line solely using commsnet and absurd substrate messaging step messaging or text messaging till I see that exclusively in through line I don't want there to be any other options if we establish this foundation and then we want to start expanding the messaging abilities outside of that I'm open to it but right now the outside abilities is what is continuing to enable a incorrect broken designed to keep shipping and I just want it to be unrepresentable and just done with this delay from the very beginning I've always said I wanted absurd and consonant fully integrated with t3 code that was those are the three main integrations and they have not ever fully landed yet so that's what we're going to accomplish with this next install and I want it to be an intuitive design so if there is a recommendation you want to make that would require me to change some nuance or some detail of what I'm saying I want I'm open to that this is not like an authoritarian order I'm just giving you my preference and telling you that if you come across a wrinkle in the design a slightly different way to go about it that you want to recommend me because of what you discover in your research if it's a stronger it's a smarter choice then bring it up I will consider it wherever you're reading my past comments about this you use quoted me in September I want you to please update these locations with what I'm telling you right now so that everything is saying the same thing I don't want agent saying but Ryan said something different on this day and now he's saying this like which is it which is it is what I'm saying now so anything that's a little off of this that I said prior please update it and if I said I wanted to be CLI I was probably just talking about CLI versus mCP and I probably didn't understand the details yet of the socket communication or the absurd step messaging and I was just commenting on maybe something I didn't know enough about at the time but now I know more I'm telling you the updated detail on my preference for this messaging design Target for through line\n",
+        "source_path": "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-10-ryan-comsnet-is-the-original-socket-design-and-absurd-owns-the-message-record.yaml",
+        "source_sha256": "7c097ffa87e931f0013936ee46d67efac063dfc01712a229383deb9cd3381968",
+        "quote_sha256": "788af545647bcbe58f61a165d02a5922351adcacc318bdbdf229c3965993da8c",
+        "surface": "ThroughLine",
+        "thread_id": "2fc7f922-f6e1-41b3-a12d-e44bc55860cd",
+        "message_id": "393a9aac-7c01-4bb4-b609-5a43acd27b1f",
+        "created_at": "2026-10-11T06:56:41.449Z",
+        "text_sha256": "f52d347caa06749d3439f1bc92f5a77e1d4926effa56987f8f0653151f428e98",
+        "copied_from": "/Users/Admin/.t3/userdata/state.sqlite projection_thread_messages (read-only); the same text is the prompt of Absurd task 01a129bf-d9ef-7f3c-a73e-6003bb9f7bb9"
       },
       "source_role": "requirement",
-      "source_note": "Ryan: CLI not MCP (Sep 10) and the Oct 7 reply"
+      "source_note": "Oct 10 canonical shape supersedes CLI-only reading; NG-028 later exports remain sender-unverified."
     },
     {
       "id": "D08",
@@ -981,6 +1085,62 @@
       "ryan_quote": null,
       "source_role": "fable-mechanism",
       "source_note": "the route slot is Fable's mechanism for Ryan's Oct 10 ask; his post-cutoff words await the ledger lane"
+    },
+    {
+      "id": "D26",
+      "title": "Ryan's byte-exact four-part messaging target and cutover release",
+      "statement": "The next ThroughLine release after 0.0.60 carrying the reconciled upstream merge is the cutover release. Retire every P4 alternative in the candidate: neither advertised nor independently usable. Route attempted retired/unapproved avenues into ComsNet and Absurd. Preserve upstream code; a Fable design pass on the merged code decides routing without upstream tax. Fork-only relay code may be removed. The old JSON store is retained read-only, never a live message record. The release refuses if any P4 path is advertised or independently usable in the release or its accepted agent environments, if any path lacks a measured probe, or if the checks lack known-good passing and known-bad failing fixtures. Existing build-only tools may remain in the old build environment until installed coverage succeeds; they are not allowed in the accepted candidate environment. On Mac, tower, iPhone and Android, a non-builder measures every actual agent-to-agent request against Absurd: exactly one task, idempotency key equal to request id, reply equal to task result, no completed dispatched-only tasks and zero unmatched requests/replies. Repeat a request id and prove one task and one reply; a real request/reply is required on each device, so zero rows never pass. Immediately after installed parts 1-3 pass, retire agent-instruments send/thread-create and dependent wakes/relays from active runtimes through Ship Warden in the same install window. Any retained command compatibility routes only into ComsNet/Absurd and is never an alternative channel. Post-retirement non-builder probes are required before release closure; rollback is automatic and agent-run. These are spec requirements and planned installed-product checks, not evidence that messaging has shipped or that any installed path is retired.",
+      "serves": ["NG-028", "NG-017", "NG-003"],
+      "ryan_quote": {
+        "quote": "## The 4-Part ThroughLine Messaging Target:\n1) Each ComsNet request becomes an Absurd task with the request ID as its idempotency key and the reply as its result.\n2) Absurd owns the record (one request is one task or step) just as it was tested, proven and observed in thread id f19b4795-0467-4dd0-ab14-33e988203dbc pi/absurd experiment.\n3) ThroughLine keeps the socket and peer identity\n4) The pesky copycat-named agent relay and it's tools removed from ThroughLine and the active runtimes of all agents and they must *not* ship in the next ThroughLine install and be *retired* after ThroughLine is installed and steps 1-3 above are confirmed working natively as the only message options advertised to agents and made available to agents in ThroughLine.\nI DO NOT want Agents messaging each other any way other than what's described above. It must be unrepresentable. I want all ThroughLine messaging forced into the above pipeline with no other messaging channels or tools available to agents in ThroughLine. I want alternative message relays and options outside of the above target retired as soon as the above target is confirmed operational. And yes, if we want to discuss building on this foundation once it's correct with more messaging infrastructure, I'm open to that. But until my actual target messaging design is landed, live, and working, I am not willing to allow any other version of messaging to exist.\nSo please kindly identify exactly when the cutover will take place. I do not want the next version of ThroughLine to ship with any, any, any other messaging options, in the software or in the environment outside it (such as Agent Instruments), other than the above 4-part named messaging design target.",
+        "source_path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/Order-Phase-4-Delivery-Lead.txt",
+        "source_sha256": "10a063fb4c4b1aedaf902dbab826653aee994855cf49fc7fef638cbf318b6d84",
+        "quote_sha256": "6b182d6933dc8d0f1c7577ceed72b6b104f1825e41051e2a68442baf800b208c"
+      },
+      "source_role": "requirement",
+      "source_note": "Byte-exact target from the explicitly ordered quotation; no sender-unverified ledger export promoted."
+    },
+    {
+      "id": "D27",
+      "title": "Three records, Ryan included; retired avenues route onto the one rail",
+      "statement": "A message inside one conversation, including Ryan's typed message, its reply and tool calls, is a step of that conversation's task. A request asking another agent for work and expecting a reply is a task on the receiver's queue, keyed by its request id, with the reply as its result; peers and parent/child use the same rule. A signal with no reply is an event; no relationship-based classification and no carve-out for Ryan. Other paths are retired, not deleted: not advertised or independently usable. Attempts route into ComsNet and Absurd; upstream code is preserved. A Fable design pass on the merged, upstream-reconciled code decides how; this amendment does not invent that design.",
+      "serves": ["NG-028", "NG-003"],
+      "ryan_quote": {
+        "quote": "“three kinds of record:\n\n•\ta step, which a task saves about its own progress;\n•\ta task, which is work handed to a worker, with a reply you can wait for;\n•\tan event, which is a signal with no reply.\n\nThe rule that follows from that design:\n\n•\tA message inside one agent's own conversation is a step of that conversation. That covers your typed message, its reply and its tool calls.\n•\tA message that asks another agent to do work and expects a reply is a task on the receiver's queue, and the reply is its result. That holds for peers as well as for parent and child.\n•\tA message that only signals, such as \"done\", \"approved\" or \"wake up\", is an event.”\n\nYes, this is obviously the correct design we move forward with. When I mentioned parent and child, I was not citing design to you. I was paraphrasing what I could remember an agent telling me about the different kinds of records that Absurd keeps, and probably one of the agents was telling me a task is work handed to our worker with a reply it can wait for. And probably the agent used the terms parent and child to communicate to me about one agent giving work to another agent, expecting a reply. And how this type of record works in absurd And... what it would eliminate the need for... watcher scripts polling, et cetera.\n\nAlso, I don't think I said every other messaging option needs to be deleted. I said *retired*. All other messaging options—specifically, what is *advertised* to agents as messaging options and what is *available* to them. Some of it is upstream code, so I'm not saying we delete upstream code. We make the cheap path the only path, and make it the correct path.\n\nWhen an agent goes to send a message, even if it tries one of the retired or unapproved avenues, the infrastructure routes it to absurd and/or comsnet. I don't want to say too much, 'cause I'm not looking at the code. I'm just speaking in hypotheticals, but this needs a proper Fable design pass.\n\nOnce everything's downloaded, all the upstream updates are reconciled and folded into the app, and we have an updated app, Fable needs to look at the code and architecture and actually see: What do we need to do to not incur tax with upstream message-related code, but also not allow agents’ messages a door outside of the absurd substrate and comsnet? I think likely we should approach this the way we are planning to approach the delivery seam. In the past, I tried to shape the way agents talk to me and format their messages and links using stop hooks, for example, and that turned out to be very expensive. The stop hooks would allow the message to be created, then refuse it if it's incorrect or not formatted properly, and force the agent to reproduce the entire message with updated formatting. This created at least double token spin, double token costs. The plan is for ThroughLine infrastructure to Have a delivery. Plain, seam. I don't remember the word we use, delivery something, delivery plane, delivery scene. The idea is that the infrastructure takes whatever the agent has produced, formats it for the agent, fixes things that are missing, and presents it to me in the chat the way I want it. If an agent's message is missing links or the links are wrong, this delivery—we'll say module for now—takes the message, fixes it, and delivers it to me correctly.\n\nIf there's genuinely something missing, like an agent said something vague where we require specificity, the infrastructure doesn't make things up. It can't make up a fact it doesn't have or doesn't exist. Instead of making the agent reproduce the entire message, the infrastructure would go back to the agent, tell the agent what's missing, and the agent can provide the delta. That would get appended to the message or posted after it as an appended message. That way, the agent's only producing the missing parts and details, not redoing things or having to remember formatting and links.\n\nI think probably we'll have the same approach with messaging, where agents just try to send a message without having to think about doing it the right way or using the right tool. The system should just deal with it and get it into the right lane. It should just work for the agent, you know? All the agent knows is it sends a message, it gets to the agent ordered to me, and it receives messages.\n\nAnd also, in your descriptions of the different records for agents, don't forget me. Don't leave me out of that. I want my messages treated like agents' messages. My role might be different, but I don't want a carve out to my messages that's different from agent messages. Maybe it's identified, sure. I've also spoke this to the lead agent: in the new messaging, whatever device I'm on—if I'm on the Mac desktop, if I'm on my Android phone, if I'm on iOS phone, if I'm on Linux Tower—wherever I'm sending messages from, I want my messages ID'd As me and also the device. So if I'm in this thread talking to you through my iPhone, through ThroughLine, this message should have a ID that says it's me on my iOS device, or me from the iOS device. I don't care about the semantics, just that it's identified that it's a message for me sent from my iOS device. Then, let's say the very next message I send you, I'm actually at my laptop. That message will still post to the same thread and say it's me, but it'll say it came from the desktop, not iOS. I want this distinction because if agents know I'm on my phone, they're not gonna be asking me to do things on the desktop, 'cause they'll know I'm not on the desktop, you know?\n\nThis is the only example I can think of, and where the idea started to percolate. I was talking to an agent through my iOS ThroughLine app, and I needed to rewind the agent. It produced a handoff document for itself and a kickoff prompt. Nobody told it to do this, but it was, I guess, trying to make things easy for maybe the both of us. Rather than give me the kickoff prompt in the chat in a code box, it posted a piece of code for me to run in the terminal on my Mac desktop. It would fetch the kickoff prompt and, I guess, expand it from the document and send it to my clipboard on the desktop so I could just paste it into the chat.\n\nThe agent thought it was being helpful by giving me just one line of code. All I had to do was run it, and the prompt would be in my clipboard ready to paste. But I'm reading this and thinking about how the agent doesn't actually know where I'm at. It assumed I was on the desktop, but I was on my phone. If I run that command on my phone, yeah, it'll add the prompt to the desktop clipboard, not my phone clipboard. I'm rewinding from my phone. I would need it in my phone clipboard.\n\nThese sorts of little details, I think, get worked out whenever it's more clear where I'm at. I don't think the agent would have given me that prompt if it knew I was on my phone, 'cause it would have thought about how to get me the prompt on my phone, and I don't think that's the solution it would have come up with. So that's an example of how, if it knew through the messages what device I was talking to it on, it would alter the choices it made.\n\n“I did not hand-edit the spec's intent ledger, which still says you ordered a CLI first (item NG-028). That file is generated, and its pass result is tied by hash to an independent review. A hand edit would break that tie and be overwritten on the next refresh. The ledger's owner has the request” Bounce. I have shapes that speak against this. Find which ones you violated and do what they say, please.\n",
+        "source_path": "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml",
+        "source_sha256": "1c6bad9ee5f4f6ec69780d868e5e08f9a76d081b0a9f108be17369f663e76b45",
+        "quote_sha256": "ca3823b144f9d0ad6c85583cc56f4129661c9f20de8769b48703deb2a8ae5eee",
+        "surface": "ThroughLine",
+        "thread_id": "2fc7f922-f6e1-41b3-a12d-e44bc55860cd",
+        "message_id": "f30ae5cb-f39f-4189-b243-ab87eb758ffa",
+        "created_at": "2026-10-11T13:01:50.909Z",
+        "text_sha256": "b00975ec80557892532666e9d7bb67ddd4b1fdb1683fcb5870676501a5230cdc",
+        "span_rule": "whole-message",
+        "copied_from": "/Users/Admin/.t3/userdata/state.sqlite projection_thread_messages (read-only)"
+      },
+      "source_role": "requirement",
+      "source_note": "Whole Oct 11 operator statement from its canonical Shape Statement."
+    },
+    {
+      "id": "D28",
+      "title": "Ryan and each device have identities on the same rails as agents",
+      "statement": "Each of Ryan's four devices has its own durable unique public identity on the same identity/alias rails as agents, bound to Ryan as sender. Every message records the authenticated sender and device, retains both across replay, relay and dictation/optimization, and exposes them as context to receiving agents. Same thread, consecutive iPhone and Mac messages: same Ryan sender, different device identities. Payload fields cannot spoof sender or device.",
+      "serves": ["NG-060", "NG-061", "NG-028"],
+      "ryan_quote": {
+        "quote": "And also, in your descriptions of the different records for agents, don't forget me. Don't leave me out of that. I want my messages treated like agents' messages. My role might be different, but I don't want a carve out to my messages that's different from agent messages. Maybe it's identified, sure. I've also spoke this to the lead agent: in the new messaging, whatever device I'm on—if I'm on the Mac desktop, if I'm on my Android phone, if I'm on iOS phone, if I'm on Linux Tower—wherever I'm sending messages from, I want my messages ID'd As me and also the device. So if I'm in this thread talking to you through my iPhone, through ThroughLine, this message should have a ID that says it's me on my iOS device, or me from the iOS device. I don't care about the semantics, just that it's identified that it's a message for me sent from my iOS device. Then, let's say the very next message I send you, I'm actually at my laptop. That message will still post to the same thread and say it's me, but it'll say it came from the desktop, not iOS. I want this distinction because if agents know I'm on my phone, they're not gonna be asking me to do things on the desktop, 'cause they'll know I'm not on the desktop, you know?",
+        "source_path": "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml",
+        "source_sha256": "1c6bad9ee5f4f6ec69780d868e5e08f9a76d081b0a9f108be17369f663e76b45",
+        "quote_sha256": "4f5074e7e9317611ec5ba90e202689472f67082f202ab55ab44bb160851544e0",
+        "surface": "ThroughLine",
+        "thread_id": "2fc7f922-f6e1-41b3-a12d-e44bc55860cd",
+        "message_id": "f30ae5cb-f39f-4189-b243-ab87eb758ffa",
+        "created_at": "2026-10-11T13:01:50.909Z",
+        "text_sha256": "b00975ec80557892532666e9d7bb67ddd4b1fdb1683fcb5870676501a5230cdc",
+        "span_rule": "whole-message",
+        "copied_from": "/Users/Admin/.t3/userdata/state.sqlite projection_thread_messages (read-only)"
+      },
+      "source_role": "requirement",
+      "source_note": "Complete device paragraph from the Oct 11 operator statement, without the lead-summary ellipses."
     }
   ],
   "ryan_decisions_pending": [
@@ -1498,7 +1658,7 @@
       "title": "Re-point the release pipeline and ship the release tool 0.4.1 or later: new home, worktrees collection, build outputs beside the release, evidence records only, a hold while a move is open",
       "serves": ["NG-122", "NG-120", "NG-121"],
       "detail_state": "detailed",
-      "what": "The pipeline definition and the ship tool assume the fork sits in the vault, that a release checkout is a sibling of the main checkout, and that build outputs (the Xcode archive, the IPA export, the simulator's derived data, installers) land in the evidence folder. Change the definition to the new addresses; change the tool so a release checkout is created inside the worktrees collection, every build output lands under the release checkout's own ignored release/ folder, and every evidence write goes through one guarded function that refuses a build output; add the two steps vault-clean (after preflight) and publish-docs (after the Mac install) as complete step records; make preflight refuse frozen/closed state, another active run, an unadmitted release or a missing checkout; moved state admits the pinned acceptance release before final closure. Ship the tool as 0.4.1 or later through the Ship Warden inbox (Ship Warden binds one payload per version; 0.4.0 shipped with a scanner defect and the corrected payload ships as 0.4.1). Authoring and tests may run any time; the Warden ship and the pipeline edit run only after release 0.0.56 is closed, because the running pipeline reads the installed tool and the definition. The pipeline definition records, beside the operator-presence step, that its scope is the routine install quit only; no step of the slice-1 release is changed by this note. Node selection (Oct 9, 2026): on the Mac, the tests and build steps select node 24.13.1 through the existing Step.environment PATH field, with /Users/Admin/.nvm/versions/node/v24.13.1/bin first; the tower and the Raspberry Pi keep their host node.",
+      "what": "The pipeline definition and the ship tool assume the fork sits in the vault, that a release checkout is a sibling of the main checkout, and that build outputs (the Xcode archive, the IPA export, the simulator's derived data, installers) land in the evidence folder. Change the definition to the new addresses; change the tool so a release checkout is created inside the worktrees collection, every build output lands under the release checkout's own ignored release/ folder, and every evidence write goes through one guarded function that refuses a build output; add the two steps vault-clean (after preflight) and publish-docs (after the Mac install) as complete step records; make preflight refuse frozen/closed state, another active run, an unadmitted release or a missing checkout; moved state admits the pinned acceptance release before final closure. Ship the tool as 0.4.1 or later through the Ship Warden inbox (Ship Warden binds one payload per version; 0.4.0 shipped with a scanner defect and the corrected payload ships as 0.4.1). Authoring and tests may run any time; the Warden ship and the pipeline edit run only after release 0.0.56 is closed, because the running pipeline reads the installed tool and the definition. The pipeline definition records, beside the operator-presence step, that its scope is the routine install quit only; no step of the slice-1 release is changed by this note. Node selection (Oct 9, 2026): on the Mac, the tests and build steps select node 24.13.1 through the existing Step.environment PATH field, with /Users/Admin/.nvm/versions/node/v24.13.1/bin first; the tower and the Raspberry Pi keep their host node. Messaging cutover acceptance is D26-D28: The release refuses if any P4 path is advertised or independently usable in the release or its accepted agent environments, if any path lacks a measured probe, or if the checks lack known-good passing and known-bad failing fixtures. Existing build-only tools may remain in the old build environment until installed coverage succeeds; they are not allowed in the accepted candidate environment. On Mac, tower, iPhone and Android, a non-builder measures every actual agent-to-agent request against Absurd: exactly one task, idempotency key equal to request id, reply equal to task result, no completed dispatched-only tasks and zero unmatched requests/replies. Repeat a request id and prove one task and one reply; a real request/reply is required on each device, so zero rows never pass. Immediately after installed parts 1-3 pass, retire agent-instruments send/thread-create and dependent wakes/relays from active runtimes through Ship Warden in the same install window. Any retained command compatibility routes only into ComsNet/Absurd and is never an alternative channel. Post-retirement non-builder probes are required before release closure; rollback is automatic and agent-run.",
       "files": [
         {
           "path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/checks/slice-1-contracts.mts",
@@ -1671,7 +1831,7 @@
       "failing_checks": ["S1-C05"],
       "done_when": {
         "command": "cd /Users/Admin/core-root && pnpm -C /Users/Admin/core-root install --frozen-lockfile >/dev/null && pnpm -C /Users/Admin/core-root/vault/01_Projects/workbench/tools/throughline-ship run test && node /Users/Admin/throughline/docs/throughline/next-gen-spec/checks/slice-1-repository-move.mts --stage frozen --only S1-C05",
-        "expect": "tests green and exit 0; the installed copy at /Users/Admin/core-root/src/tools/throughline-ship reads 0.4.1 or later after the Ship Warden ship"
+        "expect": "tests green and exit 0; the installed copy at /Users/Admin/core-root/src/tools/throughline-ship reads 0.4.1 or later after the Ship Warden ship Every P4 alternative is absent from advertisement and cannot deliver off-rail. Attempts through retained compatibility code arrive only through authenticated ComsNet and Absurd. Missing/unprobed paths refuse; admission-only exclusions remain covered by T3.01. Upstream code need not be deleted. Mac, tower, iPhone and Android each have a nonzero actual sample; every reply-expecting request has exactly one receiver task keyed by request id whose result is the reply. Retry creates no second task/reply. Conversation messages are steps and signals events for Ryan and agents alike. No dispatched-only completion and no unmatched request or reply."
       },
       "depends_on": ["T1.01", "release-0.0.56-closed"],
       "executor": {
@@ -1741,6 +1901,18 @@
             "review": "absolute path of an existing JSON review: verdict PASS and head exactly new_head",
             "custody_evidence": "absolute path of an existing custody evidence file",
             "observed_at": "ISO time the row was appended"
+          },
+          "merged_and_retired_row": {
+            "schema": "\"throughline.worktree-move-annotation.v1\"",
+            "kind": "\"merged-and-retired\"",
+            "path": "the removed worktree path, under the worktrees collection; absent on disk and not registered",
+            "branch": "its branch when removed",
+            "final_head": "40-hex head it was removed at; equal to the last head its freeze, disposition or rebased rows name",
+            "merged_into": "{branch: \"main\", commit}: a 40-hex main commit that contains final_head and is contained in current main",
+            "retirement_receipt": "absolute path of the worktree-reclaim-receipt.v1 file whose removed[] entry for this path records head = final_head, the branch, status_clean true and head_on_origin true",
+            "retirement_receipt_sha256": "64-hex SHA-256 of the receipt bytes when the row was appended",
+            "observed_at": "ISO time the row was appended",
+            "evidence": "{command, output_path}: the command whose output shows the folder gone and unregistered"
           }
         },
         "coordination": "keys adopted from the move worker's proposal (execution/phase-03/delivery-2026-10-09/Worktree-Annotation-Census.json), with the lead's three dispositions; \"removed-with-reason\" is not a disposition",
@@ -1749,6 +1921,7 @@
           "a worktree frozen as detached (branch null) is valid when it is still detached at the same head",
           "integration worktrees created after the freeze are additions with their own freeze row, not failures",
           "Rebase rows are appended in chain order; previous_head must equal the preceding bound head, each review must pass its exact new_head, and the newest rebase row must name the current HEAD. Never rewrite an old row or replace the freeze to hide a failed review.",
+          "A worktree removed after its work reached main appends exactly one merged-and-retired row as the last row for its path. S1-C03 lets a folder named by a rebased row be missing only with that row, its hash-matching reclaim receipt and its final head merged into main; a rebased-row folder missing without it still refuses. Folders named only by an addition-freeze, a disposition or a mapping stay governed by the existing move contract and are not presence-checked by S1-C03 (lead orchestrator ruling on review F1, Oct 10, 2026).",
           "Unrebased branch worktrees retain the frozen-head ancestry check. A frozen detached worktree must stay detached at its bound head; a reviewed rebase chain binds its new exact head without changing branch or common-repository identity.",
           "The old-home compatibility symlink must resolve to repository.home while the move state is moved and must be physically gone when closed (T1.07). S1-C03, S1-M01 and S1-C06 enforce the same rule; no annotation may waive it."
         ]
@@ -2298,7 +2471,7 @@
       "signatures": [
         "ryan throughline ship 0.0.60 --json (the installed spelling today; its rename is pending decision R01)",
         "installed bundle check: grep -rl \"prepareCommitContext.addAll\" /Applications/ThroughLine.app/Contents/Resources returns nothing and grep -rl \"prepareCommitContext.workingTreeSummary\" returns at least one file",
-        "Staging-Probe schema throughline.staging-probe.v1 binds installed_version, project, live server pid/start/native-session plus a hashed binding receipt, actual thread id and preparation event id, a known modified tracked/untracked fixture, builder session ids and a distinct observing session. samples is an array of at/index_entries/staged_patch_sha256/server_pid/thread_id/preparation_event_id records, at least thirty at exactly two-second intervals with <=250ms measured jitter; started_at/finished_at bind the samples, and exact index bytes are unchanged. No clean/unused project or builder self-observation passes.",
+        "Staging-Probe schema throughline.staging-probe.v1 binds installed_version, project, live server pid/start/native-session plus a hashed binding receipt, actual thread id, a known modified tracked/untracked fixture, builder session ids and a distinct observing session. samples is an array of at/index_entries/staged_patch_sha256/server_pid/thread_id records, at least thirty at exactly two-second intervals with <=250ms measured jitter; started_at/finished_at bind the samples, and exact index bytes are unchanged. No clean/unused project or builder self-observation passes.",
         "Owning Release-Closure.json and every latest step receipt bind exact NEXT_RELEASE, frozen source commit and run id; release worktree HEAD equals that commit, artifacts have real sha256/address under its release folder, and all installed readbacks bind target payload digests/receipt hashes. shipped_source_hashes includes T1.08 design and T1.09 driver source; manifest source/release equal the frozen run. DMG names or ancestry alone are never installed proof. Append the new release worktree’s creator/run/frozen-head mapping to Move-Record."
       ],
       "failing_checks": ["S1-C13", "S1-C14", "S1-C07"],
@@ -2973,7 +3146,7 @@
       "detail_state": "detailed",
       "title": "Every command that can start a provider turn goes through one admission point; every bypass door closes",
       "serves": ["NG-007", "NG-112", "NG-027"],
-      "what": "Add the turn-admission module at apps/server/src/throughline/admission/ (fork namespace). CommandAdmission.ts defines TURN_EFFECT_COMMAND_TYPES = [\"thread.turn.start\", \"thread.user-input.respond\"] (the only decider cases that can start a provider turn, guarded by S3-G05), the six routes client-ws, client-http, comsnet, history-import, absurd-worker and server-reissue, the marker throughline.admission.v1 (logged at boot so the bundle keeps it), and the service CommandAdmission with admit, dispatch and startTurn. Provenance is object identity: admit() registers the command object in a module-private WeakSet and returns an AdmittedCommand; no serializable field can forge it (K01). Route rules: history-import admits thread.history.import and refuses thread.turn.start; server-reissue requires causationCommandId of an already admitted turn; client-ws, client-http, comsnet and absurd-worker admit both turn-effect types. EngineAdmissionGuard.ts decorates OrchestrationEngineService.dispatch and refuses an unadmitted turn-effect command with a typed error; other command types pass unchanged. TurnRail.ts takes spawnTurnOnAbsurdRail and its readiness gate out of ws.ts unchanged, keeping the Exclude-typed direct arm (S3-G01). Doors (E08-E14): ws.ts calls CommandAdmission.dispatch; http.ts stays unchanged, and a thread.turn.start sent through its handler reaches the engine unadmitted and is refused by the mounted EngineAdmissionGuard; comsnet dispatches through admission with route comsnet, a stable message id comsnet:<requestId>, and ComsNetRedrive.ts re-drives at boot any request marked dispatched whose turn-start event is absent, deduplicated by the stable command id (S3-G02); the reactor's after-compaction re-issue is admitted with route server-reissue; user-input answers are admitted with route client-ws and dispatched to the engine (their nested turn becomes durable through the outbox in T3.03). History import (operator intent from the refinement: never replay old actions, never manufacture new admission for old work): the command-line importer writes thread.history.import with the message shape AgentSessionImporter.ts builds (E13) through the offline engine with route history-import, emits no turn-start event and no effect, and its live-server guard probes the port the selected profile's server is configured to use; the outside resume tool stops writing orchestration_events, projection_threads and provider_session_runtime rows and calls the importer instead. Admit accepts optional intent references (vocabulary.intent_metadata_carriage) and keeps them on the AdmittedCommand; T3.03 persists them. The turn-rail capability manifest with the new pinned tests goes under docs/throughline/capabilities/turn-rail/. Effect admission and K08 check-first (generation 3, Oct 9, 2026): the same module exposes admitEffect for per-effect requests from the provider adapters (interface I-01). classifyEffect builds and brands the request server-side and resolves its paths; an unbranded request is refused. Only the target-policy slot (T9.03) decides whether an effect is building or marking done, from engine-typed facts; T3.01 combines that answer with the K03 enforcement matrix, read as measured data, and records every decision with its inputs. Rules T3.01 enforces: (1) Prevention happens only before execution. A post-tool observation is recorded as observed-after-execution with prevented false; a building effect observed while check-first is pending is a recorded violation that stops the request and surfaces it, never counted as prevented. (2) An opaque effect whose write set the adapter cannot resolve before execution (shell, terminal input, an unknown tool call) is never admitted on its cwd. While check-first is pending, or with no target revision when it can reach protected product scope, it runs only under a read-only or design-and-test-writable mode that the K03 matrix measures as supported for that provider and host, or it is refused with a usable safe alternative named in the decision: run it under the enforced mode, write a design note, record the failing check first, or dispatch to a seat whose target has one. (3) No target revision is not permission. The default slot classifies engine-resolved paths against ProtectedScopeSlot (the bound product repository roots and the install and release step ids): writes inside, install steps and release steps are refused with the safe alternative 'admit a target and record its failing check'; writes outside, such as designs and scratch, are admitted, which is K08's own no-target test. (4) The test path stays open: writes to the target revision's declared check files and running its declared check command are admitted before the failing check is recorded. (5) Turn starts, seat launches, dispatches, reads and design writes are admitted in every state. A turn on a provider with no measured pre-execution control is admitted with enforcement none and preventable false recorded; its building effects are refused where the adapter sees them first and otherwise become violations; nothing is advertised as enforced that K03 has not measured. Caller fields such as exploration, mode, skip_gate or a file name never change an outcome; they are listed as ignoredCallerFields. The admission decorator admits shell starts as effect attempts with outcome unknown; live shell input is not admitted per keystroke and is never claimed gated; the thread's effect ledger receives the host's observed changed-path record for each open shell session, and the done computation reads it (K08). The decorator mounts once at the engine assembly point already edited by the fork; no new stock-file edit; the HTTP dispatch door is closed by that refusal; the comsnet door's retirement and its three fork-file removal proofs belong to T7.04. Route slot (D25): admit() for the turn-effect command types and the comsnet route evaluates a route slot before dispatch, in the same transaction as the admission decision; the decision row records route (no_model | light | standard | lead_only), the pass that decided it (code | jev | default), the code facts used, the JEV step id when one exists, and the floor-file version. no_model dispatches no turn: the command is admitted, the event is recorded, a record-built reply is enqueued on the rail when the sender expects one, and the recipient's pending digest gains one entry. light, standard and lead_only dispatch a turn carrying the route so the provider adapter launches or resumes the recipient at the routed model and effort; a route the adapter cannot honour (no such model on this host) falls back to standard and records the fallback. The slot is a policy input exactly as the headroom slot (T11.04) and the target-policy slot (T9.03) are; it never changes a seat's launch setting and never edits the floor file.",
+      "what": "Add the turn-admission module at apps/server/src/throughline/admission/ (fork namespace). CommandAdmission.ts defines TURN_EFFECT_COMMAND_TYPES = [\"thread.turn.start\", \"thread.user-input.respond\"] (the only decider cases that can start a provider turn, guarded by S3-G05), the six routes client-ws, client-http, comsnet, history-import, absurd-worker and server-reissue, the marker throughline.admission.v1 (logged at boot so the bundle keeps it), and the service CommandAdmission with admit, dispatch and startTurn. Provenance is object identity: admit() registers the command object in a module-private WeakSet and returns an AdmittedCommand; no serializable field can forge it (K01). Route rules: history-import admits thread.history.import and refuses thread.turn.start; server-reissue requires causationCommandId of an already admitted turn; client-ws, client-http, comsnet and absurd-worker admit both turn-effect types. EngineAdmissionGuard.ts decorates OrchestrationEngineService.dispatch and refuses an unadmitted turn-effect command with a typed error; other command types pass unchanged. TurnRail.ts takes spawnTurnOnAbsurdRail and its readiness gate out of ws.ts unchanged, keeping the Exclude-typed direct arm (S3-G01). Doors (E08-E14): ws.ts calls CommandAdmission.dispatch; http.ts stays unchanged, and a thread.turn.start sent through its handler reaches the engine unadmitted and is refused by the mounted EngineAdmissionGuard; comsnet dispatches through admission with route comsnet, a stable message id comsnet:<requestId>, and ComsNetRedrive.ts re-drives at boot any request marked dispatched whose turn-start event is absent, deduplicated by the stable command id (S3-G02); the reactor's after-compaction re-issue is admitted with route server-reissue; user-input answers are admitted with route client-ws and dispatched to the engine (their nested turn becomes durable through the outbox in T3.03). History import (operator intent from the refinement: never replay old actions, never manufacture new admission for old work): the command-line importer writes thread.history.import with the message shape AgentSessionImporter.ts builds (E13) through the offline engine with route history-import, emits no turn-start event and no effect, and its live-server guard probes the port the selected profile's server is configured to use; the outside resume tool stops writing orchestration_events, projection_threads and provider_session_runtime rows and calls the importer instead. Admit accepts optional intent references (vocabulary.intent_metadata_carriage) and keeps them on the AdmittedCommand; T3.03 persists them. The turn-rail capability manifest with the new pinned tests goes under docs/throughline/capabilities/turn-rail/. Effect admission and K08 check-first (generation 3, Oct 9, 2026): the same module exposes admitEffect for per-effect requests from the provider adapters (interface I-01). classifyEffect builds and brands the request server-side and resolves its paths; an unbranded request is refused. Only the target-policy slot (T9.03) decides whether an effect is building or marking done, from engine-typed facts; T3.01 combines that answer with the K03 enforcement matrix, read as measured data, and records every decision with its inputs. Rules T3.01 enforces: (1) Prevention happens only before execution. A post-tool observation is recorded as observed-after-execution with prevented false; a building effect observed while check-first is pending is a recorded violation that stops the request and surfaces it, never counted as prevented. (2) An opaque effect whose write set the adapter cannot resolve before execution (shell, terminal input, an unknown tool call) is never admitted on its cwd. While check-first is pending, or with no target revision when it can reach protected product scope, it runs only under a read-only or design-and-test-writable mode that the K03 matrix measures as supported for that provider and host, or it is refused with a usable safe alternative named in the decision: run it under the enforced mode, write a design note, record the failing check first, or dispatch to a seat whose target has one. (3) No target revision is not permission. The default slot classifies engine-resolved paths against ProtectedScopeSlot (the bound product repository roots and the install and release step ids): writes inside, install steps and release steps are refused with the safe alternative 'admit a target and record its failing check'; writes outside, such as designs and scratch, are admitted, which is K08's own no-target test. (4) The test path stays open: writes to the target revision's declared check files and running its declared check command are admitted before the failing check is recorded. (5) Turn starts, seat launches, dispatches, reads and design writes are admitted in every state. A turn on a provider with no measured pre-execution control is admitted with enforcement none and preventable false recorded; its building effects are refused where the adapter sees them first and otherwise become violations; nothing is advertised as enforced that K03 has not measured. Caller fields such as exploration, mode, skip_gate or a file name never change an outcome; they are listed as ignoredCallerFields. The admission decorator admits shell starts as effect attempts with outcome unknown; live shell input is not admitted per keystroke and is never claimed gated; the thread's effect ledger receives the host's observed changed-path record for each open shell session, and the done computation reads it (K08). The decorator mounts once at the engine assembly point already edited by the fork; no new stock-file edit; the HTTP dispatch door is closed by that refusal; the comsnet door's retirement and its three fork-file removal proofs belong to T7.04. Route slot (D25): admit() for the turn-effect command types and the comsnet route evaluates a route slot before dispatch, in the same transaction as the admission decision; the decision row records route (no_model | light | standard | lead_only), the pass that decided it (code | jev | default), the code facts used, the JEV step id when one exists, and the floor-file version. no_model dispatches no turn: the command is admitted, the event is recorded, a record-built reply is enqueued on the rail when the sender expects one, and the recipient's pending digest gains one entry. light, standard and lead_only dispatch a turn carrying the route so the provider adapter launches or resumes the recipient at the routed model and effort; a route the adapter cannot honour (no such model on this host) falls back to standard and records the fallback. The slot is a policy input exactly as the headroom slot (T11.04) and the target-policy slot (T9.03) are; it never changes a seat's launch setting and never edits the floor file. Under D26-D27, retired messaging avenues route to ComsNet/Absurd instead of executing directly; missing/forged authentication still refuses. P4's async answers, server reissues and history imports are admission-only cases, not alternative agent messaging paths.",
       "files": [
         {
           "path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/checks/slice-3-admission-record.mts",
@@ -3174,7 +3347,9 @@
       "governing_shapes": [
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-31-ryan-tier-1-only-edit-surface-ship-to-all-runtimes.yaml",
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-before-saying-you-checked-something-reasoning-is-not-running.yaml",
-        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml"
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-10-ryan-comsnet-is-the-original-socket-design-and-absurd-owns-the-message-record.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml"
       ],
       "reviewer": {
         "role": "reviewer",
@@ -3437,7 +3612,7 @@
         {
           "ref": "30f8e3e388",
           "disposition": "rework",
-          "reason": "Reuse authenticated-claim/refusal tests and sender payloads, but move engine/projection SQLite stamping into record-owned identity joins and admission; authenticate every ingress and retain MCP only until the CLI replacement is proven.",
+          "reason": "Reuse authenticated claims/refusals and sender fixtures behind the authoritative admission/record transaction. D26-D28 replace the earlier CLI-only/MCP-retention guidance: all alternative paths retire by routing; upstream code is preserved pending merged-code Fable design.",
           "source": "G5-Fork-State.json A.main_commits"
         },
         {
@@ -4161,7 +4336,7 @@
       "title": "One public identity with every other id riding under it; native ids as aliases; the resolver retires",
       "serves": ["NG-055", "NG-056", "NG-057", "NG-058", "NG-059"],
       "detail_state": "detailed",
-      "what": "An identity_alias table (public_agent_id, native_kind in {claude, codex, pi, throughline-thread, app-session}, native_id, bound_generation nullable, created_at, unique on native_kind+native_id) replaces the fork-ancestry resolver. ThroughLine already assigns each native message id deterministically before submission; this task stores that assignment as an alias row in the same transaction as the admitted command (K01 outbox). Lookups are by native id to public id only; the resolver module is deleted and its two callers rewritten. Migration is expand-then-contract (K09): the table and columns are added, dual-written for one release, the resolver removed in the next.",
+      "what": "An identity_alias table (public_agent_id, native_kind in {claude, codex, pi, throughline-thread, app-session}, native_id, bound_generation nullable, created_at, unique on native_kind+native_id) replaces the fork-ancestry resolver. ThroughLine already assigns each native message id deterministically before submission; this task stores that assignment as an alias row in the same transaction as the admitted command (K01 outbox). Lookups are by native id to public id only; the resolver module is deleted and its two callers rewritten. Migration is expand-then-contract (K09): the table and columns are added, dual-written for one release, the resolver removed in the next. Each of Ryan's four devices has its own durable unique public identity on the same identity/alias rails as agents, bound to Ryan as sender. Every message records the authenticated sender and device, retains both across replay, relay and dictation/optimization, and exposes them as context to receiving agents. Same thread, consecutive iPhone and Mac messages: same Ryan sender, different device identities. Payload fields cannot spoof sender or device.",
       "files": [
         {
           "path": "apps/server/src/throughline/identity/native-lineage.ts",
@@ -4190,7 +4365,7 @@
       "done_when": {
         "host": "twr, on the installed release, fired by a non-builder through the server's own API (no database credential)",
         "command": "pnpm -C <fork> test --filter identity-alias (the new test inserts one message per native kind and resolves each to one public id, and asserts the old resolver export no longer exists); then on the tower: curl -s http://100.96.34.116:3773/api/orchestration/snapshot | jq '.threads[0].messages[0] | {public_agent_id, native_id}'",
-        "expect": "the test passes with one public id per fixture and fails to import the old resolver; the snapshot shows a public_agent_id beside each native_id on a real thread created after the release"
+        "expect": "the test passes with one public id per fixture and fails to import the old resolver; the snapshot shows a public_agent_id beside each native_id on a real thread created after the release Ryan's iPhone, Android, Mac and tower each resolve to a distinct durable device identity on the same alias rails; no device identity is shared."
       },
       "depends_on": ["T3.03"],
       "executor": {
@@ -4207,7 +4382,9 @@
       "governing_shapes": [
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-31-ryan-tier-1-only-edit-surface-ship-to-all-runtimes.yaml",
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-before-saying-you-checked-something-reasoning-is-not-running.yaml",
-        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml"
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-10-ryan-comsnet-is-the-original-socket-design-and-absurd-owns-the-message-record.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml"
       ],
       "interfaces_required": [
         "T3.03 migration lane for the SQL file",
@@ -4221,7 +4398,12 @@
         "model_preference": "gpt-6.1-sol",
         "effort": "high"
       },
-      "command_grammar": "IC-002"
+      "command_grammar": "IC-002",
+      "device_identity": {
+        "owner": ["T5.01", "T5.02"],
+        "devices": ["iPhone", "Android", "Mac", "tower"],
+        "rule": "Each of Ryan's four devices has its own durable unique public identity on the same identity/alias rails as agents, bound to Ryan as sender. Every message records the authenticated sender and device, retains both across replay, relay and dictation/optimization, and exposes them as context to receiving agents. Same thread, consecutive iPhone and Mac messages: same Ryan sender, different device identities. Payload fields cannot spoof sender or device."
+      }
     },
     {
       "id": "T5.02",
@@ -4229,7 +4411,7 @@
         {
           "ref": "30f8e3e388",
           "disposition": "rework",
-          "reason": "Reuse authenticated-claim/refusal tests and sender payloads, but move engine/projection SQLite stamping into record-owned identity joins and admission; authenticate every ingress and retain MCP only until the CLI replacement is proven.",
+          "reason": "Reuse authenticated claims/refusals and sender fixtures behind the authoritative admission/record transaction. D26-D28 replace the earlier CLI-only/MCP-retention guidance: all alternative paths retire by routing; upstream code is preserved pending merged-code Fable design.",
           "source": "G5-Fork-State.json A.main_commits"
         },
         {
@@ -4273,7 +4455,7 @@
       "title": "Every message records who actually sent it; the identity join",
       "serves": ["NG-060", "NG-061"],
       "detail_state": "detailed",
-      "what": "Every message row carries sender_public_id and sender_generation stamped by the server from the authenticated channel, never from the payload: on the tower from the kernel peer credentials of the socket (T7.02 supplies uid and pid; this task maps them through the identity join), on the Mac from the app session, from the CLI from its authenticated session. A payload that names a different sender is refused with a recorded admission failure. The identity join table (public_agent_id, execution_generation {uid, invocation_id, cgroup, process_start}, work_item, purpose, runner) is defined here with its write API; its rows are written by the launcher in T6.02. Origin (NG-060): each message row also carries the authenticated login, device and account, whether the text was dictated or optimized, and whether it was relayed or authored by the operator; a relayed user-role turn is never recorded as Ryan's. the sender stamp reads the generation from the supervisor registry entry resolved in T7.02, never from the payload and never from a cgroup pathname parsed as an id.",
+      "what": "Every message row carries sender_public_id and sender_generation stamped by the server from the authenticated channel, never from the payload: on the tower from the kernel peer credentials of the socket (T7.02 supplies uid and pid; this task maps them through the identity join), on the Mac from the app session, from the CLI from its authenticated session. A payload that names a different sender is refused with a recorded admission failure. The identity join table (public_agent_id, execution_generation {uid, invocation_id, cgroup, process_start}, work_item, purpose, runner) is defined here with its write API; its rows are written by the launcher in T6.02. Origin (NG-060): each message row also carries the authenticated login, device and account, whether the text was dictated or optimized, and whether it was relayed or authored by the operator; a relayed user-role turn is never recorded as Ryan's. the sender stamp reads the generation from the supervisor registry entry resolved in T7.02, never from the payload and never from a cgroup pathname parsed as an id. Each of Ryan's four devices has its own durable unique public identity on the same identity/alias rails as agents, bound to Ryan as sender. Every message records the authenticated sender and device, retains both across replay, relay and dictation/optimization, and exposes them as context to receiving agents. Same thread, consecutive iPhone and Mac messages: same Ryan sender, different device identities. Payload fields cannot spoof sender or device.",
       "files": [
         {
           "path": "apps/server/src/throughline/identity/identity-join.ts",
@@ -4304,13 +4486,29 @@
             "file_ready": false,
             "note": "add to spec.checks only when the check file exists on disk (spec check X05)"
           }
+        },
+        {
+          "id": "T5.02-device",
+          "kind": "contract-test",
+          "command": "A non-builder sends from each of Ryan's four devices and an agent, then sends consecutively from iPhone and Mac into one thread; read the admitted record and recipient context; forge a sender/device, replay and relay a message, dictate and optimize one.",
+          "expect": "Four distinct stable device public identities using T5.01 rails; every record/context carries actual sender and source device. Ryan remains Ryan when changing device; a relay never becomes Ryan. Forged sender/device refuses; replay and optimization preserve authenticated origin.",
+          "fixtures": {
+            "pass": "Four devices with distinct ids, same Ryan sender, and an agent sender; iPhone-to-Mac switch in one thread, replay, relay and optimized message preserve origin and recipient context.",
+            "fail": "Missing/shared device id, spoofed sender/device accepted, relay stamped as Ryan, phone stamped as desktop, or record correct but recipient context missing device: each refuses."
+          },
+          "spec_projection": {
+            "kind": "real-disk",
+            "expected_today": "measure on first run",
+            "file_ready": false,
+            "note": "Planned product check; add to spec.checks only after its executable exists (X05). Calibrate both fixture polarities before gating an install."
+          }
         }
       ],
       "failing_checks": ["PH2-C01"],
       "done_when": {
         "host": "twr for the socket and CLI doors, the Mac for the app door; non-builder",
         "command": "send one message through each door with an honest payload and one with a forged sender field; then curl -s http://100.96.34.116:3773/api/orchestration/snapshot | jq '[.threads[].messages[] | {sender_public_id, sender_generation}]'",
-        "expect": "three honest messages carry the sender that matches the authenticated channel; the three forged ones are refused and an admission-failure event names the mismatch; no message row has an empty sender"
+        "expect": "three honest messages carry the sender that matches the authenticated channel; the three forged ones are refused and an admission-failure event names the mismatch; no message row has an empty sender Four distinct stable device public identities using T5.01 rails; every record/context carries actual sender and source device. Ryan remains Ryan when changing device; a relay never becomes Ryan. Forged sender/device refuses; replay and optimization preserve authenticated origin."
       },
       "depends_on": ["T5.01"],
       "executor": {
@@ -4327,7 +4525,9 @@
       "governing_shapes": [
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-31-ryan-tier-1-only-edit-surface-ship-to-all-runtimes.yaml",
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-before-saying-you-checked-something-reasoning-is-not-running.yaml",
-        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml"
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-10-ryan-comsnet-is-the-original-socket-design-and-absurd-owns-the-message-record.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml"
       ],
       "interfaces_required": [
         "T7.02 must expose peer uid and pid to the stamp (named requirement on slice 7, inside this group)",
@@ -4341,7 +4541,12 @@
         "model_preference": "gpt-6.1-sol",
         "effort": "high"
       },
-      "command_grammar": "IC-002"
+      "command_grammar": "IC-002",
+      "device_identity": {
+        "owner": ["T5.01", "T5.02"],
+        "devices": ["iPhone", "Android", "Mac", "tower"],
+        "rule": "Each of Ryan's four devices has its own durable unique public identity on the same identity/alias rails as agents, bound to Ryan as sender. Every message records the authenticated sender and device, retains both across replay, relay and dictation/optimization, and exposes them as context to receiving agents. Same thread, consecutive iPhone and Mac messages: same Ryan sender, different device identities. Payload fields cannot spoof sender or device."
+      }
     },
     {
       "id": "T6.01",
@@ -4708,7 +4913,7 @@
       "title": "The ComsNet envelope as the shared provider-binding core",
       "serves": ["NG-017", "NG-022", "NG-023"],
       "detail_state": "detailed",
-      "what": "packages/throughline-coms carries the prompt, response and ping envelopes ported from Ryan's coms.ts as plain TypeScript with no Node imports, plus encode and decode with tolerant decoding (K09) and a fixture set; the mod, the server, the Pi extension and the CLI import it.",
+      "what": "packages/throughline-coms carries the prompt, response and ping envelopes ported from Ryan's coms.ts as plain TypeScript with no Node imports, plus encode and decode with tolerant decoding (K09) and a fixture set; the mod, the server, the Pi extension and the CLI import it. D07 now anchors transport/envelope fidelity to the original upstream ComsNet hub, not an invented MCP relay; preserve fixtures for any retained coms.ts client.",
       "files": [
         {
           "path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/pi-harness/pi-vs-claude-code-upstream/extensions/coms.ts",
@@ -4743,7 +4948,9 @@
       "governing_shapes": [
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-31-ryan-tier-1-only-edit-surface-ship-to-all-runtimes.yaml",
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-before-saying-you-checked-something-reasoning-is-not-running.yaml",
-        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml"
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-10-ryan-comsnet-is-the-original-socket-design-and-absurd-owns-the-message-record.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml"
       ],
       "interfaces_required": [
         "slice 8 mod and slice 11 Pi extension import this package; they do not define envelopes"
@@ -4812,7 +5019,9 @@
       "governing_shapes": [
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-31-ryan-tier-1-only-edit-surface-ship-to-all-runtimes.yaml",
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-before-saying-you-checked-something-reasoning-is-not-running.yaml",
-        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml"
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-10-ryan-comsnet-is-the-original-socket-design-and-absurd-owns-the-message-record.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml"
       ],
       "interfaces_required": ["T5.02 sender stamp reads the same peer tuple"],
       "proof_limits": [
@@ -4844,7 +5053,7 @@
       "title": "One rail: the message is a task for the recipient, the reply its result, the sender a wait row",
       "serves": ["NG-019", "NG-020", "NG-021", "NG-088", "NG-013"],
       "detail_state": "detailed",
-      "what": "A message received on the socket is admitted as a command and enqueued as an Absurd task addressed to the recipient's public id in the same transaction (K01 outbox); the recipient's reply is the task's result; the sender holds a durable event wait keyed by request id and generation (K02, Absurd 0.5.0 durable event waits, whose migration is slice 3's named task). No watcher process and no poll loop exist; delivery is the recipient's worker picking up its task. JEV rides this rail (NG-088): each admitted send and each reply passes through the K07 condition port as a recorded step on the recipient task's workflow, carrying source ids, question version, model and confidence; the answer annotates the message and never blocks or releases delivery. Waiting ends the turn (D25): the sender's durable event wait is the seat's suspension, never a poll inside the model's turn; the coms wait tool returns to the provider adapter a suspend outcome that ends the model step, and the reply arrives as a new admitted command through the route slot (T3.08), which wakes the seat once with a digest when more than one task is pending. A broadcast is one admitted command with many recipients, classified once; each recipient's task carries the same route decision and JEV step id. An admitted send to a sleeping recipient whose route is no_model records the annotation and starts no task for that recipient.",
+      "what": "A reply-expecting request received on the socket is admitted as a command and enqueued as an Absurd task addressed to the recipient's public id in the same transaction (K01 outbox); the recipient's reply is the task's result; the sender holds a durable event wait keyed by request id and generation (K02, Absurd 0.5.0 durable event waits, whose migration is slice 3's named task). No watcher process and no poll loop exist; delivery is the recipient's worker picking up its task. JEV rides this rail (NG-088): each admitted send and each reply passes through the K07 condition port as a recorded step on the recipient task's workflow, carrying source ids, question version, model and confidence; the answer annotates the message and never blocks or releases delivery. Waiting ends the turn (D25): the sender's durable event wait is the seat's suspension, never a poll inside the model's turn; the coms wait tool returns to the provider adapter a suspend outcome that ends the model step, and the reply arrives as a new admitted command through the route slot (T3.08), which wakes the seat once with a digest when more than one task is pending. A broadcast is one admitted command with many recipients, classified once; each recipient's task carries the same route decision and JEV step id. An admitted send to a sleeping recipient whose route is no_model records the annotation and starts no task for that recipient. A message inside one conversation, including Ryan's typed message, its reply and tool calls, is a step of that conversation's task. A request asking another agent for work and expecting a reply is a task on the receiver's queue, keyed by its request id, with the reply as its result; peers and parent/child use the same rule. A signal with no reply is an event; no relationship-based classification and no carve-out for Ryan. Each ComsNet work request uses its request ID as the task idempotency key and its reply as the result. Signal-only no_model notices are events, not missing work-request tasks. The same classification covers Ryan's messages. On Mac, tower, iPhone and Android, a non-builder measures every actual agent-to-agent request against Absurd: exactly one task, idempotency key equal to request id, reply equal to task result, no completed dispatched-only tasks and zero unmatched requests/replies. Repeat a request id and prove one task and one reply; a real request/reply is required on each device, so zero rows never pass.",
       "files": [
         {
           "path": "packages/absurd-runtime/src/",
@@ -4870,13 +5079,29 @@
             "file_ready": false,
             "note": "add to spec.checks only when the check file exists on disk (spec check X05)"
           }
+        },
+        {
+          "id": "T7.03-request-record",
+          "kind": "contract-test",
+          "command": "On install day a non-builder sends and awaits replies on each active device, compares the complete observed request/reply census with Absurd tasks through the record read API, and repeats a request id; include peers and parent/child, plus a conversation step and a no-reply signal event from Ryan and an agent.",
+          "expect": "Mac, tower, iPhone and Android each have a nonzero actual sample; every reply-expecting request has exactly one receiver task keyed by request id whose result is the reply. Retry creates no second task/reply. Conversation messages are steps and signals events for Ryan and agents alike. No dispatched-only completion and no unmatched request or reply.",
+          "fixtures": {
+            "pass": "Each of four devices sends one request with a terminal reply result; peers and parent/child have matching request-id keys; duplicate reuses its task; Ryan/agent conversation steps and signal events are recorded.",
+            "fail": "Missing task, wrong request-id key, reply missing/different, dispatched-only completion, duplicate task/reply, missing device, empty census, builder witness, peer request stored only as a step, or Ryan message outside the record: each refuses."
+          },
+          "spec_projection": {
+            "kind": "real-disk",
+            "expected_today": "measure on first run",
+            "file_ready": false,
+            "note": "Planned product check; add to spec.checks only after its executable exists (X05). Calibrate both fixture polarities before gating an install."
+          }
         }
       ],
       "failing_checks": ["PH2-C01"],
       "done_when": {
         "host": "twr, non-builder",
         "command": "A sends to B; kill the server process at each K01 boundary in turn (five runs); then send a duplicate reply, a late reply after the wait closed, and reply-before-wait; then: read only registered service/cgroup identities and process comm names, never argv or environment; record zero watcher/poller units",
-        "expect": "each run yields exactly one admitted command and one delivered reply or one recorded unknown, never two deliveries; the duplicate and late replies are recorded and ignored; reply-before-wait resumes exactly once; the process count for any watcher or poller is 0; a notice sent to five idle recipients records one route decision, one JEV step when the port is bound, and zero provider turns; a seat that calls wait ends its model step and resumes exactly once when the reply and two queued notices are pending, with the notices in the digest"
+        "expect": "each run yields exactly one admitted command and one delivered reply or one recorded unknown, never two deliveries; the duplicate and late replies are recorded and ignored; reply-before-wait resumes exactly once; the process count for any watcher or poller is 0; a notice sent to five idle recipients records one route decision, one JEV step when the port is bound, and zero provider turns; a seat that calls wait ends its model step and resumes exactly once when the reply and two queued notices are pending, with the notices in the digest Mac, tower, iPhone and Android each have a nonzero actual sample; every reply-expecting request has exactly one receiver task keyed by request id whose result is the reply. Retry creates no second task/reply. Conversation messages are steps and signals events for Ryan and agents alike. No dispatched-only completion and no unmatched request or reply."
       },
       "depends_on": ["T7.02"],
       "executor": {
@@ -4885,7 +5110,7 @@
         "effort": "high"
       },
       "risk": [],
-      "rollback": "the rail module is removed; the socket carries nothing; the MCP path (still present until T7.04) remains the transport",
+      "rollback": "Before cutover, a failed build restores the previous working transport in the old build environment only. After cutover, automatic release rollback restores the previous release; no accepted candidate may retain MCP or an off-rail alternative.",
       "failing_check_first": "before the work, the kill-after-enqueue run delivers the message twice or loses it (the existing MCP path has no outbox); recorded at intake as the red",
       "retained_protection": "K01 and K02 tests retained verbatim",
       "failure_test": "Fail if: a message is delivered twice; a late reply resumes a closed generation; a poller exists; a reply completes a target (K02 forbids)",
@@ -4893,7 +5118,9 @@
       "governing_shapes": [
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-31-ryan-tier-1-only-edit-surface-ship-to-all-runtimes.yaml",
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-before-saying-you-checked-something-reasoning-is-not-running.yaml",
-        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml"
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-10-ryan-comsnet-is-the-original-socket-design-and-absurd-owns-the-message-record.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml"
       ],
       "interfaces_required": [
         "slice 3 owns the Absurd 0.4.0 to 0.5.0 migration task; T7.03 depends on it being landed, named as a requirement, not absorbed"
@@ -4914,15 +5141,15 @@
         {
           "ref": "30f8e3e388",
           "disposition": "rework",
-          "reason": "Reuse authenticated-claim/refusal tests and sender payloads, but move engine/projection SQLite stamping into record-owned identity joins and admission; authenticate every ingress and retain MCP only until the CLI replacement is proven.",
+          "reason": "Reuse authenticated claims/refusals and sender fixtures behind admission; D26-D28 supersede CLI-only/MCP-refusal guidance. Legacy adapters retire by routing; upstream code is preserved pending merged-code Fable design.",
           "source": "G5-Fork-State.json A.main_commits"
         }
       ],
       "slice": "slice-7",
-      "title": "The CLI (Codex's only door) and the Pi extension; the MCP comsnet retires after the replacement passes",
+      "title": "Retire alternative messaging at the post-0.0.60 cutover; adapters use only native ComsNet and Absurd",
       "serves": ["NG-028", "NG-027", "NG-043"],
       "detail_state": "detailed",
-      "what": "packages/throughline-coms-cli is a first-class CLI with the four tools (peers, send, subscribe, result) for all three harnesses and Codex's only door (Ryan, Sep 10, 2026); the Pi extension Ryan owns calls the same core. The MCP comsnet transport, correlation and toolkit retire only after the CLI passes the same four-tool test on all three harnesses on the tower; a seat invoking the retired MCP tool gets a clear refusal naming the CLI. The MCP JSON store is preserved read-only until Phase-6 acceptance, not deleted by this task. Retiring the MCP comsnet also deletes the frozen @ryan/agent-mcp-relay relay tarball apps/server/vendor/agent-mcp-relay-0.3.0.tgz, its apps/server/vendor/README.md, and the @ryan/agent-mcp-relay dependency line in apps/server/package.json with its pnpm-lock.yaml importer entry (decision D3, ruled by the lead orchestrator: vendored as a tarball, not as a fork package).",
+      "what": "Harness clients, including any CLI and Pi extension, use ComsNet's original upstream socket transport and the same admitted record. CLI is optional, not a mandated exclusive harness door; no MCP toolkit or ad hoc relay is advertised. The next ThroughLine release after 0.0.60 carrying the reconciled upstream merge is the cutover release. Retire every P4 alternative in the candidate: neither advertised nor independently usable. Route attempted retired/unapproved avenues into ComsNet and Absurd. Preserve upstream code; a Fable design pass on the merged code decides routing without upstream tax. Fork-only relay code may be removed. The old JSON store is retained read-only, never a live message record. The release refuses if any P4 path is advertised or independently usable in the release or its accepted agent environments, if any path lacks a measured probe, or if the checks lack known-good passing and known-bad failing fixtures. Existing build-only tools may remain in the old build environment until installed coverage succeeds; they are not allowed in the accepted candidate environment. On Mac, tower, iPhone and Android, a non-builder measures every actual agent-to-agent request against Absurd: exactly one task, idempotency key equal to request id, reply equal to task result, no completed dispatched-only tasks and zero unmatched requests/replies. Repeat a request id and prove one task and one reply; a real request/reply is required on each device, so zero rows never pass. Immediately after installed parts 1-3 pass, retire agent-instruments send/thread-create and dependent wakes/relays from active runtimes through Ship Warden in the same install window. Any retained command compatibility routes only into ComsNet/Absurd and is never an alternative channel. Post-retirement non-builder probes are required before release closure; rollback is automatic and agent-run. These are spec requirements and planned installed-product checks, not evidence that messaging has shipped or that any installed path is retired.",
       "files": [
         {
           "path": "apps/server/vendor/agent-mcp-relay-0.3.0.tgz",
@@ -4975,9 +5202,9 @@
       "signatures": ["three seat receipts plus the retirement receipt"],
       "failing_checks": ["PH2-C01"],
       "done_when": {
-        "host": "twr, one seat per harness, non-builder",
-        "command": "in each of a Claude, a Codex and a Pi seat: throughline-coms peers; throughline-coms send --to <peer> --text ping; throughline-coms subscribe --timeout 30; throughline-coms result <id>; then in the Codex seat call the old MCP comsnet tool; then in the release worktree: test ! -e apps/server/vendor/agent-mcp-relay-0.3.0.tgz && test ! -e apps/server/vendor/README.md && ! grep -q '@ryan/agent-mcp-relay' apps/server/package.json pnpm-lock.yaml && pnpm install --frozen-lockfile",
-        "expect": "all four commands succeed in all three seats with generations recorded; the MCP call is refused with a message naming the CLI; the three removed files are absent from the installed server and the owning seam manifest records proven fork-owned retirements; Seam-Baseline.json remains byte-unchanged in this integration; the relay tarball and apps/server/vendor/README.md are absent, neither apps/server/package.json nor pnpm-lock.yaml names @ryan/agent-mcp-relay, and the frozen install succeeds without it"
+        "host": "Mac, tower, iPhone and Android; installed release and all active agent runtimes; non-builder",
+        "command": "Before cut/install and after runtime retirement, inventory advertised tools, candidate code routing and active agent runtimes; probe each of the nine P4 paths for advertisement, direct delivery and routed delivery; bind outcomes to the pinned release source and environment. On install day a non-builder sends and awaits replies on each active device, compares the complete observed request/reply census with Absurd tasks through the record read API, and repeats a request id; include peers and parent/child, plus a conversation step and a no-reply signal event from Ryan and an agent.",
+        "expect": "Every P4 alternative is absent from advertisement and cannot deliver off-rail. Attempts through retained compatibility code arrive only through authenticated ComsNet and Absurd. Missing/unprobed paths refuse; admission-only exclusions remain covered by T3.01. Upstream code need not be deleted. Mac, tower, iPhone and Android each have a nonzero actual sample; every reply-expecting request has exactly one receiver task keyed by request id whose result is the reply. Retry creates no second task/reply. Conversation messages are steps and signals events for Ryan and agents alike. No dispatched-only completion and no unmatched request or reply."
       },
       "depends_on": ["T7.03"],
       "executor": {
@@ -4986,15 +5213,17 @@
         "effort": "high"
       },
       "risk": [],
-      "rollback": "restore the three MCP files from the seam baseline commit; the CLI stays installed but unused",
-      "failing_check_first": "before the work, `throughline-coms` is not on any seat's path (command not found): the red",
-      "retained_protection": "the MCP path keeps working until the CLI receipt exists (replacement before retirement, Phase-4 exit)",
-      "failure_test": "Fail if: any harness lacks one of the four tools; the MCP tool still works after retirement; the JSON store was deleted; Codex has a second door",
+      "rollback": "Automatic release rollback restores the previous working build/tools only if cutover fails; never accept an alternative live channel. Preserve old record data read-only.",
+      "failing_check_first": "Run P4 against installed 0.0.60: alternatives remain advertised and usable off-rail, so retirement fails. Calibrate the new executable on its passing/failing fixtures before gating release work.",
+      "retained_protection": "Old build-only tools remain only until installed parts 1-3 coverage succeeds; same-window Ship Warden retirement and post-retirement probes precede acceptance. Existing admission/authentication/idempotency/unknown-effect refusals remain; preserve the old JSON store read-only.",
+      "failure_test": "For each P4 path separately, advertise it or allow off-rail delivery: release refuses. Omit a path's probe: release refuses. Keep a build-only relay in an accepted agent runtime: release refuses.",
       "ryan_act": "none",
       "governing_shapes": [
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-31-ryan-tier-1-only-edit-surface-ship-to-all-runtimes.yaml",
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-before-saying-you-checked-something-reasoning-is-not-running.yaml",
-        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml"
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-07-27-ryan-slice-close-by-judge-not-self.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-10-ryan-comsnet-is-the-original-socket-design-and-absurd-owns-the-message-record.yaml",
+        "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml"
       ],
       "interfaces_required": [
         "T2.01 owns seam accounting against pinned identities; no baseline lowering or mutation by this task."
@@ -5007,7 +5236,25 @@
         "model_preference": "gpt-6.1-sol",
         "effort": "high"
       },
-      "command_grammar": "IC-002"
+      "command_grammar": "IC-002",
+      "planned_checks": [
+        {
+          "id": "T7.04-cutover",
+          "kind": "contract-test",
+          "command": "Before cut/install and after runtime retirement, inventory advertised tools, candidate code routing and active agent runtimes; probe each of the nine P4 paths for advertisement, direct delivery and routed delivery; bind outcomes to the pinned release source and environment.",
+          "expect": "Every P4 alternative is absent from advertisement and cannot deliver off-rail. Attempts through retained compatibility code arrive only through authenticated ComsNet and Absurd. Missing/unprobed paths refuse; admission-only exclusions remain covered by T3.01. Upstream code need not be deleted.",
+          "fixtures": {
+            "pass": "All nine paths measured, no alternatives advertised/usable; retained upstream HTTP code routes the attempt onto the rail and the read-only old store cannot accept writes.",
+            "fail": "For each P4 path separately, advertise it or allow off-rail delivery: release refuses. Omit a path's probe: release refuses. Keep a build-only relay in an accepted agent runtime: release refuses."
+          },
+          "spec_projection": {
+            "kind": "real-disk",
+            "expected_today": "measure on first run",
+            "file_ready": false,
+            "note": "Planned product check; add to spec.checks only after its executable exists (X05). Calibrate both fixture polarities before gating an install."
+          }
+        }
+      ]
     },
     {
       "id": "T7.05",
@@ -7793,9 +8040,9 @@
       "slice": "slice-10",
       "action": "split-child",
       "parent": "T10.03",
-      "title": "Retire the Agent Instruments driver, watch verbs and HTTP sends after the replacement is proven",
+      "title": "Retire P4 messaging at cutover; retire remaining non-messaging driver functions after replacement",
       "serves": ["NG-013", "NG-014"],
-      "what": "Only after T10.03's durable waits and app subscriptions pass and the messaging cells pass: retire the driver daemon, the watch verbs and the HTTP send path in the Tier 1 source and deliver the removal through its owning ship lane. Edit lists never point at the deployed copy (A33). Every seat's return route, including the orchestrator's, moves to the ComsNet CLI before the old send is removed.",
+      "what": "Messaging retirement belongs to T7.04 and the D26 cutover window: send, thread-create, dependent messaging wakes/relays and every other P4 avenue retire as soon as installed parts 1-3 pass, through Ship Warden in that same install window, never delayed by T10.03. Every seat's return route, including the orchestrator's, uses a ComsNet client over the original upstream socket with the Absurd record; CLI is optional. This task's T10.03 dependency governs only remaining non-messaging driver/watch functions: retire those after their durable-wait/app-subscription replacement passes. Edit Tier 1 source and use its owning delivery path; never edit deployed copies. Preserve the T7.04 post-retirement proofs and automatic rollback.",
       "files": [
         {
           "path": "/Users/Admin/core-root/vault/01_Projects/workbench/tools/agent-instruments/",
@@ -7809,11 +8056,11 @@
         "consumes": ["I-05"]
       },
       "signatures": [
-        "Declared cold acceptance interface: after the ship lane installs the removal: one seat replies to the orchestrator through the CLI and the reply appears in the orchestrator thread's own record => reply visible in the receiver's record; no driver process on any host"
+        "Declared cold acceptance interface: Verify T7.04's same-window messaging-retirement receipt without a T10.03 gate; a seat replies through a native ComsNet client and the request/reply appears in Absurd. After T10.03's replacement proof, retire only remaining non-messaging driver/watch functions through their owning ship lane. => Every P4 messaging path retired at the D26 cutover, not held until T10.03; return routes use the target pipeline with CLI optional; the receiver record contains the request task keyed by request id and reply result. After non-messaging retirement no remaining driver process runs on any host."
       ],
       "done_when": {
-        "command": "after the ship lane installs the removal: one seat replies to the orchestrator through the CLI and the reply appears in the orchestrator thread's own record",
-        "expect": "reply visible in the receiver's record; no driver process on any host",
+        "command": "Verify T7.04's same-window messaging-retirement receipt without a T10.03 gate; a seat replies through a native ComsNet client and the request/reply appears in Absurd. After T10.03's replacement proof, retire only remaining non-messaging driver/watch functions through their owning ship lane.",
+        "expect": "Every P4 messaging path retired at the D26 cutover, not held until T10.03; return routes use the target pipeline with CLI optional; the receiver record contains the request task keyed by request id and reply result. After non-messaging retirement no remaining driver process runs on any host.",
         "judge": "non-builder seat"
       },
       "depends_on": ["T10.03", "T7.04"],
@@ -7826,11 +8073,13 @@
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-08-06-ryan-prove-it-in-the-environment-of-record-before-claiming-it-works.yaml",
         "/Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-09-03-ryan-durability-is-a-running-watched-layer-not-answers-in-a-readme.yaml"
       ],
-      "rollback": "Reinstall the previous Agent Instruments version through its ship lane.",
+      "rollback": "Automatic release rollback through the owning ship lane; never restore an off-rail alternative in an accepted cutover release.",
       "risk": ["Removing the send path before every seat migrates strands return routes."],
       "window_estimate": "small",
       "device_cells": [],
-      "proof_limits": ["none"],
+      "proof_limits": [
+        "T10.03 delays only non-messaging driver functions, never P4 messaging retirement; spec declarations do not prove either removal is installed."
+      ],
       "detail_state": "detailed",
       "annotations": {
         "proposal_action": "split-child",
@@ -7846,14 +8095,17 @@
         {
           "id": "T10.06-protect",
           "kind": "retained-protection",
-          "command": "every return route in the project's current-state file and active work orders is a ComsNet CLI call before removal",
-          "expected_today": "fails today: the orchestrator's return route is agent-instruments send (A33)",
-          "measured": true,
+          "command": "Every current-state/work-order return route uses the target ComsNet socket/Absurd pipeline, with CLI optional; verify all nine P4 paths retired in T7.04's cutover window independently of T10.03, and require T10.03 only before removing non-messaging driver/watch functions.",
+          "expected_today": "fails today: return routes still use agent-instruments send outside the rail",
+          "fixtures": {
+            "pass": "A socket client with no CLI records its request/reply in Absurd, all P4 paths retire in the cutover window while T10.03 is unfinished, and non-messaging functions remain until their own replacement passes.",
+            "fail": "Mandate CLI for a return route, retain any P4 path pending T10.03, or remove a non-messaging driver before replacement proof: each refuses."
+          },
           "spec_projection": {
             "kind": "real-disk",
-            "expected_today": "measured, see expected_today",
+            "expected_today": "measure on first run",
             "file_ready": false,
-            "note": "add to spec.checks only when the check file exists on disk (spec check X05)"
+            "note": "Planned product check; add to spec.checks only after its executable exists (X05). Calibrate both fixture polarities before gating an install."
           }
         }
       ],
@@ -7863,7 +8115,9 @@
         "model_preference": "gpt-6.1-sol",
         "effort": "high"
       },
-      "command_grammar": "IC-002"
+      "command_grammar": "IC-002",
+      "messaging_retirement_owner": "T7.04",
+      "non_messaging_retirement_prerequisite": "T10.03"
     },
     {
       "id": "T10.07",
@@ -9057,7 +9311,7 @@
       "parent": "T13.01",
       "title": "One version from one commit installed on the four active targets; Raspberry Pi deferred",
       "serves": ["NG-119", "NG-120", "NG-121", "NG-142"],
-      "what": "Install the release on the Mac, tower, iPhone and Android phone from one commit; each target reads back the release and commit; one screenshot per upgrade; the cycle cheap enough for agents to iterate. This is one slice release; whole-design acceptance remains ACCEPT-ALL (K10, D21). Concretely: one new pipeline step, five-device-acceptance, in the existing release tool and its existing step contract (I-07, K12), appended after rewind-live-proof as the new final step and run by the close job that outlives the Mac app restart. It reads the expected candidate identity from the run's own {evidence}/source-commit.json (fields release and commit, the 40-character frozen source commit) and refuses before probing if run-binding.json names a different release. Each target then reports its own release and commit through one named readback (acceptance_interface.per_target_readback): the Mac and tower servers answer a new fork-namespace loopback route /.well-known/throughline/release from the build identity file the version-stamp step writes; the iPhone and Android apps report through the hello they send at connect (T3.05), recorded on the tower. Each target leaves one readback receipt and one screenshot; the step compares release and full commit per target, requires the active retained protection steps passed in the same run, and refuses with a named code on any mismatch, missing readback, missing or stale screenshot, or excluded verifier (acceptance_interface.refusals). Final architecture install also consumes T3.07: refuse unless the pinned upstream head is an ancestor of the installed source or every deliberate non-inclusion is source-backed and recorded. A preserve-base foundation release does not satisfy this gate. The existing five-device-acceptance identifier remains a compatibility name, not a five-device obligation: its required target set is the preserved admission snapshot amended only by IC-008. Raspberry Pi rows and rpi-cold-turn remain deferred, never passed.",
+      "what": "Install the release on the Mac, tower, iPhone and Android phone from one commit; each target reads back the release and commit; one screenshot per upgrade; the cycle cheap enough for agents to iterate. This is one slice release; whole-design acceptance remains ACCEPT-ALL (K10, D21). Concretely: one new pipeline step, five-device-acceptance, in the existing release tool and its existing step contract (I-07, K12), appended after rewind-live-proof as the new final step and run by the close job that outlives the Mac app restart. It reads the expected candidate identity from the run's own {evidence}/source-commit.json (fields release and commit, the 40-character frozen source commit) and refuses before probing if run-binding.json names a different release. Each target then reports its own release and commit through one named readback (acceptance_interface.per_target_readback): the Mac and tower servers answer a new fork-namespace loopback route /.well-known/throughline/release from the build identity file the version-stamp step writes; the iPhone and Android apps report through the hello they send at connect (T3.05), recorded on the tower. Each target leaves one readback receipt and one screenshot; the step compares release and full commit per target, requires the active retained protection steps passed in the same run, and refuses with a named code on any mismatch, missing readback, missing or stale screenshot, or excluded verifier (acceptance_interface.refusals). Final architecture install also consumes T3.07: refuse unless the pinned upstream head is an ancestor of the installed source or every deliberate non-inclusion is source-backed and recorded. A preserve-base foundation release does not satisfy this gate. The existing five-device-acceptance identifier remains a compatibility name, not a five-device obligation: its required target set is the preserved admission snapshot amended only by IC-008. Raspberry Pi rows and rpi-cold-turn remain deferred, never passed. Messaging cutover acceptance is D26-D28: The release refuses if any P4 path is advertised or independently usable in the release or its accepted agent environments, if any path lacks a measured probe, or if the checks lack known-good passing and known-bad failing fixtures. Existing build-only tools may remain in the old build environment until installed coverage succeeds; they are not allowed in the accepted candidate environment. On Mac, tower, iPhone and Android, a non-builder measures every actual agent-to-agent request against Absurd: exactly one task, idempotency key equal to request id, reply equal to task result, no completed dispatched-only tasks and zero unmatched requests/replies. Repeat a request id and prove one task and one reply; a real request/reply is required on each device, so zero rows never pass. Immediately after installed parts 1-3 pass, retire agent-instruments send/thread-create and dependent wakes/relays from active runtimes through Ship Warden in the same install window. Any retained command compatibility routes only into ComsNet/Absurd and is never an alternative channel. Post-retirement non-builder probes are required before release closure; rollback is automatic and agent-run.",
       "files": [
         {
           "path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/Ship-Pipeline.json",
@@ -9181,7 +9435,7 @@
       ],
       "done_when": {
         "command": "ryan throughline ship <release> --retry-step five-device-acceptance --json",
-        "expect": "owning step outcome passed and hash-bound active-target result receipt; all installed release+commit/readback/screenshot/non-builder/protection comparisons pass; no whole-design acceptance. The receipt lists, for each of mac, twr, ios and android, the readback method, the reported release and commit, the screenshot path and sha256, and outcome passed; refusals is empty; accept_all_granted is false. The four negative fixtures in planned_checks refuse with their named codes. The same-candidate upstream reconciliation gate passes; missing, stale or incomplete proof refuses. Browser-preview cold-capture acceptance from T3.07 must pass for this exact built/installed candidate, with a non-builder failed-before/passing-after screenshot pair; otherwise refuse final install and reopen the same diagnosis.",
+        "expect": "owning step outcome passed and hash-bound active-target result receipt; all installed release+commit/readback/screenshot/non-builder/protection comparisons pass; no whole-design acceptance. The receipt lists, for each of mac, twr, ios and android, the readback method, the reported release and commit, the screenshot path and sha256, and outcome passed; refusals is empty; accept_all_granted is false. The four negative fixtures in planned_checks refuse with their named codes. The same-candidate upstream reconciliation gate passes; missing, stale or incomplete proof refuses. Browser-preview cold-capture acceptance from T3.07 must pass for this exact built/installed candidate, with a non-builder failed-before/passing-after screenshot pair; otherwise refuse final install and reopen the same diagnosis. Every P4 alternative is absent from advertisement and cannot deliver off-rail. Attempts through retained compatibility code arrive only through authenticated ComsNet and Absurd. Missing/unprobed paths refuse; admission-only exclusions remain covered by T3.01. Upstream code need not be deleted. Mac, tower, iPhone and Android each have a nonzero actual sample; every reply-expecting request has exactly one receiver task keyed by request id whose result is the reply. Retry creates no second task/reply. Conversation messages are steps and signals events for Ryan and agents alike. No dispatched-only completion and no unmatched request or reply.",
         "judge": "non-builder seat"
       },
       "depends_on": ["T13.01", "T13.02", "T13.03", "T12.01", "T12.04", "T3.05", "T3.07"],
@@ -11209,7 +11463,7 @@
     {
       "id": "S1-C13",
       "slice": "slice-1",
-      "title": "The pinned acceptance release binds owning run, exact frozen source, real artifacts and installed readbacks",
+      "title": "The pinned acceptance release binds owning run, the admitted effective source, real artifacts and installed readbacks",
       "kind": "real-disk",
       "file": "./checks/slice-1-repository-move.mts",
       "expected_today": "FAIL",
@@ -11218,7 +11472,7 @@
     {
       "id": "S1-C14",
       "slice": "slice-1",
-      "title": "A non-builder probe binds a live server, dirty fixture, actual preparation events and unchanged index bytes at the declared cadence",
+      "title": "A non-builder probe binds a live server, dirty fixture and unchanged index bytes, with installed bundle backstop",
       "kind": "real-disk",
       "file": "./checks/slice-1-repository-move.mts",
       "expected_today": "FAIL",
@@ -12676,7 +12930,7 @@
         "title": "Every message, turn, thread, reply and tool call lives on the Absurd substrate",
         "status": "decided",
         "kind": "implemented",
-        "by": ["D04", "K01", "T3.02"],
+        "by": ["D04", "D26", "D27", "K01", "T3.02"],
         "note": "named by serves",
         "consumption_test": null,
         "acceptance": "the done checks of the named tasks and the tests of the named contracts"
@@ -12803,7 +13057,7 @@
       },
       {
         "id": "NG-016",
-        "title": "One Absurd Postgres on the tower, reachable over the tailnet, is the record for every thread",
+        "title": "Each thread has one authoritative home, the tower by default",
         "status": "decided",
         "kind": "implemented",
         "by": ["D04", "K05", "T4.01", "T4.02", "T4.03", "T4.06", "slice-4"],
@@ -12816,7 +13070,7 @@
         "title": "ComsNet socket messaging is Ryan's fork of coms.ts",
         "status": "decided",
         "kind": "implemented",
-        "by": ["D07", "T7.01", "slice-7"],
+        "by": ["D07", "D26", "T7.01", "slice-7"],
         "note": "named by serves",
         "consumption_test": null,
         "acceptance": "the done checks of the named tasks and the tests of the named contracts"
@@ -12923,10 +13177,10 @@
       },
       {
         "id": "NG-028",
-        "title": "Agents reach ComsNet socket messaging and targets by CLI or socket, not by an injected MCP toolkit",
+        "title": "Agents message through ComsNet's original socket design with Absurd owning every record; other paths retired",
         "status": "decided",
         "kind": "implemented",
-        "by": ["D07", "T7.04", "slice-7"],
+        "by": ["D07", "D26", "D27", "D28", "T7.04", "slice-7"],
         "note": "named by serves",
         "consumption_test": null,
         "acceptance": "the done checks of the named tasks and the tests of the named contracts"
@@ -13053,7 +13307,7 @@
       },
       {
         "id": "NG-041",
-        "title": "Model preferences: Opus 5.5 at high or extra high leads, Sol at high and Opus at medium implement, Astra reviews",
+        "title": "GPT-6.1 Sol High and Claude Opus 5.5 Medium are the workhorses",
         "status": "decided",
         "kind": "implemented",
         "by": ["D10", "K15", "T11.03", "slice-11"],
@@ -13246,7 +13500,7 @@
         "title": "Every message records who actually sent it",
         "status": "decided",
         "kind": "implemented",
-        "by": ["K04", "T5.02", "slice-5"],
+        "by": ["D28", "K04", "T5.02", "slice-5"],
         "note": "named by serves",
         "consumption_test": null,
         "acceptance": "the done checks of the named tasks and the tests of the named contracts"
@@ -13256,7 +13510,7 @@
         "title": "The identity join: who, which execution, what work, what for, what runs it",
         "status": "decided",
         "kind": "implemented",
-        "by": ["K04", "T5.02", "slice-5"],
+        "by": ["D28", "K04", "T5.02", "slice-5"],
         "note": "named by serves",
         "consumption_test": null,
         "acceptance": "the done checks of the named tasks and the tests of the named contracts"
@@ -13264,7 +13518,7 @@
       {
         "id": "NG-062",
         "title": "One Linux account per agent, created with it and removed after",
-        "status": "decided",
+        "status": "explore",
         "kind": "implemented",
         "by": ["D06", "K04", "K15", "T6.02", "slice-6"],
         "note": "named by serves",
@@ -14670,8 +14924,8 @@
       },
       {
         "id": "NG-196",
-        "title": "Compaction comes back on after the install, controlled by a mod",
-        "status": "decided",
+        "title": "Whether compaction should return after installation remains an open question",
+        "status": "explore",
         "kind": "implemented",
         "by": ["D09", "K06", "K15", "T8.02", "T8.04", "slice-8"],
         "note": "named by serves",
@@ -15822,7 +16076,7 @@
   "acceptance": {
     "id": "ACCEPT-ALL",
     "title": "The whole design is accepted",
-    "rule": "a conjunction, computed by the checker and drawn by the map: every detailed task has a passed done check from a non-builder; every slice is detailed; every ledger item disposed implemented has a passed acceptance; every required device cell has a passed cold test; the seam count did not rise; every release is installed on the target set its run binding declares (0.0.60 declares twr, ios and mac; Android joins when T13.01 ships), and the last release before acceptance is installed on all four active targets from one commit; Raspberry Pi is explicitly deferred under IC-008 and never counted passed; the receipt-level evaluation is one evaluator, the accept-all mode of throughline-ship (T13.04), run by a non-builder; X14 checks the graph and never stands for the receipts; at first install live shell input is observe-only on every host and the controlled executor (T3.06) is deferred outside this conjunction, so acceptance never claims a live-input cell as bound, and the Mac execution cells are certified only with live shell input unavailable to bound seats (no live-input tool path, per the T3.01+F07 decision); a host where a bound seat can reach live shell input is not certified until T3.06 is detailed and required (K03 unchanged) Final architecture acceptance also requires T3.07 upstream reconciliation bound to the installed source and T9.01 target-ID-only startup/succession plus cold read/add/fix/retract through each supported provider on every active execution host. Neither the lab nor the foundation release substitutes for those installed non-builder receipts. T11.05 owns installed target-ID-only provider succession after its target/provider prerequisites; all command-touching tasks also require their IC-002 grammar/caller-preservation receipt or an explicit not-applicable reason.",
+    "rule": "a conjunction, computed by the checker and drawn by the map: every detailed task has a passed done check from a non-builder; every slice is detailed; every ledger item disposed implemented has a passed acceptance; every required device cell has a passed cold test; the seam count did not rise; every release is installed on the target set its run binding declares (0.0.60 declares twr, ios and mac; Android joins when T13.01 ships), and the last release before acceptance is installed on all four active targets from one commit; Raspberry Pi is explicitly deferred under IC-008 and never counted passed; the receipt-level evaluation is one evaluator, the accept-all mode of throughline-ship (T13.04), run by a non-builder; X14 checks the graph and never stands for the receipts; at first install live shell input is observe-only on every host and the controlled executor (T3.06) is deferred outside this conjunction, so acceptance never claims a live-input cell as bound, and the Mac execution cells are certified only with live shell input unavailable to bound seats (no live-input tool path, per the T3.01+F07 decision); a host where a bound seat can reach live shell input is not certified until T3.06 is detailed and required (K03 unchanged) Final architecture acceptance also requires T3.07 upstream reconciliation bound to the installed source and T9.01 target-ID-only startup/succession plus cold read/add/fix/retract through each supported provider on every active execution host. Neither the lab nor the foundation release substitutes for those installed non-builder receipts. Messaging acceptance requires D26-D28: no P4 alternative advertised or independently usable, every installed request has one Absurd task keyed by request id with reply as result, all four devices have authenticated sender/device context, and a non-builder confirms same-window runtime retirement. Each new product check must pass known-good and fail known-bad fixtures before gating anything; spec fixture-green is not installed-product proof. T11.05 owns installed target-ID-only provider succession after its target/provider prerequisites; all command-touching tasks also require their IC-002 grammar/caller-preservation receipt or an explicit not-applicable reason.",
     "depends_on_rule": "every task, every slice, every precondition and every required device cell",
     "test": "K10 test",
     "depends_on": {
