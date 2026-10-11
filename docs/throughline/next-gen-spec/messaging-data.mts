@@ -128,3 +128,28 @@ export const DEVICE_CHECK = {
   },
   spec_projection: planned,
 };
+
+export const DRIVER_RETIREMENT = {
+  messaging_owner: "T7.04",
+  non_messaging_prerequisite: "T10.03",
+  what: "Messaging retirement belongs to T7.04 and the D26 cutover window: send, thread-create, dependent messaging wakes/relays and every other P4 avenue retire as soon as installed parts 1-3 pass, through Ship Warden in that same install window, never delayed by T10.03. Every seat's return route, including the orchestrator's, uses a ComsNet client over the original upstream socket with the Absurd record; CLI is optional. This task's T10.03 dependency governs only remaining non-messaging driver/watch functions: retire those after their durable-wait/app-subscription replacement passes. Edit Tier 1 source and use its owning delivery path; never edit deployed copies. Preserve the T7.04 post-retirement proofs and automatic rollback.",
+  done_when: {
+    command:
+      "Verify T7.04's same-window messaging-retirement receipt without a T10.03 gate; a seat replies through a native ComsNet client and the request/reply appears in Absurd. After T10.03's replacement proof, retire only remaining non-messaging driver/watch functions through their owning ship lane.",
+    expect:
+      "Every P4 messaging path retired at the D26 cutover, not held until T10.03; return routes use the target pipeline with CLI optional; the receiver record contains the request task keyed by request id and reply result. After non-messaging retirement no remaining driver process runs on any host.",
+    judge: "non-builder seat",
+  },
+  protect: {
+    id: "T10.06-protect",
+    kind: "retained-protection",
+    command:
+      "Every current-state/work-order return route uses the target ComsNet socket/Absurd pipeline, with CLI optional; verify all nine P4 paths retired in T7.04's cutover window independently of T10.03, and require T10.03 only before removing non-messaging driver/watch functions.",
+    expected_today: "fails today: return routes still use agent-instruments send outside the rail",
+    fixtures: {
+      pass: "A socket client with no CLI records its request/reply in Absurd, all P4 paths retire in the cutover window while T10.03 is unfinished, and non-messaging functions remain until their own replacement passes.",
+      fail: "Mandate CLI for a return route, retain any P4 path pending T10.03, or remove a non-messaging driver before replacement proof: each refuses.",
+    },
+    spec_projection: planned,
+  },
+};

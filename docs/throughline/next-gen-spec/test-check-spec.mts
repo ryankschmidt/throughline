@@ -1240,6 +1240,25 @@ for (const c of [
 ])
   cases.push({ ...c, expect: "FAIL" });
 
+cases.push(
+  {
+    name: "T10.06 mandates CLI again",
+    expect: "FAIL",
+    checks: ["X28"],
+    mutate: (s: any) => {
+      s.tasks.find((t: any) => t.id === "T10.06").planned_checks[0].command =
+        "every return route is a ComsNet CLI call";
+    },
+  },
+  {
+    name: "T10.06 delays messaging until durable waits",
+    expect: "FAIL",
+    checks: ["X28"],
+    mutate: (s: any) => {
+      s.tasks.find((t: any) => t.id === "T10.06").messaging_retirement_owner = "T10.03";
+    },
+  },
+);
 let bad = 0;
 for (const c of cases) {
   const dir = mkdtempSync(join(tmpdir(), "ngspec-check-"));

@@ -27,6 +27,7 @@ const {
   COVERAGE_CHECK,
   DEVICE_IDENTITY,
   DEVICE_CHECK,
+  DRIVER_RETIREMENT,
 } = await import(
   pathToFileURL(
     resolve(
@@ -1868,6 +1869,16 @@ check("X28", "messaging quotes and complete P4 retirement contract remain source
     f.push("retirement check/fixture polarities changed");
   if (/Codex's only door|Ryan, Sep 10|refusal naming the CLI/.test(retirement?.what ?? ""))
     f.push("stale CLI-only authority");
+  const driver = spec.tasks.find((t: any) => t.id === "T10.06");
+  for (const [field, expected] of Object.entries({
+    what: DRIVER_RETIREMENT.what,
+    done_when: DRIVER_RETIREMENT.done_when,
+    messaging_retirement_owner: DRIVER_RETIREMENT.messaging_owner,
+    non_messaging_retirement_prerequisite: DRIVER_RETIREMENT.non_messaging_prerequisite,
+    planned_checks: [DRIVER_RETIREMENT.protect],
+  }))
+    if (JSON.stringify(driver?.[field]) !== JSON.stringify(expected))
+      f.push("T10.06 " + field + " conflicts with cutover/optional CLI");
   return f;
 });
 check(

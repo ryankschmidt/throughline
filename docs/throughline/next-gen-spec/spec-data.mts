@@ -9,6 +9,7 @@ import {
   COVERAGE_CHECK,
   DEVICE_IDENTITY,
   DEVICE_CHECK,
+  DRIVER_RETIREMENT,
 } from "./messaging-data.mts";
 
 export type Side =
@@ -12533,3 +12534,19 @@ export const MESSAGING_CUTOVER = {
   checks: [RETIREMENT_CHECK, COVERAGE_CHECK, DEVICE_CHECK],
   sources: MESSAGING_SOURCES,
 };
+
+// Independent review S1: slice-10 cannot retain a CLI-only route or delay P4 messaging retirement.
+const driverRetirement = messagingTask("T10.06");
+driverRetirement.title =
+  "Retire P4 messaging at cutover; retire remaining non-messaging driver functions after replacement";
+driverRetirement.what = DRIVER_RETIREMENT.what;
+driverRetirement.messaging_retirement_owner = DRIVER_RETIREMENT.messaging_owner;
+driverRetirement.non_messaging_retirement_prerequisite =
+  DRIVER_RETIREMENT.non_messaging_prerequisite;
+driverRetirement.done_when = DRIVER_RETIREMENT.done_when;
+driverRetirement.planned_checks = [DRIVER_RETIREMENT.protect];
+driverRetirement.proof_limits = [
+  "T10.03 delays only non-messaging driver functions, never P4 messaging retirement; spec declarations do not prove either removal is installed.",
+];
+driverRetirement.rollback =
+  "Automatic release rollback through the owning ship lane; never restore an off-rail alternative in an accepted cutover release.";
