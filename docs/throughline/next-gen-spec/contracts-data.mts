@@ -2464,6 +2464,7 @@ export const DECISION_SOURCES: Record<
     quote_text?: string;
     previous_selection?: unknown;
     later_source_message?: string;
+    canonical_quote?: string;
   }
 > = {
   D01: { role: "requirement", note: "Ryan: an own repository, out of the vault, first slice" },
@@ -2491,7 +2492,11 @@ export const DECISION_SOURCES: Record<
     reselect_from: ["0ee5e91e-4667-4978-b236-06fc8057b440", "Ryan-Reply-Export-2026-10-07.json"],
     later_source_message: "babd4dbd-9371-4766-a25a-f3d5c2ffeb46",
   },
-  D07: { role: "requirement", note: "Ryan: CLI not MCP (Sep 10) and the Oct 7 reply" },
+  D07: {
+    role: "requirement",
+    canonical_quote: "D07",
+    note: "Oct 10 canonical shape supersedes CLI-only reading; NG-028 later exports remain sender-unverified.",
+  },
   D08: { role: "requirement", note: "Ryan: Agent Instruments folds; no watcher" },
   D09: {
     role: "approving-context",
@@ -2554,6 +2559,21 @@ export const DECISION_SOURCES: Record<
     role: "fable-mechanism",
     note: "the route slot is Fable's mechanism for Ryan's Oct 10 ask; his post-cutoff words await the ledger lane",
   },
+  D26: {
+    role: "requirement",
+    canonical_quote: "D26",
+    note: "Byte-exact target from the explicitly ordered quotation; no sender-unverified ledger export promoted.",
+  },
+  D27: {
+    role: "requirement",
+    canonical_quote: "D27",
+    note: "Whole Oct 11 operator statement from its canonical Shape Statement.",
+  },
+  D28: {
+    role: "requirement",
+    canonical_quote: "D28",
+    note: "Complete device paragraph from the Oct 11 operator statement, without the lead-summary ellipses.",
+  },
 };
 
 // ---------- the whole-design acceptance node (K10) ----------
@@ -2588,6 +2608,8 @@ AUDIT.find((a) => a.id === "IA-09")!.answered_by.push(...["T12.05"]);
 
 ACCEPTANCE.rule +=
   " Final architecture acceptance also requires T3.07 upstream reconciliation bound to the installed source and T9.01 target-ID-only startup/succession plus cold read/add/fix/retract through each supported provider on every active execution host. Neither the lab nor the foundation release substitutes for those installed non-builder receipts.";
+ACCEPTANCE.rule +=
+  " Messaging acceptance requires D26-D28: no P4 alternative advertised or independently usable, every installed request has one Absurd task keyed by request id with reply as result, all four devices have authenticated sender/device context, and a non-builder confirms same-window runtime retirement. Each new product check must pass known-good and fail known-bad fixtures before gating anything; spec fixture-green is not installed-product proof.";
 
 // IC-008 changes current acceptance, never the preserved admission snapshot.
 for (const row of DEVICE_MATRIX) {

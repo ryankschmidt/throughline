@@ -5,9 +5,9 @@
     <title>ThroughLine next-generation implementation spec — map</title>
     <meta
       name="spec-sha256"
-      content="b86844f1068856290dbe42d96db5a3c93836a3af0bc16490eaaac3fb9d4e9836"
+      content="35bb20b281d31ca3e225c5e8d00ddade2158d2431de5ac703c8bccee7fadb499"
     />
-    <meta name="spec-version" content="0.4.29" />
+    <meta name="spec-version" content="0.4.30" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       :root {
@@ -483,10 +483,10 @@
         installed in 24 hours.”
       </p>
       <p class="sub">
-        Machine-readable task graph <code>spec.json</code> version 0.4.29. Original design
+        Machine-readable task graph <code>spec.json</code> version 0.4.30. Original design
         authorship: fable-throughline-design (ThroughLine thread
-        44973766-bbeb-4c80-b506-a4b171273e33). Current generation built Oct 11, 2026, 7:32 AM PDT by
-        codex session 01a1284d-0e7c-7083-a1e6-7e280ab50f69. Bound to ledger sha256 5dec2bd71114 (199
+        44973766-bbeb-4c80-b506-a4b171273e33). Current generation built Oct 11, 2026, 8:17 AM PDT by
+        codex session 01a12b7f-41c9-7190-83e1-4d3df4fb1363. Bound to ledger sha256 5dec2bd71114 (199
         items). Every task names the ledger ids it serves. The technical execution lead,
         lead-execlead-1ad87c0b, works from the JSON; this page is rendered from it.
       </p>
@@ -504,8 +504,8 @@
           <div class="l">checks across all slices · 18 slice-1 definitions</div>
         </div>
         <div class="kpi">
-          <div class="v">25</div>
-          <div class="l">decisions, 19 with Ryan's quote</div>
+          <div class="v">28</div>
+          <div class="l">decisions, 22 with Ryan's quote</div>
         </div>
         <div class="kpi">
           <div class="v">17</div>
@@ -933,7 +933,23 @@
                   of the slice-1 release is changed by this note. Node selection (Oct 9, 2026): on
                   the Mac, the tests and build steps select node 24.13.1 through the existing
                   Step.environment PATH field, with /Users/Admin/.nvm/versions/node/v24.13.1/bin
-                  first; the tower and the Raspberry Pi keep their host node.
+                  first; the tower and the Raspberry Pi keep their host node. Messaging cutover
+                  acceptance is D26-D28: The release refuses if any P4 path is advertised or
+                  independently usable in the release or its accepted agent environments, if any
+                  path lacks a measured probe, or if the checks lack known-good passing and
+                  known-bad failing fixtures. Existing build-only tools may remain in the old build
+                  environment until installed coverage succeeds; they are not allowed in the
+                  accepted candidate environment. On Mac, tower, iPhone and Android, a non-builder
+                  measures every actual agent-to-agent request against Absurd: exactly one task,
+                  idempotency key equal to request id, reply equal to task result, no completed
+                  dispatched-only tasks and zero unmatched requests/replies. Repeat a request id and
+                  prove one task and one reply; a real request/reply is required on each device, so
+                  zero rows never pass. Immediately after installed parts 1-3 pass, retire
+                  agent-instruments send/thread-create and dependent wakes/relays from active
+                  runtimes through Ship Warden in the same install window. Any retained command
+                  compatibility routes only into ComsNet/Absurd and is never an alternative channel.
+                  Post-retirement non-builder probes are required before release closure; rollback
+                  is automatic and agent-run.
                 </p>
                 <p>
                   <b>Command changes:</b>
@@ -1517,7 +1533,15 @@
                   <span class="expect"
                     >→ tests green and exit 0; the installed copy at
                     /Users/Admin/core-root/src/tools/throughline-ship reads 0.4.1 or later after the
-                    Ship Warden ship</span
+                    Ship Warden ship Every P4 alternative is absent from advertisement and cannot
+                    deliver off-rail. Attempts through retained compatibility code arrive only
+                    through authenticated ComsNet and Absurd. Missing/unprobed paths refuse;
+                    admission-only exclusions remain covered by T3.01. Upstream code need not be
+                    deleted. Mac, tower, iPhone and Android each have a nonzero actual sample; every
+                    reply-expecting request has exactly one receiver task keyed by request id whose
+                    result is the reply. Retry creates no second task/reply. Conversation messages
+                    are steps and signals events for Ryan and agents alike. No dispatched-only
+                    completion and no unmatched request or reply.</span
                   >
                 </p>
                 <p class="risk">
@@ -4211,7 +4235,10 @@
                   cannot honour (no such model on this host) falls back to standard and records the
                   fallback. The slot is a policy input exactly as the headroom slot (T11.04) and the
                   target-policy slot (T9.03) are; it never changes a seat's launch setting and never
-                  edits the floor file.
+                  edits the floor file. Under D26-D27, retired messaging avenues route to
+                  ComsNet/Absurd instead of executing directly; missing/forged authentication still
+                  refuses. P4's async answers, server reissues and history imports are
+                  admission-only cases, not alternative agent messaging paths.
                 </p>
                 <p>
                   <b>Command changes:</b>
@@ -8680,7 +8707,13 @@
                   transaction as the admitted command (K01 outbox). Lookups are by native id to
                   public id only; the resolver module is deleted and its two callers rewritten.
                   Migration is expand-then-contract (K09): the table and columns are added,
-                  dual-written for one release, the resolver removed in the next.
+                  dual-written for one release, the resolver removed in the next. Each of Ryan's
+                  four devices has its own durable unique public identity on the same identity/alias
+                  rails as agents, bound to Ryan as sender. Every message records the authenticated
+                  sender and device, retains both across replay, relay and dictation/optimization,
+                  and exposes them as context to receiving agents. Same thread, consecutive iPhone
+                  and Mac messages: same Ryan sender, different device identities. Payload fields
+                  cannot spoof sender or device.
                 </p>
                 <p>
                   <b>Command changes:</b>
@@ -8757,7 +8790,9 @@
                   <span class="expect"
                     >→ the test passes with one public id per fixture and fails to import the old
                     resolver; the snapshot shows a public_agent_id beside each native_id on a real
-                    thread created after the release</span
+                    thread created after the release Ryan's iPhone, Android, Mac and tower each
+                    resolve to a distinct durable device identity on the same alias rails; no device
+                    identity is shared.</span
                   >
                 </p>
 
@@ -8799,7 +8834,13 @@
                   dictated or optimized, and whether it was relayed or authored by the operator; a
                   relayed user-role turn is never recorded as Ryan's. the sender stamp reads the
                   generation from the supervisor registry entry resolved in T7.02, never from the
-                  payload and never from a cgroup pathname parsed as an id.
+                  payload and never from a cgroup pathname parsed as an id. Each of Ryan's four
+                  devices has its own durable unique public identity on the same identity/alias
+                  rails as agents, bound to Ryan as sender. Every message records the authenticated
+                  sender and device, retains both across replay, relay and dictation/optimization,
+                  and exposes them as context to receiving agents. Same thread, consecutive iPhone
+                  and Mac messages: same Ryan sender, different device identities. Payload fields
+                  cannot spoof sender or device.
                 </p>
                 <p>
                   <b>Command changes:</b>
@@ -8861,7 +8902,11 @@
                   <span class="expect"
                     >→ three honest messages carry the sender that matches the authenticated
                     channel; the three forged ones are refused and an admission-failure event names
-                    the mismatch; no message row has an empty sender</span
+                    the mismatch; no message row has an empty sender Four distinct stable device
+                    public identities using T5.01 rails; every record/context carries actual sender
+                    and source device. Ryan remains Ryan when changing device; a relay never becomes
+                    Ryan. Forged sender/device refuses; replay and optimization preserve
+                    authenticated origin.</span
                   >
                 </p>
 
@@ -9829,7 +9874,9 @@
                   packages/throughline-coms carries the prompt, response and ping envelopes ported
                   from Ryan's coms.ts as plain TypeScript with no Node imports, plus encode and
                   decode with tolerant decoding (K09) and a fixture set; the mod, the server, the Pi
-                  extension and the CLI import it.
+                  extension and the CLI import it. D07 now anchors transport/envelope fidelity to
+                  the original upstream ComsNet hub, not an invented MCP relay; preserve fixtures
+                  for any retained coms.ts client.
                 </p>
                 <p>
                   <b>Command changes:</b>
@@ -10090,24 +10137,37 @@
               </summary>
               <div class="body">
                 <p class="what">
-                  A message received on the socket is admitted as a command and enqueued as an
-                  Absurd task addressed to the recipient's public id in the same transaction (K01
-                  outbox); the recipient's reply is the task's result; the sender holds a durable
-                  event wait keyed by request id and generation (K02, Absurd 0.5.0 durable event
-                  waits, whose migration is slice 3's named task). No watcher process and no poll
-                  loop exist; delivery is the recipient's worker picking up its task. JEV rides this
-                  rail (NG-088): each admitted send and each reply passes through the K07 condition
-                  port as a recorded step on the recipient task's workflow, carrying source ids,
-                  question version, model and confidence; the answer annotates the message and never
-                  blocks or releases delivery. Waiting ends the turn (D25): the sender's durable
-                  event wait is the seat's suspension, never a poll inside the model's turn; the
-                  coms wait tool returns to the provider adapter a suspend outcome that ends the
-                  model step, and the reply arrives as a new admitted command through the route slot
-                  (T3.08), which wakes the seat once with a digest when more than one task is
-                  pending. A broadcast is one admitted command with many recipients, classified
-                  once; each recipient's task carries the same route decision and JEV step id. An
-                  admitted send to a sleeping recipient whose route is no_model records the
-                  annotation and starts no task for that recipient.
+                  A reply-expecting request received on the socket is admitted as a command and
+                  enqueued as an Absurd task addressed to the recipient's public id in the same
+                  transaction (K01 outbox); the recipient's reply is the task's result; the sender
+                  holds a durable event wait keyed by request id and generation (K02, Absurd 0.5.0
+                  durable event waits, whose migration is slice 3's named task). No watcher process
+                  and no poll loop exist; delivery is the recipient's worker picking up its task.
+                  JEV rides this rail (NG-088): each admitted send and each reply passes through the
+                  K07 condition port as a recorded step on the recipient task's workflow, carrying
+                  source ids, question version, model and confidence; the answer annotates the
+                  message and never blocks or releases delivery. Waiting ends the turn (D25): the
+                  sender's durable event wait is the seat's suspension, never a poll inside the
+                  model's turn; the coms wait tool returns to the provider adapter a suspend outcome
+                  that ends the model step, and the reply arrives as a new admitted command through
+                  the route slot (T3.08), which wakes the seat once with a digest when more than one
+                  task is pending. A broadcast is one admitted command with many recipients,
+                  classified once; each recipient's task carries the same route decision and JEV
+                  step id. An admitted send to a sleeping recipient whose route is no_model records
+                  the annotation and starts no task for that recipient. A message inside one
+                  conversation, including Ryan's typed message, its reply and tool calls, is a step
+                  of that conversation's task. A request asking another agent for work and expecting
+                  a reply is a task on the receiver's queue, keyed by its request id, with the reply
+                  as its result; peers and parent/child use the same rule. A signal with no reply is
+                  an event; no relationship-based classification and no carve-out for Ryan. Each
+                  ComsNet work request uses its request ID as the task idempotency key and its reply
+                  as the result. Signal-only no_model notices are events, not missing work-request
+                  tasks. The same classification covers Ryan's messages. On Mac, tower, iPhone and
+                  Android, a non-builder measures every actual agent-to-agent request against
+                  Absurd: exactly one task, idempotency key equal to request id, reply equal to task
+                  result, no completed dispatched-only tasks and zero unmatched requests/replies.
+                  Repeat a request id and prove one task and one reply; a real request/reply is
+                  required on each device, so zero rows never pass.
                 </p>
                 <p>
                   <b>Command changes:</b>
@@ -10165,14 +10225,20 @@
                     for any watcher or poller is 0; a notice sent to five idle recipients records
                     one route decision, one JEV step when the port is bound, and zero provider
                     turns; a seat that calls wait ends its model step and resumes exactly once when
-                    the reply and two queued notices are pending, with the notices in the
-                    digest</span
+                    the reply and two queued notices are pending, with the notices in the digest
+                    Mac, tower, iPhone and Android each have a nonzero actual sample; every
+                    reply-expecting request has exactly one receiver task keyed by request id whose
+                    result is the reply. Retry creates no second task/reply. Conversation messages
+                    are steps and signals events for Ryan and agents alike. No dispatched-only
+                    completion and no unmatched request or reply.</span
                   >
                 </p>
 
                 <p class="rb">
-                  <b>Rollback</b> the rail module is removed; the socket carries nothing; the MCP
-                  path (still present until T7.04) remains the transport
+                  <b>Rollback</b> Before cutover, a failed build restores the previous working
+                  transport in the old build environment only. After cutover, automatic release
+                  rollback restores the previous release; no accepted candidate may retain MCP or an
+                  off-rail alternative.
                 </p>
                 <p class="ryan"><b>Ryan's act</b> none</p>
               </div>
@@ -10181,8 +10247,8 @@
               <summary>
                 <span class="tid">T7.04</span
                 ><span class="ttitle"
-                  >The CLI (Codex's only door) and the Pi extension; the MCP comsnet retires after
-                  the replacement passes</span
+                  >Retire alternative messaging at the post-0.0.60 cutover; adapters use only native
+                  ComsNet and Absurd</span
                 >
                 <span class="meta"
                   ><span class="chip ok">fixed contract</span>
@@ -10200,18 +10266,32 @@
               </summary>
               <div class="body">
                 <p class="what">
-                  packages/throughline-coms-cli is a first-class CLI with the four tools (peers,
-                  send, subscribe, result) for all three harnesses and Codex's only door (Ryan, Sep
-                  10, 2026); the Pi extension Ryan owns calls the same core. The MCP comsnet
-                  transport, correlation and toolkit retire only after the CLI passes the same
-                  four-tool test on all three harnesses on the tower; a seat invoking the retired
-                  MCP tool gets a clear refusal naming the CLI. The MCP JSON store is preserved
-                  read-only until Phase-6 acceptance, not deleted by this task. Retiring the MCP
-                  comsnet also deletes the frozen @ryan/agent-mcp-relay relay tarball
-                  apps/server/vendor/agent-mcp-relay-0.3.0.tgz, its apps/server/vendor/README.md,
-                  and the @ryan/agent-mcp-relay dependency line in apps/server/package.json with its
-                  pnpm-lock.yaml importer entry (decision D3, ruled by the lead orchestrator:
-                  vendored as a tarball, not as a fork package).
+                  Harness clients, including any CLI and Pi extension, use ComsNet's original
+                  upstream socket transport and the same admitted record. CLI is optional, not a
+                  mandated exclusive harness door; no MCP toolkit or ad hoc relay is advertised. The
+                  next ThroughLine release after 0.0.60 carrying the reconciled upstream merge is
+                  the cutover release. Retire every P4 alternative in the candidate: neither
+                  advertised nor independently usable. Route attempted retired/unapproved avenues
+                  into ComsNet and Absurd. Preserve upstream code; a Fable design pass on the merged
+                  code decides routing without upstream tax. Fork-only relay code may be removed.
+                  The old JSON store is retained read-only, never a live message record. The release
+                  refuses if any P4 path is advertised or independently usable in the release or its
+                  accepted agent environments, if any path lacks a measured probe, or if the checks
+                  lack known-good passing and known-bad failing fixtures. Existing build-only tools
+                  may remain in the old build environment until installed coverage succeeds; they
+                  are not allowed in the accepted candidate environment. On Mac, tower, iPhone and
+                  Android, a non-builder measures every actual agent-to-agent request against
+                  Absurd: exactly one task, idempotency key equal to request id, reply equal to task
+                  result, no completed dispatched-only tasks and zero unmatched requests/replies.
+                  Repeat a request id and prove one task and one reply; a real request/reply is
+                  required on each device, so zero rows never pass. Immediately after installed
+                  parts 1-3 pass, retire agent-instruments send/thread-create and dependent
+                  wakes/relays from active runtimes through Ship Warden in the same install window.
+                  Any retained command compatibility routes only into ComsNet/Absurd and is never an
+                  alternative channel. Post-retirement non-builder probes are required before
+                  release closure; rollback is automatic and agent-run. These are spec requirements
+                  and planned installed-product checks, not evidence that messaging has shipped or
+                  that any installed path is retired.
                 </p>
                 <p>
                   <b>Command changes:</b>
@@ -10297,29 +10377,32 @@
                 <p>
                   <b>Done when</b>
                   <code class="cmd"
-                    >in each of a Claude, a Codex and a Pi seat: throughline-coms peers;
-                    throughline-coms send --to &lt;peer&gt; --text ping; throughline-coms subscribe
-                    --timeout 30; throughline-coms result &lt;id&gt;; then in the Codex seat call
-                    the old MCP comsnet tool; then in the release worktree: test ! -e
-                    apps/server/vendor/agent-mcp-relay-0.3.0.tgz &amp;&amp; test ! -e
-                    apps/server/vendor/README.md &amp;&amp; ! grep -q '@ryan/agent-mcp-relay'
-                    apps/server/package.json pnpm-lock.yaml &amp;&amp; pnpm install
-                    --frozen-lockfile</code
+                    >Before cut/install and after runtime retirement, inventory advertised tools,
+                    candidate code routing and active agent runtimes; probe each of the nine P4
+                    paths for advertisement, direct delivery and routed delivery; bind outcomes to
+                    the pinned release source and environment. On install day a non-builder sends
+                    and awaits replies on each active device, compares the complete observed
+                    request/reply census with Absurd tasks through the record read API, and repeats
+                    a request id; include peers and parent/child, plus a conversation step and a
+                    no-reply signal event from Ryan and an agent.</code
                   >
                   <span class="expect"
-                    >→ all four commands succeed in all three seats with generations recorded; the
-                    MCP call is refused with a message naming the CLI; the three removed files are
-                    absent from the installed server and the owning seam manifest records proven
-                    fork-owned retirements; Seam-Baseline.json remains byte-unchanged in this
-                    integration; the relay tarball and apps/server/vendor/README.md are absent,
-                    neither apps/server/package.json nor pnpm-lock.yaml names @ryan/agent-mcp-relay,
-                    and the frozen install succeeds without it</span
+                    >→ Every P4 alternative is absent from advertisement and cannot deliver
+                    off-rail. Attempts through retained compatibility code arrive only through
+                    authenticated ComsNet and Absurd. Missing/unprobed paths refuse; admission-only
+                    exclusions remain covered by T3.01. Upstream code need not be deleted. Mac,
+                    tower, iPhone and Android each have a nonzero actual sample; every
+                    reply-expecting request has exactly one receiver task keyed by request id whose
+                    result is the reply. Retry creates no second task/reply. Conversation messages
+                    are steps and signals events for Ryan and agents alike. No dispatched-only
+                    completion and no unmatched request or reply.</span
                   >
                 </p>
 
                 <p class="rb">
-                  <b>Rollback</b> restore the three MCP files from the seam baseline commit; the CLI
-                  stays installed but unused
+                  <b>Rollback</b> Automatic release rollback restores the previous working
+                  build/tools only if cutover fails; never accept an alternative live channel.
+                  Preserve old record data read-only.
                 </p>
                 <p class="ryan"><b>Ryan's act</b> none</p>
               </div>
@@ -16241,7 +16324,22 @@
                   this gate. The existing five-device-acceptance identifier remains a compatibility
                   name, not a five-device obligation: its required target set is the preserved
                   admission snapshot amended only by IC-008. Raspberry Pi rows and rpi-cold-turn
-                  remain deferred, never passed.
+                  remain deferred, never passed. Messaging cutover acceptance is D26-D28: The
+                  release refuses if any P4 path is advertised or independently usable in the
+                  release or its accepted agent environments, if any path lacks a measured probe, or
+                  if the checks lack known-good passing and known-bad failing fixtures. Existing
+                  build-only tools may remain in the old build environment until installed coverage
+                  succeeds; they are not allowed in the accepted candidate environment. On Mac,
+                  tower, iPhone and Android, a non-builder measures every actual agent-to-agent
+                  request against Absurd: exactly one task, idempotency key equal to request id,
+                  reply equal to task result, no completed dispatched-only tasks and zero unmatched
+                  requests/replies. Repeat a request id and prove one task and one reply; a real
+                  request/reply is required on each device, so zero rows never pass. Immediately
+                  after installed parts 1-3 pass, retire agent-instruments send/thread-create and
+                  dependent wakes/relays from active runtimes through Ship Warden in the same
+                  install window. Any retained command compatibility routes only into ComsNet/Absurd
+                  and is never an alternative channel. Post-retirement non-builder probes are
+                  required before release closure; rollback is automatic and agent-run.
                 </p>
                 <p>
                   <b>Command changes:</b>
@@ -17901,7 +17999,16 @@
                     missing, stale or incomplete proof refuses. Browser-preview cold-capture
                     acceptance from T3.07 must pass for this exact built/installed candidate, with a
                     non-builder failed-before/passing-after screenshot pair; otherwise refuse final
-                    install and reopen the same diagnosis.</span
+                    install and reopen the same diagnosis. Every P4 alternative is absent from
+                    advertisement and cannot deliver off-rail. Attempts through retained
+                    compatibility code arrive only through authenticated ComsNet and Absurd.
+                    Missing/unprobed paths refuse; admission-only exclusions remain covered by
+                    T3.01. Upstream code need not be deleted. Mac, tower, iPhone and Android each
+                    have a nonzero actual sample; every reply-expecting request has exactly one
+                    receiver task keyed by request id whose result is the reply. Retry creates no
+                    second task/reply. Conversation messages are steps and signals events for Ryan
+                    and agents alike. No dispatched-only completion and no unmatched request or
+                    reply.</span
                   >
                 </p>
 
@@ -18459,9 +18566,8 @@
             receives release-bound copies of the declared documents.
           </p>
           <blockquote>
-            “I think throughline should have its own repository so we can remove it from my
-            vault—all those build and draft files—and only link the ThroughLine files that should Be
-            accessible to the vault.”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“I think throughline should have its own repository so we can remove it from my vault—all those build and draft files—and only link the ThroughLine files that should Be accessible to the vault.”</pre>
             <footer>Ryan, Oct 4, 2026, 12:03 AM PDT · ledger NG-122 · thread 138eb1b9</footer>
           </blockquote>
           <p class="fable">
@@ -18489,8 +18595,8 @@
             surface agrees or the install is refused; nothing stays on a branch.
           </p>
           <blockquote>
-            “the system is allowing an agent to install a patch on my mac and not actually run the
-            full shipping sequence, not update any other devices. This has to be unrepresentable.”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“the system is allowing an agent to install a patch on my mac and not actually run the full shipping sequence, not update any other devices. This has to be unrepresentable.”</pre>
             <footer>Ryan, Oct 4, 2026, 7:19 AM PDT · ledger NG-120 · thread 138eb1b9</footer>
           </blockquote>
 
@@ -18508,13 +18614,8 @@
             first release.
           </p>
           <blockquote>
-            “So done is it doing that, and the agents being able to install without any guessing,
-            any ambiguity, without them having to make any consequential decisions — they just
-            install what Fable hands them. And Fable is not off the hook until the last slice is
-            installed and tested. The checks Fable designs and runs at the beginning that fail —
-            those have to pass green at the end of this thing. And even though Fable's not
-            installing, it's still responsible for what the agents do downstream of the design,
-            architecture, and campaign it hands them.”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“So done is it doing that, and the agents being able to install without any guessing, any ambiguity, without them having to make any consequential decisions — they just install what Fable hands them.  And Fable is not off the hook until the last slice is installed and tested. The checks Fable designs and runs at the beginning that fail — those have to pass green at the end of this thing. And even though Fable's not installing, it's still responsible for what the agents do downstream of the design, architecture, and campaign it hands them.”</pre>
             <footer>Ryan, Oct 4, 2026, 7:26 PM PDT · ledger NG-119 · thread 138eb1b9</footer>
           </blockquote>
 
@@ -18533,8 +18634,8 @@
             unreachable, work waits or fails visibly.
           </p>
           <blockquote>
-            “Is every one of your messages to me in this particular thread being saved in the absurd
-            substrate?”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“Is every one of your messages to me in this particular thread being saved in the absurd substrate?”</pre>
             <footer>Ryan, Oct 2, 2026, 2:41 PM PDT · ledger NG-003 · thread f19b4795</footer>
           </blockquote>
 
@@ -18552,8 +18653,8 @@
             the importer close.
           </p>
           <blockquote>
-            “Right now, agent instruments is allowing my threads and agents to sidestep the actual
-            substrate, and I do not want that to be representable.”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“Right now, agent instruments is allowing my threads and agents to sidestep the actual substrate, and I do not want that to be representable.”</pre>
             <footer>Ryan, Oct 5, 2026, 1:48 AM PDT · ledger NG-112 · thread 38476471</footer>
           </blockquote>
 
@@ -18574,7 +18675,8 @@
             root-owned supervisor Ryan installs once; agents keep no sudo.
           </p>
           <blockquote>
-            “the one agent per Linux user account idea that I do want to explore”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“the one agent per Linux user account idea that I do want to explore”</pre>
             <footer>Ryan, Oct 4, 2026, 11:47 PM PDT · ledger NG-062 · thread 38476471</footer>
           </blockquote>
 
@@ -18586,19 +18688,24 @@
         <article class="decision" id="D07">
           <div class="dhead">
             <span class="did">D07</span>
-            <h4>
-              ComsNet socket messaging is Ryan's fork of coms.ts; agents reach it by a mod, a CLI
-              and the Pi extension, never an injected MCP toolkit
-            </h4>
+            <h4>Original upstream ComsNet socket delivery; Absurd owns every message record</h4>
           </div>
           <p>
-            The socket carries the message, Absurd owns its outcome; the HTTP-and-SSE hub is the
-            cross-device candidate to explore.
+            ComsNet is the original upstream HTTP/live-stream socket design, not MCP or an ad hoc
+            agent-built relay. ThroughLine keeps delivery and peer identity; Absurd owns records
+            under D27's step/task/event rule. CLI is a possible client, not the target or Codex's
+            mandated only door. D26-D28 supersede contrary Sep-10 details; merged-code routing
+            awaits the required Fable design pass.
           </p>
           <blockquote>
-            “I like socket, I like CLI, I like my 1st class command layer, I like the steps
-            substrate.”
-            <footer>Ryan, Oct 5, 2026, 10:53 AM PDT · ledger NG-028 · thread b29affbb</footer>
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“Hi I was simply saying in general I prefer CLI over MCP but I've always said repeatedly that I want comsnet to be the original socket design, not that it has to be CLI and I think there is nuance with the absurd messaging I think some messages are sent as a task depending on who is sending it I think if it's a parent sending it to a child I think it sends as a task and other relationships I think it sends as a step that's why whatever it is whatever the native designers for absurd that's what I want every message doesn't have to be forced into a task if that's not the original design if it's whatever the original design is if it's step messages and and then under and then certain certain messages are sent as a task depending on whatever the criteria is then fine whatever that is I just don't want it to be the mcps I don't want to be something agents bill that's just ad hoc I want it to be commsnet that I downloaded from upstream on GitHub open source the socket agent socket to socket the rest of my message messaging Target I still want the rest of it we're absurd owns the record and through line keeps calm's net and agent identity I think that's what we said and everything else gets retired all other messaging options get retired until I see through line solely using commsnet and absurd substrate messaging step messaging or text messaging till I see that exclusively in through line I don't want there to be any other options if we establish this foundation and then we want to start expanding the messaging abilities outside of that I'm open to it but right now the outside abilities is what is continuing to enable a incorrect broken designed to keep shipping and I just want it to be unrepresentable and just done with this delay from the very beginning I've always said I wanted absurd and consonant fully integrated with t3 code that was those are the three main integrations and they have not ever fully landed yet so that's what we're going to accomplish with this next install and I want it to be an intuitive design so if there is a recommendation you want to make that would require me to change some nuance or some detail of what I'm saying I want I'm open to that this is not like an authoritarian order I'm just giving you my preference and telling you that if you come across a wrinkle in the design a slightly different way to go about it that you want to recommend me because of what you discover in your research if it's a stronger it's a smarter choice then bring it up I will consider it wherever you're reading my past comments about this you use quoted me in September I want you to please update these locations with what I'm telling you right now so that everything is saying the same thing I don't want agent saying but Ryan said something different on this day and now he's saying this like which is it which is it is what I'm saying now so anything that's a little off of this that I said prior please update it and if I said I wanted to be CLI I was probably just talking about CLI versus mCP and I probably didn't understand the details yet of the socket communication or the absurd step messaging and I was just commenting on maybe something I didn't know enough about at the time but now I know more I'm telling you the updated detail on my preference for this messaging design Target for through line
+”</pre>
+            <footer>
+              Ryan, Oct 10, 2026, 11:56 PM PDT · source
+              /Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-10-ryan-comsnet-is-the-original-socket-design-and-absurd-owns-the-message-record.yaml
+              · thread 2fc7f922
+            </footer>
           </blockquote>
 
           <p class="serves">
@@ -18619,8 +18726,8 @@
             waits, thread columns and app subscriptions.
           </p>
           <blockquote>
-            “agent instruments would be great folded into ThroughLine, incorporated into its tooling
-            to become native and take advantage of all the existing rails, if possible.”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“agent instruments would be great folded into ThroughLine, incorporated into its tooling to become native and take advantage of all the existing rails, if possible.”</pre>
             <footer>Ryan, Oct 5, 2026, 10:53 AM PDT · ledger NG-111 · thread b29affbb</footer>
           </blockquote>
 
@@ -18639,7 +18746,8 @@
             lite-lifecycle design folds into this task.
           </p>
           <blockquote>
-            “The good news is I've turned off auto compacting.”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“The good news is I've turned off auto compacting.”</pre>
             <footer>Ryan, Oct 5, 2026, 10:53 AM PDT · ledger NG-196 · thread b29affbb</footer>
           </blockquote>
 
@@ -18655,7 +18763,8 @@
             reviews; names move only through ryan model roll.
           </p>
           <blockquote>
-            “Oh yeah, good call on the ones that were left out.”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“Oh yeah, good call on the ones that were left out.”</pre>
             <footer>Ryan, Oct 4, 2026, 12:23 AM PDT · ledger NG-041 · thread 138eb1b9</footer>
           </blockquote>
 
@@ -18676,7 +18785,8 @@
             shape statement that said ThroughLine needs no rewind is superseded.
           </p>
           <blockquote>
-            “I forgot about rewind and that's like one of the most important features.”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“I forgot about rewind and that's like one of the most important features.”</pre>
             <footer>Ryan, Oct 4, 2026, 12:23 AM PDT · ledger NG-094 · thread 138eb1b9</footer>
           </blockquote>
 
@@ -18701,10 +18811,8 @@
             seat, never Ryan by default (K08).
           </p>
           <blockquote>
-            “I think the target should not save as a target until Jev has given an answer with a
-            confidence score, and then we decide what the threshold is for My 1st turn to be a
-            target or not. We don't want the system to load my turn as a target until Jev has
-            responded.”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“I think the target should not save as a target until Jev has given an answer with a confidence score, and then we decide what the threshold is for My 1st turn to be a target or not. We don't want the system to load my turn as a target until Jev has responded.”</pre>
             <footer>Ryan, Oct 5, 2026, 10:53 AM PDT · ledger NG-077 · thread b29affbb</footer>
           </blockquote>
           <p class="fable">
@@ -18731,8 +18839,8 @@
             fork-edited stock files, no manifest or count check in the repository.
           </p>
           <blockquote>
-            “too many files have been customized and edited upstream whose edits need to move to our
-            side of the seam”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“too many files have been customized and edited upstream whose edits need to move to our side of the seam”</pre>
             <footer>Ryan, Oct 3, 2026, 7:28 AM PDT · ledger NG-124 · thread 138eb1b9</footer>
           </blockquote>
 
@@ -18753,7 +18861,8 @@
             decision and is carried below, never done first.
           </p>
           <blockquote>
-            “`ryan` commands ThroughLine”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“`ryan` commands ThroughLine”</pre>
             <footer>Ryan, Oct 4, 2026, 12:03 AM PDT · ledger NG-127 · thread 138eb1b9</footer>
           </blockquote>
 
@@ -18769,8 +18878,8 @@
           </div>
           <p>Moving skills, hooks and files from the Mac to the tower stays outside phase one.</p>
           <blockquote>
-            “the design intention is for all agents to predominantly be on the tower: their home,
-            their hub, the main device.”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“the design intention is for all agents to predominantly be on the tower: their home, their hub, the main device.”</pre>
             <footer>Ryan, Oct 4, 2026, 11:47 PM PDT · ledger NG-116 · thread 38476471</footer>
           </blockquote>
 
@@ -18785,7 +18894,8 @@
           </div>
           <p>In the desktop app on Mac and Linux and on the phone.</p>
           <blockquote>
-            “voice-to-text + message optimizer (currently live in iOS, desktop not yet)”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“voice-to-text + message optimizer (currently live in iOS, desktop not yet)”</pre>
             <footer>Ryan, Oct 4, 2026, 12:03 AM PDT · ledger NG-108 · thread 138eb1b9</footer>
           </blockquote>
 
@@ -18870,8 +18980,8 @@
             remain.
           </p>
           <blockquote>
-            “the system is allowing an agent to install a patch on my mac and not actually run the
-            full shipping sequence, not update any other devices. This has to be unrepresentable.”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“the system is allowing an agent to install a patch on my mac and not actually run the full shipping sequence, not update any other devices. This has to be unrepresentable.”</pre>
             <footer>Ryan, Oct 4, 2026, 7:19 AM PDT · ledger NG-120 · thread 138eb1b9</footer>
           </blockquote>
 
@@ -18921,7 +19031,8 @@
             second execution authority (K05).
           </p>
           <blockquote>
-            “every message I or an agent sends, is a coms-net socket message”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“every message I or an agent sends, is a coms-net socket message”</pre>
             <footer>Ryan, Oct 1, 2026, 12:15 AM PDT · ledger NG-018 · thread 569558d1</footer>
           </blockquote>
 
@@ -18972,9 +19083,8 @@
             exists.
           </p>
           <blockquote>
-            “I do not want it to be possible for any thread, any step, any action, any provider to
-            operate or function outside of the step substrate, the way that I saw Pi doing it. I
-            want that with every provider.”
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“I do not want it to be possible for any thread, any step, any action, any provider to operate or function outside of the step substrate, the way that I saw Pi doing it. I want that with every provider.”</pre>
             <footer>Ryan, Oct 5, 2026, 1:48 AM PDT · ledger NG-035 · thread 38476471</footer>
           </blockquote>
 
@@ -19031,6 +19141,145 @@
           <p class="serves">
             <span class="chip ng">NG-086</span><span class="chip ng">NG-088</span
             ><span class="chip ng">NG-089</span><span class="chip ng">NG-091</span>
+          </p>
+        </article>
+        <article class="decision" id="D26">
+          <div class="dhead">
+            <span class="did">D26</span>
+            <h4>Ryan's byte-exact four-part messaging target and cutover release</h4>
+          </div>
+          <p>
+            The next ThroughLine release after 0.0.60 carrying the reconciled upstream merge is the
+            cutover release. Retire every P4 alternative in the candidate: neither advertised nor
+            independently usable. Route attempted retired/unapproved avenues into ComsNet and
+            Absurd. Preserve upstream code; a Fable design pass on the merged code decides routing
+            without upstream tax. Fork-only relay code may be removed. The old JSON store is
+            retained read-only, never a live message record. The release refuses if any P4 path is
+            advertised or independently usable in the release or its accepted agent environments, if
+            any path lacks a measured probe, or if the checks lack known-good passing and known-bad
+            failing fixtures. Existing build-only tools may remain in the old build environment
+            until installed coverage succeeds; they are not allowed in the accepted candidate
+            environment. On Mac, tower, iPhone and Android, a non-builder measures every actual
+            agent-to-agent request against Absurd: exactly one task, idempotency key equal to
+            request id, reply equal to task result, no completed dispatched-only tasks and zero
+            unmatched requests/replies. Repeat a request id and prove one task and one reply; a real
+            request/reply is required on each device, so zero rows never pass. Immediately after
+            installed parts 1-3 pass, retire agent-instruments send/thread-create and dependent
+            wakes/relays from active runtimes through Ship Warden in the same install window. Any
+            retained command compatibility routes only into ComsNet/Absurd and is never an
+            alternative channel. Post-retirement non-builder probes are required before release
+            closure; rollback is automatic and agent-run. These are spec requirements and planned
+            installed-product checks, not evidence that messaging has shipped or that any installed
+            path is retired.
+          </p>
+          <blockquote>
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“## The 4-Part ThroughLine Messaging Target:
+1) Each ComsNet request becomes an Absurd task with the request ID as its idempotency key and the reply as its result.
+2) Absurd owns the record (one request is one task or step) just as it was tested, proven and observed in thread id f19b4795-0467-4dd0-ab14-33e988203dbc pi/absurd experiment.
+3) ThroughLine keeps the socket and peer identity
+4) The pesky copycat-named agent relay and it's tools removed from ThroughLine and the active runtimes of all agents and they must *not* ship in the next ThroughLine install and be *retired* after ThroughLine is installed and steps 1-3 above are confirmed working natively as the only message options advertised to agents and made available to agents in ThroughLine.
+I DO NOT want Agents messaging each other any way other than what's described above. It must be unrepresentable. I want all ThroughLine messaging forced into the above pipeline with no other messaging channels or tools available to agents in ThroughLine. I want alternative message relays and options outside of the above target retired as soon as the above target is confirmed operational. And yes, if we want to discuss building on this foundation once it's correct with more messaging infrastructure, I'm open to that. But until my actual target messaging design is landed, live, and working, I am not willing to allow any other version of messaging to exist.
+So please kindly identify exactly when the cutover will take place. I do not want the next version of ThroughLine to ship with any, any, any other messaging options, in the software or in the environment outside it (such as Agent Instruments), other than the above 4-part named messaging design target.”</pre>
+            <footer>
+              Ryan · source
+              /Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/Order-Phase-4-Delivery-Lead.txt
+            </footer>
+          </blockquote>
+
+          <p class="serves">
+            <span class="chip ng">NG-028</span><span class="chip ng">NG-017</span
+            ><span class="chip ng">NG-003</span>
+          </p>
+        </article>
+        <article class="decision" id="D27">
+          <div class="dhead">
+            <span class="did">D27</span>
+            <h4>Three records, Ryan included; retired avenues route onto the one rail</h4>
+          </div>
+          <p>
+            A message inside one conversation, including Ryan's typed message, its reply and tool
+            calls, is a step of that conversation's task. A request asking another agent for work
+            and expecting a reply is a task on the receiver's queue, keyed by its request id, with
+            the reply as its result; peers and parent/child use the same rule. A signal with no
+            reply is an event; no relationship-based classification and no carve-out for Ryan. Other
+            paths are retired, not deleted: not advertised or independently usable. Attempts route
+            into ComsNet and Absurd; upstream code is preserved. A Fable design pass on the merged,
+            upstream-reconciled code decides how; this amendment does not invent that design.
+          </p>
+          <blockquote>
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+““three kinds of record:
+
+•	a step, which a task saves about its own progress;
+•	a task, which is work handed to a worker, with a reply you can wait for;
+•	an event, which is a signal with no reply.
+
+The rule that follows from that design:
+
+•	A message inside one agent's own conversation is a step of that conversation. That covers your typed message, its reply and its tool calls.
+•	A message that asks another agent to do work and expects a reply is a task on the receiver's queue, and the reply is its result. That holds for peers as well as for parent and child.
+•	A message that only signals, such as &quot;done&quot;, &quot;approved&quot; or &quot;wake up&quot;, is an event.”
+
+Yes, this is obviously the correct design we move forward with. When I mentioned parent and child, I was not citing design to you. I was paraphrasing what I could remember an agent telling me about the different kinds of records that Absurd keeps, and probably one of the agents was telling me a task is work handed to our worker with a reply it can wait for. And probably the agent used the terms parent and child to communicate to me about one agent giving work to another agent, expecting a reply. And how this type of record works in absurd And... what it would eliminate the need for... watcher scripts polling, et cetera.
+
+Also, I don't think I said every other messaging option needs to be deleted. I said *retired*. All other messaging options—specifically, what is *advertised* to agents as messaging options and what is *available* to them. Some of it is upstream code, so I'm not saying we delete upstream code. We make the cheap path the only path, and make it the correct path.
+
+When an agent goes to send a message, even if it tries one of the retired or unapproved avenues, the infrastructure routes it to absurd and/or comsnet. I don't want to say too much, 'cause I'm not looking at the code. I'm just speaking in hypotheticals, but this needs a proper Fable design pass.
+
+Once everything's downloaded, all the upstream updates are reconciled and folded into the app, and we have an updated app, Fable needs to look at the code and architecture and actually see: What do we need to do to not incur tax with upstream message-related code, but also not allow agents’ messages a door outside of the absurd substrate and comsnet? I think likely we should approach this the way we are planning to approach the delivery seam. In the past, I tried to shape the way agents talk to me and format their messages and links using stop hooks, for example, and that turned out to be very expensive. The stop hooks would allow the message to be created, then refuse it if it's incorrect or not formatted properly, and force the agent to reproduce the entire message with updated formatting. This created at least double token spin, double token costs. The plan is for ThroughLine infrastructure to Have a delivery. Plain, seam. I don't remember the word we use, delivery something, delivery plane, delivery scene. The idea is that the infrastructure takes whatever the agent has produced, formats it for the agent, fixes things that are missing, and presents it to me in the chat the way I want it. If an agent's message is missing links or the links are wrong, this delivery—we'll say module for now—takes the message, fixes it, and delivers it to me correctly.
+
+If there's genuinely something missing, like an agent said something vague where we require specificity, the infrastructure doesn't make things up. It can't make up a fact it doesn't have or doesn't exist. Instead of making the agent reproduce the entire message, the infrastructure would go back to the agent, tell the agent what's missing, and the agent can provide the delta. That would get appended to the message or posted after it as an appended message. That way, the agent's only producing the missing parts and details, not redoing things or having to remember formatting and links.
+
+I think probably we'll have the same approach with messaging, where agents just try to send a message without having to think about doing it the right way or using the right tool. The system should just deal with it and get it into the right lane. It should just work for the agent, you know? All the agent knows is it sends a message, it gets to the agent ordered to me, and it receives messages.
+
+And also, in your descriptions of the different records for agents, don't forget me. Don't leave me out of that. I want my messages treated like agents' messages. My role might be different, but I don't want a carve out to my messages that's different from agent messages. Maybe it's identified, sure. I've also spoke this to the lead agent: in the new messaging, whatever device I'm on—if I'm on the Mac desktop, if I'm on my Android phone, if I'm on iOS phone, if I'm on Linux Tower—wherever I'm sending messages from, I want my messages ID'd As me and also the device. So if I'm in this thread talking to you through my iPhone, through ThroughLine, this message should have a ID that says it's me on my iOS device, or me from the iOS device. I don't care about the semantics, just that it's identified that it's a message for me sent from my iOS device. Then, let's say the very next message I send you, I'm actually at my laptop. That message will still post to the same thread and say it's me, but it'll say it came from the desktop, not iOS. I want this distinction because if agents know I'm on my phone, they're not gonna be asking me to do things on the desktop, 'cause they'll know I'm not on the desktop, you know?
+
+This is the only example I can think of, and where the idea started to percolate. I was talking to an agent through my iOS ThroughLine app, and I needed to rewind the agent. It produced a handoff document for itself and a kickoff prompt. Nobody told it to do this, but it was, I guess, trying to make things easy for maybe the both of us. Rather than give me the kickoff prompt in the chat in a code box, it posted a piece of code for me to run in the terminal on my Mac desktop. It would fetch the kickoff prompt and, I guess, expand it from the document and send it to my clipboard on the desktop so I could just paste it into the chat.
+
+The agent thought it was being helpful by giving me just one line of code. All I had to do was run it, and the prompt would be in my clipboard ready to paste. But I'm reading this and thinking about how the agent doesn't actually know where I'm at. It assumed I was on the desktop, but I was on my phone. If I run that command on my phone, yeah, it'll add the prompt to the desktop clipboard, not my phone clipboard. I'm rewinding from my phone. I would need it in my phone clipboard.
+
+These sorts of little details, I think, get worked out whenever it's more clear where I'm at. I don't think the agent would have given me that prompt if it knew I was on my phone, 'cause it would have thought about how to get me the prompt on my phone, and I don't think that's the solution it would have come up with. So that's an example of how, if it knew through the messages what device I was talking to it on, it would alter the choices it made.
+
+“I did not hand-edit the spec's intent ledger, which still says you ordered a CLI first (item NG-028). That file is generated, and its pass result is tied by hash to an independent review. A hand edit would break that tie and be overwritten on the next refresh. The ledger's owner has the request” Bounce. I have shapes that speak against this. Find which ones you violated and do what they say, please.
+”</pre>
+            <footer>
+              Ryan, Oct 11, 2026, 6:01 AM PDT · source
+              /Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml
+              · thread 2fc7f922
+            </footer>
+          </blockquote>
+
+          <p class="serves">
+            <span class="chip ng">NG-028</span><span class="chip ng">NG-003</span>
+          </p>
+        </article>
+        <article class="decision" id="D28">
+          <div class="dhead">
+            <span class="did">D28</span>
+            <h4>Ryan and each device have identities on the same rails as agents</h4>
+          </div>
+          <p>
+            Each of Ryan's four devices has its own durable unique public identity on the same
+            identity/alias rails as agents, bound to Ryan as sender. Every message records the
+            authenticated sender and device, retains both across replay, relay and
+            dictation/optimization, and exposes them as context to receiving agents. Same thread,
+            consecutive iPhone and Mac messages: same Ryan sender, different device identities.
+            Payload fields cannot spoof sender or device.
+          </p>
+          <blockquote>
+            <pre style="white-space: pre-wrap; font: inherit; margin: 0">
+“And also, in your descriptions of the different records for agents, don't forget me. Don't leave me out of that. I want my messages treated like agents' messages. My role might be different, but I don't want a carve out to my messages that's different from agent messages. Maybe it's identified, sure. I've also spoke this to the lead agent: in the new messaging, whatever device I'm on—if I'm on the Mac desktop, if I'm on my Android phone, if I'm on iOS phone, if I'm on Linux Tower—wherever I'm sending messages from, I want my messages ID'd As me and also the device. So if I'm in this thread talking to you through my iPhone, through ThroughLine, this message should have a ID that says it's me on my iOS device, or me from the iOS device. I don't care about the semantics, just that it's identified that it's a message for me sent from my iOS device. Then, let's say the very next message I send you, I'm actually at my laptop. That message will still post to the same thread and say it's me, but it'll say it came from the desktop, not iOS. I want this distinction because if agents know I'm on my phone, they're not gonna be asking me to do things on the desktop, 'cause they'll know I'm not on the desktop, you know?”</pre>
+            <footer>
+              Ryan, Oct 11, 2026, 6:01 AM PDT · source
+              /Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml
+              · thread 2fc7f922
+            </footer>
+          </blockquote>
+
+          <p class="serves">
+            <span class="chip ng">NG-060</span><span class="chip ng">NG-061</span
+            ><span class="chip ng">NG-028</span>
           </p>
         </article>
       </div>
@@ -19968,8 +20217,13 @@
           to the installed source and T9.01 target-ID-only startup/succession plus cold
           read/add/fix/retract through each supported provider on every active execution host.
           Neither the lab nor the foundation release substitutes for those installed non-builder
-          receipts. T11.05 owns installed target-ID-only provider succession after its
-          target/provider prerequisites; all command-touching tasks also require their IC-002
+          receipts. Messaging acceptance requires D26-D28: no P4 alternative advertised or
+          independently usable, every installed request has one Absurd task keyed by request id with
+          reply as result, all four devices have authenticated sender/device context, and a
+          non-builder confirms same-window runtime retirement. Each new product check must pass
+          known-good and fail known-bad fixtures before gating anything; spec fixture-green is not
+          installed-product proof. T11.05 owns installed target-ID-only provider succession after
+          its target/provider prerequisites; all command-touching tasks also require their IC-002
           grammar/caller-preservation receipt or an explicit not-applicable reason.
         </p>
         <p class="sub">
@@ -19978,6 +20232,467 @@
         </p>
       </article>
 
+      <section id="messaging-cutover">
+        <h2>Messaging cutover — required, not installed proof</h2>
+        <p>
+          Original ComsNet delivery and peer identity; Absurd steps, tasks and events. Retired
+          avenues route onto that rail, not deleted upstream code. Four device identities travel
+          with Ryan’s sender identity.
+        </p>
+        <dl>
+          <dt><b>decisions</b></dt>
+          <dd>
+            <ul>
+              <li><p>D26</p></li>
+              <li><p>D27</p></li>
+              <li><p>D28</p></li>
+            </ul>
+          </dd>
+          <dt><b>record rule</b></dt>
+          <dd>
+            <dl>
+              <dt><b>step</b></dt>
+              <dd>
+                <p>
+                  A message inside one conversation, including Ryan's typed message, its reply and
+                  tool calls, is a step of that conversation's task.
+                </p>
+              </dd>
+              <dt><b>task</b></dt>
+              <dd>
+                <p>
+                  A request asking another agent for work and expecting a reply is a task on the
+                  receiver's queue, keyed by its request id, with the reply as its result; peers and
+                  parent/child use the same rule.
+                </p>
+              </dd>
+              <dt><b>event</b></dt>
+              <dd>
+                <p>
+                  A signal with no reply is an event; no relationship-based classification and no
+                  carve-out for Ryan.
+                </p>
+              </dd>
+            </dl>
+          </dd>
+          <dt><b>window</b></dt>
+          <dd>
+            <dl>
+              <dt><b>release</b></dt>
+              <dd>
+                <p>
+                  The next ThroughLine release after 0.0.60 carrying the reconciled upstream merge
+                  is the cutover release.
+                </p>
+              </dd>
+              <dt><b>before cut</b></dt>
+              <dd>
+                <p>
+                  Retire every P4 alternative in the candidate: neither advertised nor independently
+                  usable. Route attempted retired/unapproved avenues into ComsNet and Absurd.
+                  Preserve upstream code; a Fable design pass on the merged code decides routing
+                  without upstream tax. Fork-only relay code may be removed. The old JSON store is
+                  retained read-only, never a live message record.
+                </p>
+              </dd>
+              <dt><b>before install</b></dt>
+              <dd>
+                <p>
+                  The release refuses if any P4 path is advertised or independently usable in the
+                  release or its accepted agent environments, if any path lacks a measured probe, or
+                  if the checks lack known-good passing and known-bad failing fixtures. Existing
+                  build-only tools may remain in the old build environment until installed coverage
+                  succeeds; they are not allowed in the accepted candidate environment.
+                </p>
+              </dd>
+              <dt><b>install day</b></dt>
+              <dd>
+                <p>
+                  On Mac, tower, iPhone and Android, a non-builder measures every actual
+                  agent-to-agent request against Absurd: exactly one task, idempotency key equal to
+                  request id, reply equal to task result, no completed dispatched-only tasks and
+                  zero unmatched requests/replies. Repeat a request id and prove one task and one
+                  reply; a real request/reply is required on each device, so zero rows never pass.
+                </p>
+              </dd>
+              <dt><b>after coverage</b></dt>
+              <dd>
+                <p>
+                  Immediately after installed parts 1-3 pass, retire agent-instruments
+                  send/thread-create and dependent wakes/relays from active runtimes through Ship
+                  Warden in the same install window. Any retained command compatibility routes only
+                  into ComsNet/Absurd and is never an alternative channel. Post-retirement
+                  non-builder probes are required before release closure; rollback is automatic and
+                  agent-run.
+                </p>
+              </dd>
+              <dt><b>proof limit</b></dt>
+              <dd>
+                <p>
+                  These are spec requirements and planned installed-product checks, not evidence
+                  that messaging has shipped or that any installed path is retired.
+                </p>
+              </dd>
+            </dl>
+          </dd>
+          <dt><b>devices</b></dt>
+          <dd>
+            <dl>
+              <dt><b>owner</b></dt>
+              <dd>
+                <ul>
+                  <li><p>T5.01</p></li>
+                  <li><p>T5.02</p></li>
+                </ul>
+              </dd>
+              <dt><b>devices</b></dt>
+              <dd>
+                <ul>
+                  <li><p>iPhone</p></li>
+                  <li><p>Android</p></li>
+                  <li><p>Mac</p></li>
+                  <li><p>tower</p></li>
+                </ul>
+              </dd>
+              <dt><b>rule</b></dt>
+              <dd>
+                <p>
+                  Each of Ryan's four devices has its own durable unique public identity on the same
+                  identity/alias rails as agents, bound to Ryan as sender. Every message records the
+                  authenticated sender and device, retains both across replay, relay and
+                  dictation/optimization, and exposes them as context to receiving agents. Same
+                  thread, consecutive iPhone and Mac messages: same Ryan sender, different device
+                  identities. Payload fields cannot spoof sender or device.
+                </p>
+              </dd>
+            </dl>
+          </dd>
+          <dt><b>checks</b></dt>
+          <dd>
+            <ul>
+              <li>
+                <dl>
+                  <dt><b>id</b></dt>
+                  <dd><p>T7.04-cutover</p></dd>
+                  <dt><b>kind</b></dt>
+                  <dd><p>contract-test</p></dd>
+                  <dt><b>command</b></dt>
+                  <dd>
+                    <p>
+                      Before cut/install and after runtime retirement, inventory advertised tools,
+                      candidate code routing and active agent runtimes; probe each of the nine P4
+                      paths for advertisement, direct delivery and routed delivery; bind outcomes to
+                      the pinned release source and environment.
+                    </p>
+                  </dd>
+                  <dt><b>expect</b></dt>
+                  <dd>
+                    <p>
+                      Every P4 alternative is absent from advertisement and cannot deliver off-rail.
+                      Attempts through retained compatibility code arrive only through authenticated
+                      ComsNet and Absurd. Missing/unprobed paths refuse; admission-only exclusions
+                      remain covered by T3.01. Upstream code need not be deleted.
+                    </p>
+                  </dd>
+                  <dt><b>fixtures</b></dt>
+                  <dd>
+                    <dl>
+                      <dt><b>pass</b></dt>
+                      <dd>
+                        <p>
+                          All nine paths measured, no alternatives advertised/usable; retained
+                          upstream HTTP code routes the attempt onto the rail and the read-only old
+                          store cannot accept writes.
+                        </p>
+                      </dd>
+                      <dt><b>fail</b></dt>
+                      <dd>
+                        <p>
+                          For each P4 path separately, advertise it or allow off-rail delivery:
+                          release refuses. Omit a path's probe: release refuses. Keep a build-only
+                          relay in an accepted agent runtime: release refuses.
+                        </p>
+                      </dd>
+                    </dl>
+                  </dd>
+                  <dt><b>spec projection</b></dt>
+                  <dd>
+                    <dl>
+                      <dt><b>kind</b></dt>
+                      <dd><p>real-disk</p></dd>
+                      <dt><b>expected today</b></dt>
+                      <dd><p>measure on first run</p></dd>
+                      <dt><b>file ready</b></dt>
+                      <dd><p>false</p></dd>
+                      <dt><b>note</b></dt>
+                      <dd>
+                        <p>
+                          Planned product check; add to spec.checks only after its executable exists
+                          (X05). Calibrate both fixture polarities before gating an install.
+                        </p>
+                      </dd>
+                    </dl>
+                  </dd>
+                </dl>
+              </li>
+              <li>
+                <dl>
+                  <dt><b>id</b></dt>
+                  <dd><p>T7.03-request-record</p></dd>
+                  <dt><b>kind</b></dt>
+                  <dd><p>contract-test</p></dd>
+                  <dt><b>command</b></dt>
+                  <dd>
+                    <p>
+                      On install day a non-builder sends and awaits replies on each active device,
+                      compares the complete observed request/reply census with Absurd tasks through
+                      the record read API, and repeats a request id; include peers and parent/child,
+                      plus a conversation step and a no-reply signal event from Ryan and an agent.
+                    </p>
+                  </dd>
+                  <dt><b>expect</b></dt>
+                  <dd>
+                    <p>
+                      Mac, tower, iPhone and Android each have a nonzero actual sample; every
+                      reply-expecting request has exactly one receiver task keyed by request id
+                      whose result is the reply. Retry creates no second task/reply. Conversation
+                      messages are steps and signals events for Ryan and agents alike. No
+                      dispatched-only completion and no unmatched request or reply.
+                    </p>
+                  </dd>
+                  <dt><b>fixtures</b></dt>
+                  <dd>
+                    <dl>
+                      <dt><b>pass</b></dt>
+                      <dd>
+                        <p>
+                          Each of four devices sends one request with a terminal reply result; peers
+                          and parent/child have matching request-id keys; duplicate reuses its task;
+                          Ryan/agent conversation steps and signal events are recorded.
+                        </p>
+                      </dd>
+                      <dt><b>fail</b></dt>
+                      <dd>
+                        <p>
+                          Missing task, wrong request-id key, reply missing/different,
+                          dispatched-only completion, duplicate task/reply, missing device, empty
+                          census, builder witness, peer request stored only as a step, or Ryan
+                          message outside the record: each refuses.
+                        </p>
+                      </dd>
+                    </dl>
+                  </dd>
+                  <dt><b>spec projection</b></dt>
+                  <dd>
+                    <dl>
+                      <dt><b>kind</b></dt>
+                      <dd><p>real-disk</p></dd>
+                      <dt><b>expected today</b></dt>
+                      <dd><p>measure on first run</p></dd>
+                      <dt><b>file ready</b></dt>
+                      <dd><p>false</p></dd>
+                      <dt><b>note</b></dt>
+                      <dd>
+                        <p>
+                          Planned product check; add to spec.checks only after its executable exists
+                          (X05). Calibrate both fixture polarities before gating an install.
+                        </p>
+                      </dd>
+                    </dl>
+                  </dd>
+                </dl>
+              </li>
+              <li>
+                <dl>
+                  <dt><b>id</b></dt>
+                  <dd><p>T5.02-device</p></dd>
+                  <dt><b>kind</b></dt>
+                  <dd><p>contract-test</p></dd>
+                  <dt><b>command</b></dt>
+                  <dd>
+                    <p>
+                      A non-builder sends from each of Ryan's four devices and an agent, then sends
+                      consecutively from iPhone and Mac into one thread; read the admitted record
+                      and recipient context; forge a sender/device, replay and relay a message,
+                      dictate and optimize one.
+                    </p>
+                  </dd>
+                  <dt><b>expect</b></dt>
+                  <dd>
+                    <p>
+                      Four distinct stable device public identities using T5.01 rails; every
+                      record/context carries actual sender and source device. Ryan remains Ryan when
+                      changing device; a relay never becomes Ryan. Forged sender/device refuses;
+                      replay and optimization preserve authenticated origin.
+                    </p>
+                  </dd>
+                  <dt><b>fixtures</b></dt>
+                  <dd>
+                    <dl>
+                      <dt><b>pass</b></dt>
+                      <dd>
+                        <p>
+                          Four devices with distinct ids, same Ryan sender, and an agent sender;
+                          iPhone-to-Mac switch in one thread, replay, relay and optimized message
+                          preserve origin and recipient context.
+                        </p>
+                      </dd>
+                      <dt><b>fail</b></dt>
+                      <dd>
+                        <p>
+                          Missing/shared device id, spoofed sender/device accepted, relay stamped as
+                          Ryan, phone stamped as desktop, or record correct but recipient context
+                          missing device: each refuses.
+                        </p>
+                      </dd>
+                    </dl>
+                  </dd>
+                  <dt><b>spec projection</b></dt>
+                  <dd>
+                    <dl>
+                      <dt><b>kind</b></dt>
+                      <dd><p>real-disk</p></dd>
+                      <dt><b>expected today</b></dt>
+                      <dd><p>measure on first run</p></dd>
+                      <dt><b>file ready</b></dt>
+                      <dd><p>false</p></dd>
+                      <dt><b>note</b></dt>
+                      <dd>
+                        <p>
+                          Planned product check; add to spec.checks only after its executable exists
+                          (X05). Calibrate both fixture polarities before gating an install.
+                        </p>
+                      </dd>
+                    </dl>
+                  </dd>
+                </dl>
+              </li>
+            </ul>
+          </dd>
+          <dt><b>sources</b></dt>
+          <dd>
+            <dl>
+              <dt><b>order</b></dt>
+              <dd>
+                <p>
+                  /Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/Order-Phase-4-Delivery-Lead.txt
+                </p>
+              </dd>
+              <dt><b>oct10</b></dt>
+              <dd>
+                <p>
+                  /Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-10-ryan-comsnet-is-the-original-socket-design-and-absurd-owns-the-message-record.yaml
+                </p>
+              </dd>
+              <dt><b>oct11</b></dt>
+              <dd>
+                <p>
+                  /Users/Admin/core-root/vault/00_Core/Architecture/Intent-Layer/foundation/shape-adapter/corpus/SHAPE-2026-10-11-ryan-messages-are-steps-tasks-or-events-other-paths-retired-and-routed-ryan-carries-his-device.yaml
+                </p>
+              </dd>
+              <dt><b>inventory</b></dt>
+              <dd>
+                <p>
+                  /Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/substrate-design-check/Design-vs-Installed.json
+                </p>
+              </dd>
+              <dt><b>rubric</b></dt>
+              <dd>
+                <p>
+                  /Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/lead-transfer/Process-Vs-Delivery-Rubric-20261011.txt
+                </p>
+              </dd>
+            </dl>
+          </dd>
+          <dt><b>inventory</b></dt>
+          <dd>
+            <dl>
+              <dt><b>source path</b></dt>
+              <dd>
+                <p>
+                  /Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/substrate-design-check/Design-vs-Installed.json
+                </p>
+              </dd>
+              <dt><b>source sha256</b></dt>
+              <dd><p>7875902adf18c4a0432d3815c9ffac89c0199ff456438638e068b0cc4c687ad5</p></dd>
+              <dt><b>row</b></dt>
+              <dd><p>P4</p></dd>
+              <dt><b>paths to retire</b></dt>
+              <dd>
+                <ul>
+                  <li>
+                    <p>
+                      1. The legacy JSON-file relay: apps/server/src/mcp/ComsNetTransport.ts
+                      (imports JsonFileComsNetStore from @ryan/agent-mcp-relay and ReceiverTurnRelay
+                      from throughline/legacyRelay.ts)
+                    </p>
+                  </li>
+                  <li>
+                    <p>
+                      2. apps/server/src/throughline/legacyRelay.ts and the vendored package
+                      @ryan/agent-mcp-relay (apps/server/package.json:
+                      file:vendor/agent-mcp-relay-0.3.0.tgz)
+                    </p>
+                  </li>
+                  <li>
+                    <p>
+                      3. The five ComsNet MCP tools advertised to every seat (comsnet_peers,
+                      comsnet_send, comsnet_result, comsnet_status, comsnet_subscribe;
+                      apps/server/src/mcp/toolkits/comsnet/tools.ts and handlers.ts); comsnet_send
+                      starts the receiver's turn straight in the engine. These tools are in this
+                      seat's own tool list tonight.
+                    </p>
+                  </li>
+                  <li><p>4. The store ~/.t3/userdata/coms-net/requests.json (340 requests)</p></li>
+                  <li>
+                    <p>
+                      5. HTTP POST /api/orchestration/dispatch as an agent door for
+                      thread.turn.start (apps/server/src/orchestration/http.ts handler 'dispatch';
+                      upstream file)
+                    </p>
+                  </li>
+                  <li>
+                    <p>
+                      6. agent-instruments send --thread and its alias throughline-wake --thread
+                      (dist/thread.js posts thread.turn.start to path 5); throughline-wake also has
+                      a legacy socket mode (--via capability-socket)
+                    </p>
+                  </li>
+                  <li>
+                    <p>
+                      7. agent-instruments thread-create (dist/thread.js creates a thread and posts
+                      its first thread.turn.start to path 5)
+                    </p>
+                  </li>
+                  <li>
+                    <p>
+                      8. agent-instruments commands that send through 6 and 7: report-post
+                      (receiver-verified send), dispatch (composes and sends a kickoff); and the
+                      driver daemon's wakes (drive.js, driver.js and healer.js reference the
+                      thread-send functions; INFERRED from a name search, not traced line by line)
+                    </p>
+                  </li>
+                  <li>
+                    <p>
+                      9. agent-instruments send --pane (terminal-pane delivery, a retired surface)
+                    </p>
+                  </li>
+                </ul>
+              </dd>
+              <dt><b>admission only exclusion</b></dt>
+              <dd>
+                <p>
+                  Not agent messaging, found while searching every turn-start caller: answers to a
+                  pending question (decider.ts, async-answer:&lt;request&gt;, 1 in 24 h, no task),
+                  the server's after-compaction reissue (ProviderCommandReactor.ts), and history
+                  import (import-claude-sessions.ts, AgentSessionImporter.ts). They start turns off
+                  the admission point and belong to T3.01, not to the messaging cutover.
+                </p>
+              </dd>
+            </dl>
+          </dd>
+        </dl>
+      </section>
       <section id="instruction-coverage">
         <h2>Current instruction coverage</h2>
         <p>

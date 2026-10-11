@@ -1,6 +1,15 @@
 // The ThroughLine next-generation implementation spec, authored as typed data.
 // Edit this file, run `node build-spec.mts`, never edit spec.json by hand.
 // Every hard decision names the ledger item whose first Ryan-spoken source quote the builder copies byte-true.
+import {
+  MESSAGING_SOURCES,
+  RECORD_RULE,
+  CUTOVER_WINDOW,
+  RETIREMENT_CHECK,
+  COVERAGE_CHECK,
+  DEVICE_IDENTITY,
+  DEVICE_CHECK,
+} from "./messaging-data.mts";
 
 export type Side =
   | "fork-namespace"
@@ -12412,4 +12421,115 @@ export const JEV_COST_ROUTER_DELTA = {
     "Ryan's Oct 10 words travel as D25.post_cutoff_ryan_words; the post-cutoff ledger item is outside the spec folder and not recorded in this pass, so D25 stands on its fable_call as the delta specifies.",
     "S3-C13 and S9-C06 stay planned checks (file_ready false) and are not added to spec.checks.",
   ],
+};
+
+// Current operator sources supersede the Sep-10 CLI-only reading.
+const messagingTask = (id: string) => TASKS.find((t) => t.id === id)!;
+const currentComs = DECISIONS.find((d) => d.id === "D07")!;
+currentComs.title = "Original upstream ComsNet socket delivery; Absurd owns every message record";
+currentComs.statement =
+  "ComsNet is the original upstream HTTP/live-stream socket design, not MCP or an ad hoc agent-built relay. ThroughLine keeps delivery and peer identity; Absurd owns records under D27's step/task/event rule. CLI is a possible client, not the target or Codex's mandated only door. D26-D28 supersede contrary Sep-10 details; merged-code routing awaits the required Fable design pass.";
+delete currentComs.quote_from;
+DECISIONS.push(
+  {
+    id: "D26",
+    title: "Ryan's byte-exact four-part messaging target and cutover release",
+    statement: Object.values(CUTOVER_WINDOW).join(" "),
+    serves: ["NG-028", "NG-017", "NG-003"],
+  },
+  {
+    id: "D27",
+    title: "Three records, Ryan included; retired avenues route onto the one rail",
+    statement:
+      Object.values(RECORD_RULE).join(" ") +
+      " Other paths are retired, not deleted: not advertised or independently usable. Attempts route into ComsNet and Absurd; upstream code is preserved. A Fable design pass on the merged, upstream-reconciled code decides how; this amendment does not invent that design.",
+    serves: ["NG-028", "NG-003"],
+  },
+  {
+    id: "D28",
+    title: "Ryan and each device have identities on the same rails as agents",
+    statement: DEVICE_IDENTITY.rule,
+    serves: ["NG-060", "NG-061", "NG-028"],
+  },
+);
+for (const id of ["T3.01", "T5.01", "T5.02", "T7.01", "T7.02", "T7.03", "T7.04"]) {
+  const t = messagingTask(id);
+  t.governing_shapes = [
+    ...new Set([...(t.governing_shapes ?? []), MESSAGING_SOURCES.oct10, MESSAGING_SOURCES.oct11]),
+  ];
+}
+const identity = messagingTask("T5.01");
+identity.what += " " + DEVICE_IDENTITY.rule;
+identity.device_identity = DEVICE_IDENTITY;
+identity.done_when.expect +=
+  " Ryan's iPhone, Android, Mac and tower each resolve to a distinct durable device identity on the same alias rails; no device identity is shared.";
+const sender = messagingTask("T5.02");
+sender.what += " " + DEVICE_IDENTITY.rule;
+sender.device_identity = DEVICE_IDENTITY;
+sender.planned_checks = [...((sender.planned_checks as any[]) ?? []), DEVICE_CHECK];
+sender.done_when.expect += " " + DEVICE_CHECK.expect;
+messagingTask("T7.01").what +=
+  " D07 now anchors transport/envelope fidelity to the original upstream ComsNet hub, not an invented MCP relay; preserve fixtures for any retained coms.ts client.";
+const rail = messagingTask("T7.03");
+for (const id of ["T3.03", "T5.02", "T7.04"]) {
+  for (const entry of (messagingTask(id).fork_state as any[]) ?? [])
+    if (entry.ref === "30f8e3e388")
+      entry.reason =
+        "Reuse authenticated claims/refusals and sender fixtures behind the authoritative admission/record transaction. D26-D28 replace the earlier CLI-only/MCP-retention guidance: all alternative paths retire by routing; upstream code is preserved pending merged-code Fable design.";
+}
+rail.rollback =
+  "Before cutover, a failed build restores the previous working transport in the old build environment only. After cutover, automatic release rollback restores the previous release; no accepted candidate may retain MCP or an off-rail alternative.";
+rail.what = rail.what.replace(
+  "A message received on the socket",
+  "A reply-expecting request received on the socket",
+);
+rail.what +=
+  " " +
+  Object.values(RECORD_RULE).join(" ") +
+  " Each ComsNet work request uses its request ID as the task idempotency key and its reply as the result. Signal-only no_model notices are events, not missing work-request tasks. The same classification covers Ryan's messages. " +
+  CUTOVER_WINDOW.install_day;
+rail.planned_checks = [...((rail.planned_checks as any[]) ?? []), COVERAGE_CHECK];
+rail.done_when.expect += " " + COVERAGE_CHECK.expect;
+const retire = messagingTask("T7.04");
+retire.title =
+  "Retire alternative messaging at the post-0.0.60 cutover; adapters use only native ComsNet and Absurd";
+retire.what =
+  "Harness clients, including any CLI and Pi extension, use ComsNet's original upstream socket transport and the same admitted record. CLI is optional, not a mandated exclusive harness door; no MCP toolkit or ad hoc relay is advertised. " +
+  Object.values(CUTOVER_WINDOW).join(" ");
+retire.planned_checks = [RETIREMENT_CHECK];
+retire.done_when = {
+  host: "Mac, tower, iPhone and Android; installed release and all active agent runtimes; non-builder",
+  command: RETIREMENT_CHECK.command + " " + COVERAGE_CHECK.command,
+  expect: RETIREMENT_CHECK.expect + " " + COVERAGE_CHECK.expect,
+};
+retire.retained_protection =
+  "Old build-only tools remain only until installed parts 1-3 coverage succeeds; same-window Ship Warden retirement and post-retirement probes precede acceptance. Existing admission/authentication/idempotency/unknown-effect refusals remain; preserve the old JSON store read-only.";
+retire.failure_test = RETIREMENT_CHECK.fixtures.fail;
+retire.failing_check_first =
+  "Run P4 against installed 0.0.60: alternatives remain advertised and usable off-rail, so retirement fails. Calibrate the new executable on its passing/failing fixtures before gating release work.";
+retire.rollback =
+  "Automatic release rollback restores the previous working build/tools only if cutover fails; never accept an alternative live channel. Preserve old record data read-only.";
+for (const entry of (retire.fork_state as any[]) ?? [])
+  entry.reason =
+    "Reuse authenticated claims/refusals and sender fixtures behind admission; D26-D28 supersede CLI-only/MCP-refusal guidance. Legacy adapters retire by routing; upstream code is preserved pending merged-code Fable design.";
+messagingTask("T3.01").what +=
+  " Under D26-D27, retired messaging avenues route to ComsNet/Absurd instead of executing directly; missing/forged authentication still refuses. P4's async answers, server reissues and history imports are admission-only cases, not alternative agent messaging paths.";
+for (const id of ["T1.04", "T13.04"]) {
+  const t = messagingTask(id);
+  t.what +=
+    " Messaging cutover acceptance is D26-D28: " +
+    CUTOVER_WINDOW.before_install +
+    " " +
+    CUTOVER_WINDOW.install_day +
+    " " +
+    CUTOVER_WINDOW.after_coverage;
+  t.done_when.expect += " " + RETIREMENT_CHECK.expect + " " + COVERAGE_CHECK.expect;
+}
+export const MESSAGING_CUTOVER = {
+  decisions: ["D26", "D27", "D28"],
+  record_rule: RECORD_RULE,
+  window: CUTOVER_WINDOW,
+  devices: DEVICE_IDENTITY,
+  checks: [RETIREMENT_CHECK, COVERAGE_CHECK, DEVICE_CHECK],
+  sources: MESSAGING_SOURCES,
 };

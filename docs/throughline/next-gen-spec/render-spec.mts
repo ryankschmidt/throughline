@@ -132,7 +132,7 @@ const decisionCard = (
   d: any,
 ) => `<article class="decision" id="${esc(d.id)}"><div class="dhead"><span class="did">${esc(d.id)}</span><h4>${esc(d.title)}</h4></div>
   <p>${esc(d.statement)}</p>
-  ${d.ryan_quote ? `<blockquote>“${esc(d.ryan_quote.quote)}”<footer>Ryan${d.ryan_quote.created_at ? ", " + esc(pacific(d.ryan_quote.created_at)) : ""} · ledger ${esc(d.ryan_quote.ledger_item)}${d.ryan_quote.thread_id ? " · thread " + esc(String(d.ryan_quote.thread_id).slice(0, 8)) : ""}</footer></blockquote>` : ""}
+  ${d.ryan_quote ? `<blockquote><pre style="white-space:pre-wrap;font:inherit;margin:0">“${esc(d.ryan_quote.quote)}”</pre><footer>Ryan${d.ryan_quote.created_at ? ", " + esc(pacific(d.ryan_quote.created_at)) : ""} · ${d.ryan_quote.source_path ? "source " + esc(d.ryan_quote.source_path) : "ledger " + esc(d.ryan_quote.ledger_item)}${d.ryan_quote.thread_id ? " · thread " + esc(String(d.ryan_quote.thread_id).slice(0, 8)) : ""}</footer></blockquote>` : ""}
   ${d.fable_call ? `<p class="fable"><b>Design call</b> ${esc(d.fable_call)}</p>` : ""}
   ${d.alternative ? `<p class="alt"><b>Alternative</b> ${esc(d.alternative)}</p>` : ""}
   <p class="serves">${(d.serves ?? []).map((x: string) => chip(x, "ng")).join("")}</p></article>`;
@@ -310,6 +310,7 @@ ${
     : ""
 }
 
+${spec.messaging_cutover ? `<section id="messaging-cutover"><h2>Messaging cutover — required, not installed proof</h2><p>Original ComsNet delivery and peer identity; Absurd steps, tasks and events. Retired avenues route onto that rail, not deleted upstream code. Four device identities travel with Ryan’s sender identity.</p>${designDetails(spec.messaging_cutover)}</section>` : ""}
 ${spec.instruction_coverage ? `<section id="instruction-coverage"><h2>Current instruction coverage</h2><p>Phase 4 starts with fresh upstream reconciliation. Target-only jobs and provider tools are installed acceptance obligations, not current runtime claims. Raspberry Pi general rollout is deferred; archive storage and the bounded watcher/responder remain in scope.</p>${designDetails(spec.instruction_coverage)}</section>` : ""}
 ${spec.device_matrix ? `<h2>Device capability matrix — four active targets, Raspberry Pi deferred (K09)</h2><p class="sub">${esc(spec.device_matrix.rule)}</p>${matrixTable(spec.device_matrix)}` : ""}
 
