@@ -447,7 +447,7 @@
       "outcome": "round-2 verdict FAIL on 0.2.0; its findings are disposed as J2 in audit_dispositions"
     }
   },
-  "generated_at": "2026-10-11T15:35:19.988Z",
+  "generated_at": "2026-10-11T17:06:03.762Z",
   "generated_by": {
     "note": "the seat that ran the builder, read from its environment at build time; the design author is authored_by",
     "runtime": "codex",
@@ -497,7 +497,7 @@
   },
   "ledger": {
     "path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/intent/ledger/ThroughLine-Next-Gen-Ledger.json",
-    "sha256": "5dec2bd71114addf5dc6cc327f81ea03b52843ff3d597aa0088dc41b8b65b7ef",
+    "sha256": "326eab2f065d66a8fd7f6a6939dfe39863bf3abf74111db7a01360ea0add10b5",
     "items": 199,
     "rule": "every task names the ledger ids it serves; the ledger is the picture of what is decided, this spec is the campaign; the two never drift because they join by id"
   },
@@ -13057,7 +13057,7 @@
       },
       {
         "id": "NG-016",
-        "title": "One Absurd Postgres on the tower, reachable over the tailnet, is the record for every thread",
+        "title": "Each thread has one authoritative home, the tower by default",
         "status": "decided",
         "kind": "implemented",
         "by": ["D04", "K05", "T4.01", "T4.02", "T4.03", "T4.06", "slice-4"],
@@ -13307,7 +13307,7 @@
       },
       {
         "id": "NG-041",
-        "title": "Model preferences: Opus 5.5 at high or extra high leads, Sol at high and Opus at medium implement, Astra reviews",
+        "title": "GPT-6.1 Sol High and Claude Opus 5.5 Medium are the workhorses",
         "status": "decided",
         "kind": "implemented",
         "by": ["D10", "K15", "T11.03", "slice-11"],
@@ -13518,7 +13518,7 @@
       {
         "id": "NG-062",
         "title": "One Linux account per agent, created with it and removed after",
-        "status": "decided",
+        "status": "explore",
         "kind": "implemented",
         "by": ["D06", "K04", "K15", "T6.02", "slice-6"],
         "note": "named by serves",
@@ -14924,8 +14924,8 @@
       },
       {
         "id": "NG-196",
-        "title": "Compaction comes back on after the install, controlled by a mod",
-        "status": "decided",
+        "title": "Whether compaction should return after installation remains an open question",
+        "status": "explore",
         "kind": "implemented",
         "by": ["D09", "K06", "K15", "T8.02", "T8.04", "slice-8"],
         "note": "named by serves",
