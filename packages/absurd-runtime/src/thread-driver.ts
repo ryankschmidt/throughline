@@ -111,15 +111,22 @@ export type ThreadRunResult =
       summary: string;
     };
 
+export interface StepIdentity {
+  readonly taskId: string;
+  readonly step: string;
+}
+
 export interface ThreadTransport {
   resolveThread(
     params: Pick<ThreadRunParams, "threadId" | "projectPath" | "model">,
+    stepIdentity?: StepIdentity,
   ): Promise<{ threadId: string; created: boolean }>;
   dispatchTurn(
     threadId: string,
     prompt: string,
     turnCommand?: Record<string, unknown>,
     trustedSenderContext?: ThreadRunSenderContext,
+    stepIdentity?: StepIdentity,
   ): Promise<{ turnId: string; dispatchedAt: string }>;
   awaitTurnComplete(
     threadId: string,
@@ -168,7 +175,7 @@ export function registerThreadRunTask(app: Absurd, transport: ThreadTransport): 
         await Effect.runPromise(
           Effect.logInfo(`[thread-run ${ctx.taskID}] EXECUTING resolve-thread`),
         );
-        return transport.resolveThread(params);
+        return transport.resolveThread(params, { taskId: ctx.taskID, step: "resolve-thread" });
       });
 
       const turn = await ctx.step("dispatch-turn", async () => {
@@ -182,6 +189,7 @@ export function registerThreadRunTask(app: Absurd, transport: ThreadTransport): 
           params.prompt,
           params.turnCommand,
           params.trustedSenderContext,
+          { taskId: ctx.taskID, step: "dispatch-turn" },
         );
       });
 

@@ -1,7 +1,7 @@
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
-import * as SqlClient from "effect/unstable/sql/SqlClient";
+import * as SqlClient from "effect/sql/SqlClient";
 import { bindIdentityAlias, type NativeKind } from "./identity-alias.ts";
 
 export type AuthenticatedSender = {
@@ -130,4 +130,52 @@ export const stampMessageSender = Effect.fn("identity.stampMessageSender")(funct
         });
     }),
   );
+});
+
+/** V2 owns messages; authenticated fork metadata is an immutable side row. */
+export const stampV2MessageSender = Effect.fn("identity.stampV2MessageSender")(function* (
+  messageId: string,
+  sender: AuthenticatedSender,
+) {
+  const sql = yield* SqlClient.SqlClient;
+  return yield* sql.withTransaction(
+    Effect.gen(function* () {
+      yield* bindIdentityAlias({
+        publicAgentId: sender.publicAgentId,
+        nativeKind: sender.nativeKind,
+        nativeId: sender.nativeId,
+      });
+      const messages =
+        yield* sql`SELECT message_id FROM orchestration_v2_projection_messages WHERE message_id = ${messageId}`;
+      if (messages.length !== 1)
+        return yield* new SenderIdentityMismatch({
+          message: "V2 message absent; sender stamp refused.",
+        });
+      const prior = yield* sql<{ sender_public_id: string; sender_generation: string }>`
+      SELECT sender_public_id,sender_generation FROM throughline_message_sender WHERE message_id = ${messageId}
+    `;
+      if (
+        prior.length > 0 &&
+        (prior[0]!.sender_public_id !== sender.publicAgentId ||
+          prior[0]!.sender_generation !== sender.generation)
+      ) {
+        return yield* new SenderIdentityMismatch({
+          message: "Stored V2 sender generation mismatch.",
+        });
+      }
+      yield* sql`INSERT OR IGNORE INTO throughline_message_sender (message_id,sender_public_id,sender_generation)
+      VALUES (${messageId},${sender.publicAgentId},${sender.generation})`;
+    }),
+  );
+});
+
+export const readV2MessageSender = Effect.fn("identity.readV2MessageSender")(function* (
+  messageId: string,
+) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{ senderPublicId: string; senderGeneration: string }>`
+    SELECT sender_public_id AS "senderPublicId", sender_generation AS "senderGeneration"
+    FROM throughline_message_sender WHERE message_id = ${messageId}
+  `;
+  return rows[0];
 });

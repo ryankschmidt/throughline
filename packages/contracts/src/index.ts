@@ -3,11 +3,13 @@ export * from "./assistantCitations.ts";
 export * from "./composerContext.ts";
 export * from "./composerContextClipboard.ts";
 export * from "./background.ts";
+export * from "./acpRegistry.ts";
 export * from "./auth.ts";
 export * from "./environment.ts";
 export * from "./environmentHttp.ts";
 export * from "./relayClient.ts";
 export * from "./desktopBootstrap.ts";
+export * from "./desktopBrowser.ts";
 export * from "./desktopAppActivation.ts";
 export * from "./remoteAccess.ts";
 export * from "./ipc.ts";
@@ -18,6 +20,10 @@ export * from "./providerSetup.ts";
 export * from "./providerRuntime.ts";
 export * from "./providerUsageLimits.ts";
 export * from "./usageLimitSourceId.ts";
+export * from "./providerPolicy.ts";
+export * from "./modelSelection.ts";
+export * from "./chatAttachment.ts";
+export * from "./checkpointDiff.ts";
 export * from "./model.ts";
 export * from "./modelOffering.ts";
 export * from "./releaseIdentity.ts";
@@ -29,11 +35,17 @@ export * from "./vcs.ts";
 export * from "./sourceControl.ts";
 export * from "./projectClone.ts";
 export * from "./pullRequest.ts";
-export * from "./orchestration.ts";
-// ThroughLine: fork-owned contract module. symphony.ts is a fork addition (agent orchestration
-// over the WS RPC surface); upstream's barrel does not export it.
+export * from "./orchestrationDispatch.ts";
+export * from "./orchestrationProject.ts";
+export * from "./orchestrationV2.ts";
+export * from "./applicationEvent.ts";
+export * from "./orchestratorMcp.ts";
+export * from "./threadMetadataMcp.ts";
+export * from "./threadPullRequest.ts";
+export * from "./threadSearch.ts";
+export * from "./threadTitle.ts";
 export * from "./symphony.ts";
-export * from "./throughline/operatorProfile.ts"; // ThroughLine: operator profile declaration
+export * from "./throughline/operatorProfile.ts";
 export * from "./t3ProjectFile.ts";
 export * from "./editor.ts";
 export * from "./project.ts";
@@ -41,6 +53,7 @@ export * from "./filesystem.ts";
 export * from "./agentSessions.ts";
 export * from "./assets.ts";
 export * from "./review.ts";
+export * from "./mcpApps.ts";
 export * from "./browserImport.ts";
 export * from "./browserProfile.ts";
 export * from "./device.ts";
@@ -48,5 +61,32 @@ export * from "./preview.ts";
 export * from "./previewAutomation.ts";
 export * from "./resourceTelemetry.ts";
 export * from "./usage.ts";
+export * from "./scheduledTask.ts";
+export * from "./worktreeMcp.ts";
+export * from "./resourceTelemetry.ts";
 export * from "./rpc.ts";
 export * from "./worktreeSetup.ts";
+export * from "./secretRequest.ts";
+export * from "./clientRpcPermissions.ts";
+
+export {
+  DEFAULT_MODEL,
+  isCurrentCodexModel,
+  isAllowedProviderModel,
+  CATALOGUE_SOURCE_DRIVER_KINDS,
+  CATALOGUE_MIRROR_DRIVER_KINDS,
+  modelIdentity,
+  isCatalogueSourceDriver,
+  isCatalogueMirrorDriver,
+  buildCatalogueParity,
+  isOfferedProviderModel,
+  normalizeModelIdentityForComparison,
+  compareSelectedAndAnsweringModel,
+  PREFERRED_DEFAULT_CODEX_MODELS,
+  DEFAULT_MODEL_BY_PROVIDER,
+  isProductDefaultModel,
+  DEFAULT_REASONING_EFFORT_BY_PROVIDER,
+  defaultReasoningEffortForDriver,
+  MODEL_SLUG_ALIASES_BY_PROVIDER,
+} from "./throughline/modelPolicy.ts";
+export type { CatalogueProviderLike, ModelAnswerVerdict } from "./throughline/modelPolicy.ts";

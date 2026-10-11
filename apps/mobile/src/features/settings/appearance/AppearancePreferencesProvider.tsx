@@ -15,7 +15,7 @@ import { AppState, Appearance, Platform, useColorScheme } from "react-native";
 import type { EnvironmentTheme } from "@t3tools/contracts";
 
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
-import { AsyncResult } from "effect/unstable/reactivity";
+import { AsyncResult } from "effect/reactivity";
 
 import { ScopedTheme, ScopedVariables, Uniwind } from "uniwind";
 

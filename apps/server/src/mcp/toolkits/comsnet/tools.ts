@@ -1,16 +1,21 @@
+import { OrchestratorMcpFailure } from "@t3tools/contracts";
+import * as FileSystem from "effect/FileSystem";
+import * as ServerConfig from "../../../config.ts";
 import * as Schema from "effect/Schema";
-import { Tool, Toolkit } from "effect/unstable/ai";
+import { Tool, Toolkit } from "effect/ai";
 
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as ComsNetTransport from "../../ComsNetTransport.ts";
-import { OrchestrationEngineService } from "../../../orchestration/Services/OrchestrationEngine.ts";
-import { ProjectionSnapshotQuery } from "../../../orchestration/Services/ProjectionSnapshotQuery.ts";
+import { ThreadManagementService } from "../../../orchestration-v2/ThreadManagementService.ts";
+import { ThreadLaunchService } from "../../../orchestration-v2/ThreadLaunchService.ts";
 
 const dependencies = [
   McpInvocationContext.McpInvocationContext,
   ComsNetTransport.ComsNetTransport,
-  OrchestrationEngineService,
-  ProjectionSnapshotQuery,
+  ThreadManagementService,
+  ThreadLaunchService,
+  FileSystem.FileSystem,
+  ServerConfig.ServerConfig,
 ];
 
 const RequestIdInput = Schema.Struct({ requestId: Schema.String });
@@ -32,7 +37,7 @@ const SendInput = Schema.Struct({
 export class ComsNetToolError extends Schema.TaggedError<ComsNetToolError>()("ComsNetToolError", {
   message: Schema.String,
 }) {}
-const Failure = ComsNetToolError;
+const Failure = Schema.Union([ComsNetToolError, OrchestratorMcpFailure]);
 const Success = Schema.Struct({
   requestId: Schema.String,
   senderPeerId: Schema.String,

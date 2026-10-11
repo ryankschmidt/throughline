@@ -22,7 +22,11 @@ class LauncherFamilyReadMismatch extends Schema.TaggedError<LauncherFamilyReadMi
 export function createLauncherFamilyQuery<E>(
   read: (input: {
     readonly threadId: ThreadId;
-  }) => Effect.Effect<LauncherFamilyViewInput, E, EnvironmentRegistry | EnvironmentSupervisor>,
+  }) => Effect.Effect<
+    LauncherFamilyViewInput,
+    E,
+    EnvironmentRegistry.EnvironmentRegistry | EnvironmentSupervisor.EnvironmentSupervisor
+  >,
 ) {
   return createEnvironmentQueryAtomFamily(connectionAtomRuntime, {
     label: "throughline:launcher-family",

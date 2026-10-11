@@ -3,7 +3,7 @@ import {
   ProjectId,
   ProviderInstanceId,
   ThreadId,
-  type OrchestrationShellSnapshot,
+  type OrchestrationV2ShellSnapshot,
 } from "@t3tools/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
@@ -11,11 +11,13 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
 import { ServerConfig } from "../config.ts";
-import {
-  ProjectionSnapshotQuery,
-  type ProjectionSnapshotQueryShape,
-} from "../orchestration/Services/ProjectionSnapshotQuery.ts";
-import * as McpProviderSession from "./McpProviderSession.ts";
+import * as Threads from "../orchestration-v2/ThreadManagementService.ts";
+import * as Projects from "../orchestration-v2/ProjectStore.ts";
+import * as Instances from "../provider/ProviderInstanceRegistry.ts";
+import type { ProviderInstance } from "@t3tools/provider-core/server/driver";
+import * as McpProviderSession from "@t3tools/provider-core/server/McpProviderSessions";
+import * as Sqlite from "../persistence/Sqlite.ts";
+import * as SqlClient from "effect/sql/SqlClient";
 import { ComsNetTransport, layer as ComsNetTransportLive } from "./ComsNetTransport.ts";
 
 const providerInstanceId = ProviderInstanceId.make("codex-instance");
@@ -58,14 +60,35 @@ const snapshot = {
       },
     },
   ],
-} as unknown as OrchestrationShellSnapshot;
-
-const snapshotQuery = {
-  getShellSnapshot: () => Effect.succeed(snapshot),
-} as unknown as ProjectionSnapshotQueryShape;
+} as unknown as OrchestrationV2ShellSnapshot;
 
 const TestLayer = ComsNetTransportLive.pipe(
-  Layer.provideMerge(Layer.succeed(ProjectionSnapshotQuery, snapshotQuery)),
+  Layer.provideMerge(
+    Layer.mergeAll(
+      Layer.mock(Threads.ThreadManagementService)({
+        getShellSnapshot: () => Effect.succeed(snapshot),
+      }),
+      Layer.mock(Projects.ProjectStoreV2)({
+        listShells: () =>
+          Effect.succeed([
+            {
+              id: ProjectId.make("project-a"),
+              title: "Project A",
+              workspaceRoot: "/workspace/project-a",
+              defaultModelSelection: null,
+              scripts: [],
+              createdAt: "2026-10-11T00:00:00Z",
+              updatedAt: "2026-10-11T00:00:00Z",
+            },
+          ]),
+      }),
+      Layer.mock(Instances.ProviderInstanceRegistry)({
+        getInstance: () => Effect.succeed({ driverKind: "codex" } as ProviderInstance),
+      }),
+      McpProviderSession.layer,
+      Sqlite.layerMemory,
+    ),
+  ),
   Layer.provideMerge(
     ServerConfig.layerTest(process.cwd(), { prefix: "t3-comsnet-live-peer-test-" }),
   ),
@@ -77,8 +100,11 @@ it.layer(TestLayer)("ComsNetTransport real provider lifecycle join", (it) => {
     "uses active server-issued MCP sessions for roster identity and caller resolution",
     () =>
       Effect.acquireUseRelease(
-        Effect.sync(() => {
-          McpProviderSession.setMcpProviderSession({
+        Effect.gen(function* () {
+          const sql = yield* SqlClient.SqlClient;
+          yield* sql`INSERT INTO throughline_thread_identity (thread_id,provider_thread_id,provider_session_id,native_transcript_path) VALUES ('thread-b','provider-thread-b','native-codex-thread-b','/native/codex-thread-b.jsonl')`;
+          const sessions = yield* McpProviderSession.McpProviderSessions;
+          yield* sessions.set({
             environmentId: EnvironmentId.make("environment-a"),
             threadId: threadA,
             providerSessionId: "mcp-session-a",
@@ -86,8 +112,9 @@ it.layer(TestLayer)("ComsNetTransport real provider lifecycle join", (it) => {
             endpoint: "http://127.0.0.1:3773/mcp",
             authorizationHeader: "Bearer token-a",
             capabilities: new Set(["comsnet"]),
+            browserToolsAvailable: false,
           });
-          McpProviderSession.setMcpProviderSession({
+          yield* sessions.set({
             environmentId: EnvironmentId.make("environment-a"),
             threadId: threadB,
             providerSessionId: "mcp-session-b",
@@ -95,6 +122,7 @@ it.layer(TestLayer)("ComsNetTransport real provider lifecycle join", (it) => {
             endpoint: "http://127.0.0.1:3773/mcp",
             authorizationHeader: "Bearer token-b",
             capabilities: new Set(["comsnet"]),
+            browserToolsAvailable: false,
           });
         }),
         () =>
@@ -128,9 +156,13 @@ it.layer(TestLayer)("ComsNetTransport real provider lifecycle join", (it) => {
             const requests = yield* transport.subscribe(
               {
                 environmentId: EnvironmentId.make("environment-a"),
-                threadId: threadA,
-                providerSessionId: "mcp-session-a",
-                providerInstanceId,
+                thread: {
+                  threadId: threadA,
+                  providerSessionId: "mcp-session-a",
+                  providerInstanceId,
+                },
+                requestNamespace: "test-comsnet",
+                client: undefined,
                 capabilities: new Set(["comsnet"]),
                 issuedAt: 0,
               },
@@ -138,7 +170,12 @@ it.layer(TestLayer)("ComsNetTransport real provider lifecycle join", (it) => {
             );
             assert.deepEqual(requests, []);
           }),
-        () => Effect.sync(() => McpProviderSession.clearAllMcpProviderSessions()),
+        () =>
+          Effect.gen(function* () {
+            const sessions = yield* McpProviderSession.McpProviderSessions;
+            yield* sessions.clear(threadA);
+            yield* sessions.clear(threadB);
+          }),
       ),
   );
 });

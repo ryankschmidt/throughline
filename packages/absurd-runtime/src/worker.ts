@@ -10,7 +10,7 @@
  * it). The caller owns process lifecycle; `startWorker` polls forever, so it is
  * NOT awaited here (matches absurd-sandbox/src/demo.ts).
  */
-import { Absurd } from "absurd-sdk";
+import { Absurd, type AbsurdOptions } from "absurd-sdk";
 import { registerAgentFanoutTask, startAgentQueueWorker } from "./agent-queue.ts";
 import { startSymphonyQueueWorker, type SymphonyQueueWorkerHandle } from "./symphony-queue.ts";
 import { registerHealthProbeTask } from "./task.ts";
@@ -18,6 +18,8 @@ import { registerThreadRunTask, type ThreadTransport } from "./thread-driver.ts"
 import { startSupervisedWorker } from "./worker-supervisor.ts";
 
 export type StartAbsurdRuntimeOptions = {
+  /** Explicit connection for all three apps; absent keeps SDK environment defaults. */
+  db?: AbsurdOptions["db"];
   /** Queue name to bind the app and worker to. Defaults to "default". */
   queueName?: string;
   /** Worker concurrency. Defaults to 1. */
@@ -42,6 +44,8 @@ export type StartAbsurdRuntimeOptions = {
 };
 
 export type AbsurdRuntimeHandle = {
+  /** All three initial queues prepared and actual worker handles acquired. */
+  readonly ready: Promise<void>;
   /** The constructed Absurd app (spawn/await/close against this). */
   app: Absurd;
   /** The queue this runtime is bound to. */
@@ -98,7 +102,8 @@ export function startAbsurdRuntime(options: StartAbsurdRuntimeOptions): AbsurdRu
   // getter — never capture the app object across turns.
   const supervisor = startSupervisedWorker({
     label: `absurd-runtime:${queueName}`,
-    createApp: () => new Absurd({ queueName }),
+    createApp: () =>
+      new Absurd({ queueName, ...(options.db === undefined ? {} : { db: options.db }) }),
     registerTasks: (app) => {
       registerHealthProbeTask(app);
       registerThreadRunTask(app, transport);
@@ -114,6 +119,7 @@ export function startAbsurdRuntime(options: StartAbsurdRuntimeOptions): AbsurdRu
   // Dedicated fan-out worker (backpressure bound lives on its concurrency).
   const agentQueue = startAgentQueueWorker({
     concurrency: options.agentQueueConcurrency ?? 4,
+    ...(options.db === undefined ? {} : { db: options.db }),
   });
 
   // Dedicated symphony-campaign worker (Slice 1S D3): same transport as the
@@ -128,9 +134,18 @@ export function startAbsurdRuntime(options: StartAbsurdRuntimeOptions): AbsurdRu
       ? { concurrency: options.symphonyQueueConcurrency }
       : {}),
     transport,
+    ...(options.db === undefined ? {} : { db: options.db }),
   });
 
+  const ready = Promise.all([supervisor.ready, agentQueue.ready, symphonyQueue.ready]).then(
+    () => undefined,
+  );
+  // Existing fire-and-forget callers have an observer; the original promise
+  // still rejects when an explicit consumer awaits it.
+  void ready.catch(() => undefined);
+
   return {
+    ready,
     get app() {
       return supervisor.app;
     },

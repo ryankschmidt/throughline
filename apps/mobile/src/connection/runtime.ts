@@ -1,34 +1,36 @@
 import { Connection } from "@t3tools/client-runtime/connection";
-import { ClientPresentation } from "@t3tools/client-runtime/platform";
+import { ClientCapabilities } from "@t3tools/client-runtime/platform";
 import { clientHelloFromMetadata } from "@t3tools/client-runtime/rpc";
-import { shellSnapshotLoaderLayer } from "@t3tools/client-runtime/state/shell";
-import { threadSnapshotLoaderLayer } from "@t3tools/client-runtime/state/threads";
-import * as Layer from "effect/Layer";
 import * as Effect from "effect/Effect";
 import Constants from "expo-constants";
-import { Atom } from "effect/unstable/reactivity";
+import { ShellSnapshotLoader } from "@t3tools/client-runtime/state/shell";
+import {
+  BoundedThreadSnapshotLoader,
+  ThreadHistoryController,
+} from "@t3tools/client-runtime/state/threads";
+import * as Layer from "effect/Layer";
+import { Atom } from "effect/reactivity";
 
 import type { FoundationHotModule } from "../lib/foundation-fast-refresh";
 import { hotSwappableAtomRuntime } from "../lib/hot-swappable-atom-runtime";
-import { runtimeContextLayer } from "../lib/runtime";
+import * as Runtime from "../lib/runtime";
 import { appAtomRegistry } from "../state/atom-registry";
-import {
-  mobileBackgroundActivityObserverLayer,
-  mobileBackgroundActivityReporterLayer,
-} from "./background-activity";
-import { connectionPlatformLayer } from "./platform";
+import * as BackgroundActivity from "./background-activity";
+import * as ConnectionPlatform from "./platform";
 
 declare const module: { readonly hot?: FoundationHotModule } | undefined;
 
-const providedConnectionPlatformLayer = connectionPlatformLayer.pipe(
-  Layer.provide(runtimeContextLayer),
-);
+const layerProvidedConnectionPlatform = ConnectionPlatform.layer.pipe(Layer.provide(Runtime.layer));
 
-const snapshotLoaderLayer = Layer.merge(threadSnapshotLoaderLayer, shellSnapshotLoaderLayer);
+const layerSnapshotLoader = Layer.mergeAll(
+  BoundedThreadSnapshotLoader.layer,
+  ShellSnapshotLoader.layer,
+  ThreadHistoryController.layer,
+);
 
 const negotiatedConnectionLayer = Layer.unwrap(
   Effect.gen(function* () {
-    const { metadata } = yield* ClientPresentation;
+    const { metadata } = yield* ClientCapabilities.ClientPresentation;
     const hello = clientHelloFromMetadata(
       {
         release: Constants.expoConfig?.version,
@@ -51,25 +53,25 @@ const negotiatedConnectionLayer = Layer.unwrap(
 
 type ConnectionLayerSource =
   | typeof Connection.layer
-  | typeof snapshotLoaderLayer
-  | typeof runtimeContextLayer
-  | typeof connectionPlatformLayer
-  | typeof mobileBackgroundActivityObserverLayer
-  | typeof mobileBackgroundActivityReporterLayer;
+  | typeof layerSnapshotLoader
+  | typeof Runtime.layer
+  | typeof ConnectionPlatform.layer
+  | typeof BackgroundActivity.layerObserver
+  | typeof BackgroundActivity.layerReporter;
 
-const providedClientConnectionLayer = snapshotLoaderLayer.pipe(
+const layerProvidedClientConnection = layerSnapshotLoader.pipe(
   Layer.provideMerge(negotiatedConnectionLayer),
   Layer.provideMerge(
     Layer.mergeAll(
-      runtimeContextLayer,
-      providedConnectionPlatformLayer,
-      mobileBackgroundActivityObserverLayer,
+      Runtime.layer,
+      layerProvidedConnectionPlatform,
+      BackgroundActivity.layerObserver,
     ),
   ),
 );
 
-const connectionLayer = mobileBackgroundActivityReporterLayer.pipe(
-  Layer.provideMerge(providedClientConnectionLayer),
+const layerConnection = BackgroundActivity.layerReporter.pipe(
+  Layer.provideMerge(layerProvidedClientConnection),
 );
 
 export const connectionAtomRuntime: Atom.AtomRuntime<
@@ -79,5 +81,5 @@ export const connectionAtomRuntime: Atom.AtomRuntime<
   id: "t3.mobile.connection-runtime",
   hotModule: typeof module === "undefined" ? undefined : module.hot,
   registry: appAtomRegistry,
-  layer: connectionLayer,
+  layer: layerConnection,
 });

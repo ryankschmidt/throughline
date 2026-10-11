@@ -24,7 +24,7 @@ export const MOBILE_THEME_IDS = [...SHARED_MOBILE_THEME_IDS, "material-you"] as 
 // could not be stored as a selection at all.
 export type MobileThemeId = SharedMobileThemeId | "material-you" | (string & {});
 /** Ids this build ships itself, as opposed to one an environment published. */
-export function isBundledMobileThemeId(value: string): boolean {
+export function isBundledMobileThemeId(value: string): value is (typeof MOBILE_THEME_IDS)[number] {
   return (MOBILE_THEME_IDS as readonly string[]).includes(value);
 }
 export type MobileThemeAppearance = ThemeAppearance;
@@ -139,7 +139,7 @@ export function themeColorToNativeColor(value: string): string {
     : `#${[red, green, blue].map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
 }
 
-function nativeColors(colors: ThemeColors): ThemeColors {
+export function nativeColors(colors: ThemeColors): ThemeColors {
   return Object.fromEntries(
     Object.entries(colors).map(([role, color]) => [role, themeColorToNativeColor(color)]),
   ) as ThemeColors;

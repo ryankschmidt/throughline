@@ -86,8 +86,6 @@ export class DesktopEnvironment extends Context.Service<
     readonly linuxWmClass: string;
     readonly linuxApplicationsDir: string;
     readonly appImagePath: Option.Option<string>;
-    readonly userDataDirName: string;
-    readonly legacyUserDataDirName: string;
     readonly defaultDesktopSettings: DesktopAppSettings.DesktopSettings;
     readonly runtimeInfo: DesktopRuntimeInfo;
     readonly resolvePickFolderDefaultPath: (rawOptions: unknown) => Option.Option<string>;
@@ -190,14 +188,6 @@ const make = Effect.fn("desktop.environment.make")(function* (
     joinPath: path.join,
     t3Home: config.t3Home,
   });
-  // ThroughLine: own Electron userData identity. Sharing upstream's "t3code" dir made the
-  // single-instance lock (keyed on the userData path) collide with an installed upstream
-  // Nightly — launching ThroughLine quit immediately and focused the other app. Server-side
-  // data in ~/.t3 is unaffected; only renderer-local state re-homes. The legacy name is
-  // deliberately inert (never shipped) so the adopt-in-place migration below cannot grab
-  // the shared upstream dir.
-  const userDataDirName = isDevelopment ? "throughline-dev" : "throughline";
-  const legacyUserDataDirName = isDevelopment ? "ThroughLine (Dev)" : "ThroughLine (Alpha)";
   const linuxApplicationsDir = path.join(
     Option.getOrElse(config.xdgDataHome, () => path.join(homeDirectory, ".local", "share")),
     "applications",
@@ -254,8 +244,6 @@ const make = Effect.fn("desktop.environment.make")(function* (
     linuxWmClass: isDevelopment ? "t3code-dev" : "t3code",
     linuxApplicationsDir,
     appImagePath: config.appImagePath,
-    userDataDirName,
-    legacyUserDataDirName,
     defaultDesktopSettings: DesktopAppSettings.resolveDefaultDesktopSettings(input.appVersion),
     runtimeInfo: resolveDesktopRuntimeInfo({
       platform: input.platform,

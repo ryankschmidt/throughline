@@ -5,7 +5,12 @@ import { useState } from "react";
 import { Modal, Pressable, ScrollView, View } from "react-native";
 import { AppText } from "../../../components/AppText";
 import { useEnvironmentThread } from "../../../state/threads";
-import { copyThreadValue, threadCopyItems, type ThreadCopyField } from "./threadCopy";
+import {
+  copyThreadValue,
+  threadCopyItems,
+  threadCopyIdentityFromV2,
+  type ThreadCopyField,
+} from "./threadCopy";
 import { LauncherFamilyDetails } from "./LauncherFamilyDetails";
 import type { ScopedLauncherFamily } from "./launcherFamily";
 
@@ -35,13 +40,7 @@ export function ThreadCopySheet(props: {
   const thread = Option.getOrNull(state.data);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const identity = thread
-    ? {
-        environmentId: props.environmentId,
-        threadId: thread.id,
-        session: thread.session,
-      }
-    : null;
+  const identity = thread ? threadCopyIdentityFromV2(props.environmentId, thread) : null;
   const items = threadCopyItems(
     identity ?? { environmentId: props.environmentId, threadId: props.threadId, session: null },
   );

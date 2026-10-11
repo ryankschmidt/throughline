@@ -2,11 +2,12 @@
 import * as React from "react";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { AsyncResult } from "effect/unstable/reactivity";
+import { AsyncResult } from "effect/reactivity";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   preference: null as unknown,
+  global: null as unknown,
   record: vi.fn(),
   stop: vi.fn(async () => undefined),
   transcribe: vi.fn(async () => "um\nraw words"),
@@ -50,13 +51,51 @@ vi.mock("../../native/voiceTranscription", () => ({
     prepare: async () => ({ locale: "en-US", transcribe: mocks.transcribe }),
   }),
 }));
+vi.mock("./VoiceInputProvider", () => ({ useGlobalVoiceInput: () => mocks.global }));
+import { VoiceInputSession } from "./voiceInputSession";
+import { voiceInputBlocksSubmission } from "@t3tools/client-runtime/voice-input";
 import { useVoiceInputController } from "./useVoiceInputController";
+let session: VoiceInputSession;
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let renderer: Root;
 let container: HTMLDivElement;
 beforeEach(() => {
   vi.clearAllMocks();
+  session = new VoiceInputSession({
+    recorder: {
+      uri: "file:///voice.m4a",
+      prepareToRecordAsync: async () => {},
+      record: mocks.record,
+      stop: mocks.stop,
+    },
+    getTranscriber: () => ({
+      prepare: async () => ({ locale: "en-US", transcribe: mocks.transcribe }),
+    }),
+    requestPermission: async () => ({ granted: true, canAskAgain: true }),
+    configureRecording: async () => {},
+    releaseRecording: async () => {},
+    deleteRecording: () => {},
+    onStateChange: () => {},
+  });
+  mocks.global = {
+    session,
+    setOwnerFocused: () => {},
+    stop: () => session.controller.stop(),
+    cancel: () => session.cancel(session.ownerKey),
+    get state() {
+      return session.controller.currentState;
+    },
+    get ownerKey() {
+      return session.ownerKey;
+    },
+    get isBusy() {
+      return voiceInputBlocksSubmission(session.controller.currentState);
+    },
+    isAvailable: true,
+    audioLevels: { value: [] },
+    elapsedSeconds: 0,
+  };
   mocks.preference = AsyncResult.success({ voiceOptimizationProvider: "claude" });
   vi.spyOn(globalThis, "fetch").mockResolvedValue(
     new Response(JSON.stringify({ optimized: "Clear text." })),
@@ -65,6 +104,7 @@ beforeEach(() => {
 afterEach(async () => {
   if (renderer) await act(async () => renderer.unmount());
   container?.remove();
+  session?.controller.dispose();
   vi.restoreAllMocks();
 });
 
@@ -73,6 +113,7 @@ async function harness() {
   let setDraft!: React.Dispatch<React.SetStateAction<string>>;
   let setOwner!: React.Dispatch<React.SetStateAction<string>>;
   let draftValue = "";
+  const listeners = new Set<() => void>();
   function Harness() {
     const [draft, updateDraft] = React.useState("");
     const [owner, updateOwner] = React.useState("phone:thread");
@@ -82,9 +123,20 @@ async function harness() {
     draftValue = draft;
     api = useVoiceInputController({
       ownerKey: owner,
-      draftMessage: draft,
+      label: "Test composer",
+      readDraftMessage: () => draftValue,
+      subscribeToDraftChanges: (listener) => {
+        listeners.add(listener);
+        return () => {
+          listeners.delete(listener);
+        };
+      },
       selection,
-      onChangeDraftMessage: updateDraft,
+      onChangeDraftMessage: (text) => {
+        draftValue = text;
+        for (const listener of [...listeners]) listener();
+        updateDraft(text);
+      },
       onChangeSelection: updateSelection,
     });
     return null;
@@ -113,7 +165,12 @@ async function harness() {
     read: () => api,
     draft: () => draftValue,
     dictate,
-    type: async (text: string) => act(async () => setDraft(text)),
+    type: async (text: string) =>
+      act(async () => {
+        draftValue = text;
+        for (const listener of [...listeners]) listener();
+        setDraft(text);
+      }),
     owner: async (owner: string) => act(async () => setOwner(owner)),
   };
 }

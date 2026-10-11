@@ -10,6 +10,7 @@ import * as Ref from "effect/Ref";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
+import * as HttpClient from "effect/http/HttpClient";
 
 import * as Driver from "./driver.ts";
 import * as Resolver from "./resolver.ts";
@@ -111,7 +112,16 @@ const makeHarness = Effect.fnUntraced(function* (
   const layer = Driver.layer.pipe(
     Layer.provide(
       Layer.mergeAll(
-        Layer.succeed(Resolver.ConnectionResolver, { prepare: () => Effect.succeed(prepared) }),
+        Layer.succeed(Resolver.ConnectionResolver, {
+          prepare: () => Effect.succeed(prepared),
+          prepareForUpdate: () => Effect.die("Updates are not used by this idle-renewal fixture"),
+        }),
+        Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make(() =>
+            Effect.die("Unexpected HTTP request in scoped idle-renewal fixture"),
+          ),
+        ),
         Layer.succeed(RpcSession.RpcSessionFactory, { connect: () => Effect.succeed(rpc) }),
         Layer.succeed(Authorization.RemoteEnvironmentAuthorization, remote),
         Layer.succeed(Capabilities.CloudSession, {

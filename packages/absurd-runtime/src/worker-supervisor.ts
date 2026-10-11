@@ -70,6 +70,8 @@ export type WorkerSupervisorOptions<A extends SupervisableApp> = {
 export type SupervisedWorkerHandle<A extends SupervisableApp> = {
   /** LIVE getter onto the current generation's app — read at use time. */
   readonly app: A;
+  /** First generation: queue prepared and worker handle acquired; failure rejects. */
+  readonly ready: Promise<void>;
   /** 1-based generation counter (increments per recreation). */
   generation(): number;
   /** Stop supervision and close the current generation. */
@@ -117,6 +119,8 @@ export function startSupervisedWorker<A extends SupervisableApp>(
   let recreating = false;
   let streak = 0;
   let lastInfraErrorAt = 0;
+  let currentWorker: { close(): Promise<void> } | undefined;
+  let pendingStart: Promise<void> | undefined;
 
   const onWorkerError = (error: Error): void => {
     log(`[${options.label}] worker error (generation ${generation}): ${error.message}`);
@@ -135,12 +139,39 @@ export function startSupervisedWorker<A extends SupervisableApp>(
   };
 
   const startGeneration = async (): Promise<void> => {
-    if (options.prepareQueue) await options.prepareQueue(currentApp);
-    await currentApp.startWorker({ concurrency: options.concurrency, onError: onWorkerError });
+    const app = currentApp;
+    if (options.prepareQueue) await options.prepareQueue(app);
+    // Queue creation may finish after the owning scope requested shutdown.
+    if (closed || app !== currentApp) return;
+    const worker = await app.startWorker({
+      concurrency: options.concurrency,
+      onError: onWorkerError,
+    });
+    if (closed || app !== currentApp) {
+      await worker.close();
+      return;
+    }
+    currentWorker = worker;
   };
 
-  const closeBounded = (app: A): Promise<void> =>
-    Promise.race([
+  const startTrackedGeneration = (): Promise<void> => {
+    pendingStart = startGeneration();
+    return pendingStart;
+  };
+
+  const closeBounded = async (app: A): Promise<void> => {
+    const worker = currentWorker;
+    currentWorker = undefined;
+    if (worker !== undefined)
+      await Promise.race([
+        worker.close().catch((error: unknown) => {
+          log(
+            `[${options.label}] worker close failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }),
+        sleep(closeTimeoutMs),
+      ]);
+    await Promise.race([
       app.close().catch((error: unknown) => {
         log(
           `[${options.label}] close of dead generation failed (ignored): ${
@@ -150,6 +181,7 @@ export function startSupervisedWorker<A extends SupervisableApp>(
       }),
       sleep(closeTimeoutMs),
     ]);
+  };
 
   const recreate = async (): Promise<void> => {
     let attempt = 0;
@@ -170,8 +202,10 @@ export function startSupervisedWorker<A extends SupervisableApp>(
         generation += 1;
         streak = 0;
         lastInfraErrorAt = 0;
-        await startGeneration();
-        log(`[${options.label}] recovered: generation ${generation} worker started on a fresh pool`);
+        await startTrackedGeneration();
+        log(
+          `[${options.label}] recovered: generation ${generation} worker started on a fresh pool`,
+        );
         recreating = false;
         return;
       } catch (error) {
@@ -184,7 +218,11 @@ export function startSupervisedWorker<A extends SupervisableApp>(
     }
   };
 
-  void startGeneration().catch((error: unknown) => {
+  const ready = startTrackedGeneration().then(() => {
+    if (closed || currentWorker === undefined)
+      throw new Error("Absurd worker closed before readiness");
+  });
+  void ready.catch((error: unknown) => {
     log(
       `[${options.label}] initial worker start failed: ${
         error instanceof Error ? error.message : String(error)
@@ -198,12 +236,15 @@ export function startSupervisedWorker<A extends SupervisableApp>(
   });
 
   return {
+    ready,
     get app(): A {
       return currentApp;
     },
     generation: () => generation,
     close: async () => {
       closed = true;
+      if (pendingStart !== undefined)
+        await Promise.race([pendingStart.catch(() => undefined), sleep(closeTimeoutMs)]);
       await closeBounded(currentApp);
     },
   };

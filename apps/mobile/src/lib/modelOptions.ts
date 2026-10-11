@@ -1,6 +1,8 @@
+import type { MenuAction } from "@react-native-menu/menu";
 import type {
   ModelCapabilities,
   ModelSelection,
+  RuntimeMode,
   ServerConfig as T3ServerConfig,
 } from "@t3tools/contracts";
 import {
@@ -25,17 +27,27 @@ export type ModelOption = {
   readonly providerKey: string;
   readonly providerLabel: string;
   readonly providerDriver: string;
+  readonly supportedRuntimeModes?: ReadonlyArray<RuntimeMode>;
+  readonly providerIconUrl?: string | undefined;
   readonly isDefault: boolean;
   readonly isLegacy: boolean;
   readonly isUnavailable?: boolean;
   readonly capabilities: ModelCapabilities | null;
   readonly selection: ModelSelection;
+  readonly providerUpdateRequired?: ProviderUpdateRequired;
 };
+
+type ProviderUpdateRequired = Pick<
+  T3ServerConfig["providers"][number],
+  "driver" | "updateRequiredModels"
+>;
 
 export type ProviderGroup = {
   readonly providerKey: string;
   readonly providerLabel: string;
   readonly models: ReadonlyArray<ModelOption>;
+  /** The provider fields that name announced models its CLI is too old to run. */
+  readonly updateRequired?: ProviderUpdateRequired;
 };
 
 function providerDisplayLabel(provider: {
@@ -46,6 +58,7 @@ function providerDisplayLabel(provider: {
   if (provider.displayName) return provider.displayName;
   if (provider.driver === "codex") return "Codex";
   if (provider.driver === "claudeAgent") return "Claude";
+  if (provider.driver === "pi") return "Pi";
   return provider.instanceId;
 }
 
@@ -55,6 +68,9 @@ function normalizeSelectionOptions(
 ): ModelSelection {
   if (!capabilities) {
     return selection;
+  }
+  if (!selection.options?.length) {
+    return { instanceId: selection.instanceId, model: selection.model };
   }
   const options = buildExplicitProviderOptionSelectionsFromDescriptors(
     getProviderOptionDescriptors({
@@ -168,6 +184,7 @@ export function resolveNewTaskModelSelection(input: {
 export function buildModelOptions(
   config: T3ServerConfig | null | undefined,
   fallbackModelSelection: ModelSelection | null,
+  providerInstanceId?: ModelSelection["instanceId"],
 ): ReadonlyArray<ModelOption> {
   const options = new Map<string, ModelOption>();
   // ThroughLine: one catalogue. The phone derives a mirror driver's offer from
@@ -182,6 +199,7 @@ export function buildModelOptions(
 
   for (const provider of config?.providers ?? []) {
     if (
+      (providerInstanceId !== undefined && provider.instanceId !== providerInstanceId) ||
       !provider.enabled ||
       !provider.installed ||
       provider.auth.status === "unauthenticated" ||
@@ -191,6 +209,9 @@ export function buildModelOptions(
     }
 
     const providerLabel = providerDisplayLabel(provider);
+    const updateRequired = provider.updateRequiredModels?.length
+      ? { driver: provider.driver, updateRequiredModels: provider.updateRequiredModels }
+      : undefined;
     for (const model of provider.models) {
       if (
         !isOfferedProviderModel(model.slug, provider.driver, {
@@ -208,12 +229,17 @@ export function buildModelOptions(
         providerKey: provider.instanceId,
         providerLabel,
         providerDriver: provider.driver,
+        ...(provider.supportedRuntimeModes === undefined
+          ? {}
+          : { supportedRuntimeModes: provider.supportedRuntimeModes }),
+        ...(provider.iconUrl ? { providerIconUrl: provider.iconUrl } : {}),
         // The product's declared default wins over the provider's self-reported one:
         // the Claude CLI reports Fable, and Fable is never a default here.
         isDefault: isProductDefaultModel(model.slug, provider.driver, model.isDefault === true),
         isLegacy:
           model.isLegacy === true &&
           !isCurrentCodexModel(model.slug.split("/").at(-1) ?? model.slug),
+        ...(updateRequired ? { providerUpdateRequired: updateRequired } : {}),
         capabilities: model.capabilities,
         selection: normalizeSelectionOptions(
           {
@@ -233,7 +259,8 @@ export function buildModelOptions(
       config?.providers.find(
         (provider) => provider.instanceId === fallbackModelSelection.instanceId,
       )?.driver ?? fallbackModelSelection.instanceId,
-    )
+    ) &&
+    (providerInstanceId === undefined || fallbackModelSelection.instanceId === providerInstanceId)
   ) {
     const key = `${fallbackModelSelection.instanceId}:${fallbackModelSelection.model}`;
     const existing = options.get(key);
@@ -269,7 +296,8 @@ export function buildModelOptions(
         providerDriver,
         isDefault: false,
         isLegacy: model?.isLegacy === true,
-        ...(isModelSelectionUnavailable(config, fallbackModelSelection)
+        ...(isModelSelectionUnavailable(config, fallbackModelSelection) ||
+        provider?.updateRequiredModels?.some((gated) => gated.slug === fallbackModelSelection.model)
           ? { isUnavailable: true }
           : {}),
         capabilities: model?.capabilities ?? null,
@@ -282,15 +310,24 @@ export function buildModelOptions(
 }
 
 export function groupByProvider(options: ReadonlyArray<ModelOption>): ReadonlyArray<ProviderGroup> {
-  const groups = new Map<string, { providerLabel: string; models: ModelOption[] }>();
+  const groups = new Map<
+    string,
+    {
+      providerLabel: string;
+      models: ModelOption[];
+      updateRequired: ProviderUpdateRequired | undefined;
+    }
+  >();
   for (const option of options) {
     const existing = groups.get(option.providerKey);
     if (existing) {
       existing.models.push(option);
+      existing.updateRequired ??= option.providerUpdateRequired;
     } else {
       groups.set(option.providerKey, {
         providerLabel: option.providerLabel,
         models: [option],
+        updateRequired: option.providerUpdateRequired,
       });
     }
   }
@@ -299,5 +336,56 @@ export function groupByProvider(options: ReadonlyArray<ModelOption>): ReadonlyAr
     providerKey,
     providerLabel: group.providerLabel,
     models: group.models,
+    ...(group.updateRequired ? { updateRequired: group.updateRequired } : {}),
   }));
+}
+
+function modelMenuAction(option: ModelOption, selectedModel: ModelSelection | null): MenuAction {
+  return {
+    id: `model:${option.key}`,
+    title: option.label,
+    state:
+      option.selection.instanceId === selectedModel?.instanceId &&
+      option.selection.model === selectedModel.model
+        ? "on"
+        : undefined,
+  };
+}
+
+export function buildModelMenuActions(
+  groups: ReadonlyArray<ProviderGroup>,
+  selectedModel: ModelSelection | null,
+): MenuAction[] {
+  return groups.flatMap((group) => {
+    const currentModels = group.models.filter((model) => !model.isLegacy);
+    const legacyModels = group.models.filter((model) => model.isLegacy);
+    const selected = group.models.find(
+      (model) =>
+        model.selection.instanceId === selectedModel?.instanceId &&
+        model.selection.model === selectedModel.model,
+    );
+
+    return [
+      ...(currentModels.length > 0
+        ? [
+            {
+              id: `provider:${group.providerKey}`,
+              title: group.providerLabel,
+              subtitle: selected && !selected.isLegacy ? selected.label : undefined,
+              subactions: currentModels.map((option) => modelMenuAction(option, selectedModel)),
+            },
+          ]
+        : []),
+      ...(legacyModels.length > 0
+        ? [
+            {
+              id: `legacy-models:${group.providerKey}`,
+              title: `${group.providerLabel} legacy models`,
+              subtitle: selected?.isLegacy ? selected.label : undefined,
+              subactions: legacyModels.map((option) => modelMenuAction(option, selectedModel)),
+            },
+          ]
+        : []),
+    ];
+  });
 }

@@ -24,6 +24,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "vp test run src/thread-driver.test.ts src/worker.test.ts src/ws-rpc-transport.test.ts && node --experimental-strip-types --test src/workspace-steps.test.ts src/workspace-steps-independent.test.ts src/workspace-steps-linux.test.ts",
     "smoke": "node --env-file=.env --experimental-strip-types src/smoke.ts"
   },
   "dependencies": {

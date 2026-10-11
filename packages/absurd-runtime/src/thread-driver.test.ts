@@ -124,6 +124,14 @@ describe("registerThreadRunTask", () => {
         heartbeat: async () => undefined,
       },
     );
+    expect(transport.resolveThread).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: "hello", threadId: "thread-1" }),
+      { taskId: "task-1", step: "resolve-thread" },
+    );
+    expect(transport.dispatchTurn).toHaveBeenCalledWith("thread-1", "hello", undefined, undefined, {
+      taskId: "task-1",
+      step: "dispatch-turn",
+    });
 
     expect(result).toEqual({
       threadId: "thread-1",

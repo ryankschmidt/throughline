@@ -1,27 +1,3 @@
-import { ProviderDriverKind } from "@t3tools/contracts";
-import {
-  AntigravityIcon,
-  ClaudeAI,
-  CursorIcon,
-  GrokIcon,
-  Icon,
-  OpenAI,
-  OpenCodeIcon,
-  PiIcon,
-} from "../Icons";
-
-export const PROVIDER_ICON_BY_PROVIDER: Partial<Record<ProviderDriverKind, Icon>> = {
-  [ProviderDriverKind.make("codex")]: OpenAI,
-  [ProviderDriverKind.make("claudeAgent")]: ClaudeAI,
-  [ProviderDriverKind.make("opencode")]: OpenCodeIcon,
-  [ProviderDriverKind.make("cursor")]: CursorIcon,
-  [ProviderDriverKind.make("grok")]: GrokIcon,
-  // ThroughLine: fork-owned icon mapping for the Pi provider — paired with the PiIcon import
-  // above. Upstream's map has no 'pi' key.
-  [ProviderDriverKind.make("pi")]: PiIcon,
-  [ProviderDriverKind.make("antigravity")]: AntigravityIcon,
-};
-
 export type ModelEsque = {
   slug: string;
   name: string;
@@ -54,6 +30,27 @@ export function getDisplayModelName(
 ): string {
   const name = options?.preferShortName && model.shortName ? model.shortName : model.name;
   return stripLeadingQualifier(name, model.subProvider);
+}
+
+/**
+ * The second line of a model row, naming where the model comes from. A
+ * sub-provider whose name reads as its provider plus a qualifier ("OpenCode
+ * Zen" under "OpenCode") stands alone: joining the two shows "OpenCode ·
+ * OpenCode Zen", and OpenCode's own picker shows the sub-provider by itself.
+ */
+export function getProviderRowLabel(
+  providerDisplayName: string,
+  subProvider: string | undefined,
+): string {
+  const provider = providerDisplayName.trim();
+  const sub = subProvider?.trim();
+  if (!sub) {
+    return providerDisplayName;
+  }
+  if (provider && new RegExp(`^${escapeRegExp(provider)}\\s+\\S`, "i").test(sub)) {
+    return sub;
+  }
+  return `${providerDisplayName} · ${sub}`;
 }
 
 export function getTriggerDisplayModelName(model: ModelEsque): string {

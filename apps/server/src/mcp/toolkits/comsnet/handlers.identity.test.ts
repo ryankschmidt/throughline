@@ -22,25 +22,26 @@ it.effect(
     Effect.gen(function* () {
       const scope: McpInvocationScope = {
         environmentId: EnvironmentId.make("mac"),
-        threadId: ThreadId.make("sender-thread"),
-        providerSessionId: "server-owned-mcp-session",
-        providerInstanceId: ProviderInstanceId.make("codex"),
+        thread: {
+          threadId: ThreadId.make("sender-thread"),
+          providerSessionId: "server-owned-mcp-session",
+          providerInstanceId: ProviderInstanceId.make("codex"),
+        },
+        requestNamespace: "test-sender",
+        client: undefined,
         issuedAt: 1,
         capabilities: new Set(["comsnet"]),
       };
       const command = {
-        type: "thread.turn.start" as const,
+        type: "message.dispatch" as const,
         commandId: CommandId.make("mcp-command"),
         threadId: ThreadId.make("receiver-thread"),
-        message: {
-          messageId: MessageId.make("mcp-message"),
-          role: "user" as const,
-          text: "message",
-          attachments: [],
-        },
-        runtimeMode: "full-access" as const,
-        interactionMode: "default" as const,
-        createdAt: "2026-01-01T00:00:00.000Z",
+        messageId: MessageId.make("mcp-message"),
+        text: "message",
+        attachments: [],
+        createdBy: "agent" as const,
+        creationSource: "mcp" as const,
+        dispatchMode: { type: "start_immediately" as const },
       };
       const observed: Array<{ readonly publicAgentId: string; readonly generation: string }> = [];
       const engine = {

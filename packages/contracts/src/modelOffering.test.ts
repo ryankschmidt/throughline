@@ -1,6 +1,9 @@
 import { describe, expect, it } from "@effect/vitest";
 import * as Schema from "effect/Schema";
-import { DEFAULT_MODEL_BY_PROVIDER, MODEL_SLUG_ALIASES_BY_PROVIDER } from "./model.ts";
+import {
+  DEFAULT_MODEL_BY_PROVIDER,
+  MODEL_SLUG_ALIASES_BY_PROVIDER,
+} from "./throughline/modelPolicy.ts";
 import {
   applyModelOffering,
   DEFAULT_CLAUDE_NEW_THREAD_SELECTION,
@@ -9,7 +12,7 @@ import {
   retireModelSelection,
   type ModelOffering,
 } from "./modelOffering.ts";
-import { ModelSelection } from "./orchestration.ts";
+import { ModelSelection } from "./modelSelection.ts";
 import { ProviderDriverKind } from "./providerInstance.ts";
 import { ServerSettings } from "./settings.ts";
 

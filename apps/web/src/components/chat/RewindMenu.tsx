@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import type { RewindEntry } from "@t3tools/shared/claudeComposerMenus";
+import type { V2RewindEntry } from "../../throughline/rewind/v2RewindEntries";
 import {
   Dialog,
   DialogPopup,
@@ -11,10 +11,10 @@ import {
 
 export function RewindMenu(props: {
   open: boolean;
-  entries: ReadonlyArray<RewindEntry>;
+  entries: ReadonlyArray<V2RewindEntry>;
   disabledReason: string | null;
   onOpenChange: (open: boolean) => void;
-  onSelect: (entry: RewindEntry) => void;
+  onSelect: (entry: V2RewindEntry) => void;
 }) {
   const list = useRef<HTMLDivElement>(null);
   return (
@@ -65,7 +65,7 @@ export function RewindMenu(props: {
                 <button
                   type="button"
                   className="min-h-14 w-full rounded-lg border border-border bg-background px-3 py-2 text-left hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                  disabled={props.disabledReason !== null}
+                  disabled={props.disabledReason !== null || entry.unavailableReason !== null}
                   onClick={() => props.onSelect(entry)}
                 >
                   <span className="flex min-w-0 flex-1 flex-col items-start text-left">
@@ -77,6 +77,9 @@ export function RewindMenu(props: {
                     </span>
                   </span>
                 </button>
+                {entry.unavailableReason && (
+                  <p className="text-xs text-muted-foreground">{entry.unavailableReason}</p>
+                )}
               </div>
             ))}
           </div>
