@@ -365,7 +365,10 @@ test("S1-C14 idle probe passes with null preparation ids, installed read-only si
   );
   assert.deepEqual(
     await stagingTraceFindings(
-      [traceFixture("sql.execute", Date.parse(probeStart) - 10, Date.parse(probeFinish) + 10)],
+      [
+        traceFixture("sql.execute", Date.parse(probeStart) - 20, Date.parse(probeStart) - 10),
+        traceFixture("sql.execute", Date.parse(probeFinish) + 10),
+      ],
       probeStart,
       probeFinish,
     ),
@@ -446,6 +449,22 @@ test("S1-C14 empty retained trace files are not window evidence", async () => {
   file(p, "");
   assert.ok((await stagingTraceFindings([p], probeStart, probeFinish)).length);
 });
+test("S1-C14 a long-running span exported after the window does not restore expired evidence", async () =>
+  assert.ok(
+    (
+      await stagingTraceFindings(
+        [
+          traceFixture(
+            "EnvironmentRpc.subscribe",
+            Date.parse(probeStart) - 1000,
+            Date.parse(probeFinish) + 1000,
+          ),
+        ],
+        probeStart,
+        probeFinish,
+      )
+    ).length,
+  ));
 test("S1-C14 malformed trace evidence refuses", async () => {
   const p = join(root, "bad-staging-trace.ndjson");
   file(p, "not-json\n");

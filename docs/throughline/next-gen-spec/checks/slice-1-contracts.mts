@@ -77,7 +77,7 @@ export const stagingTraceFindings = async (
   if (!paths.length) return ["server trace files absent"];
   const from = BigInt(start) * 1000000n,
     to = BigInt(finish) * 1000000n;
-  let earliest: bigint | undefined, latest: bigint | undefined;
+  let earliestEnd: bigint | undefined, latest: bigint | undefined;
   const writes = new Set([
     "GitVcsDriver.prepareCommitContext.addAll",
     "GitVcsDriver.prepareCommitContext.reset",
@@ -111,7 +111,9 @@ export const stagingTraceFindings = async (
           const a = BigInt(span.startTimeUnixNano),
             b = BigInt(span.endTimeUnixNano);
           if (b < a) throw Error("reversed span clock");
-          earliest = earliest === undefined || a < earliest ? a : earliest;
+          // Spans enter the retained export when they end. An old start on a
+          // long-running span cannot prove that the window's exports remain.
+          earliestEnd = earliestEnd === undefined || b < earliestEnd ? b : earliestEnd;
           latest = latest === undefined || b > latest ? b : latest;
           // Include partial overlap: a write begun before the observation may end inside it.
           if (writing && a <= to && b >= from)
@@ -128,7 +130,7 @@ export const stagingTraceFindings = async (
     }
     if (readError) f.push(`server trace unreadable: ${basename(path)}`);
   }
-  if (earliest === undefined || latest === undefined || earliest > from || latest < to)
+  if (earliestEnd === undefined || latest === undefined || earliestEnd > from || latest < to)
     f.push(
       "server traces do not cover the complete probe window; fresh probe required before readback",
     );
