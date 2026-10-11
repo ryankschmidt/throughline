@@ -77,6 +77,7 @@ export const stagingTraceFindings = async (
   if (!paths.length) return ["server trace files absent"];
   const from = BigInt(start) * 1000000n,
     to = BigInt(finish) * 1000000n;
+  let earliest: bigint | undefined, latest: bigint | undefined;
   const writes = new Set([
     "GitVcsDriver.prepareCommitContext.addAll",
     "GitVcsDriver.prepareCommitContext.reset",
@@ -100,20 +101,23 @@ export const stagingTraceFindings = async (
           f.push(`server trace malformed: ${basename(path)}`);
           continue;
         }
-        if (!writes.has(span?.name)) continue;
+        const writing = writes.has(span?.name);
         try {
           if (
-            !/^\d+$/.test(span.startTimeUnixNano ?? "") ||
-            !/^\d+$/.test(span.endTimeUnixNano ?? "")
+            !/^\d+$/.test(span?.startTimeUnixNano ?? "") ||
+            !/^\d+$/.test(span?.endTimeUnixNano ?? "")
           )
             throw Error("invalid span clock");
           const a = BigInt(span.startTimeUnixNano),
             b = BigInt(span.endTimeUnixNano);
           if (b < a) throw Error("reversed span clock");
+          earliest = earliest === undefined || a < earliest ? a : earliest;
+          latest = latest === undefined || b > latest ? b : latest;
           // Include partial overlap: a write begun before the observation may end inside it.
-          if (a <= to && b >= from) f.push(`index-writing server span during probe: ${span.name}`);
+          if (writing && a <= to && b >= from)
+            f.push(`index-writing server span during probe: ${span.name}`);
         } catch {
-          f.push(`index-writing server span has invalid clock: ${span.name}`);
+          if (writing) f.push(`index-writing server span has invalid clock: ${span.name}`);
         }
       }
     } catch {
@@ -124,6 +128,10 @@ export const stagingTraceFindings = async (
     }
     if (readError) f.push(`server trace unreadable: ${basename(path)}`);
   }
+  if (earliest === undefined || latest === undefined || earliest > from || latest < to)
+    f.push(
+      "server traces do not cover the complete probe window; fresh probe required before readback",
+    );
   return f;
 };
 export const hashBytes = (b: string | Buffer) => createHash("sha256").update(b).digest("hex");
