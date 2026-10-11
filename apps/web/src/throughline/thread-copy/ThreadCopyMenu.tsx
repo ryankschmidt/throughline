@@ -7,14 +7,13 @@ import { toastManager } from "../../components/ui/toast";
 import { writeTextToClipboard } from "../../hooks/useCopyToClipboard";
 import { useEnvironmentThread } from "../../state/threads";
 import { copyThreadValue, threadCopyItems, type ThreadCopyField } from "./threadCopy";
+import { identityFromV2Projection } from "./v2ThreadIdentity";
 
 export function ThreadCopyMenu(props: { environmentId: EnvironmentId; threadId: ThreadId }) {
   const state = useEnvironmentThread(props.environmentId, props.threadId);
   const thread = Option.getOrNull(state.data);
   const [busy, setBusy] = useState(false);
-  const identity = thread
-    ? { environmentId: props.environmentId, threadId: thread.id, session: thread.session }
-    : null;
+  const identity = identityFromV2Projection(props, thread);
   const items = threadCopyItems(identity ?? { ...props, session: null });
 
   const copy = async (field: ThreadCopyField) => {

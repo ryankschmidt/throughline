@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { ProviderInstanceId, type ModelSelection, type ServerConfig } from "@t3tools/contracts";
+import {
+  DEFAULT_SERVER_SETTINGS,
+  ProjectId,
+  ProviderDriverKind,
+  ProviderInstanceId,
+  type ModelSelection,
+  type ServerConfig,
+  type ServerSettings,
+} from "@t3tools/contracts";
 
 import {
   buildModelOptions,
+  describeUnavailableModelSelection,
   groupByProvider,
   isModelSelectionUnavailable,
   resolveDefaultableModelSelection,
@@ -65,10 +74,10 @@ describe("mobile model options", () => {
       ],
     } as unknown as ServerConfig;
     const stored = { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.4" };
-    expect(resolveSelectableModelSelection(config, stored)).toBeNull();
-    expect(resolveDefaultableModelSelection(config, stored)).toBeNull();
-    expect(buildModelOptions(config, stored)).toEqual([]);
-    expect(buildModelOptions(null, stored)).toEqual([]);
+    expect(resolveSelectableModelSelection(config, stored, null)).toBeNull();
+    expect(resolveDefaultableModelSelection(config, stored, null)).toBeNull();
+    expect(buildModelOptions(config, stored, undefined, null)).toEqual([]);
+    expect(buildModelOptions(null, stored, undefined, null)).toEqual([]);
   });
 
   it("offers Spark from an older remote catalog while removing its retired models", () => {
@@ -88,8 +97,10 @@ describe("mobile model options", () => {
       ],
     } as unknown as ServerConfig;
     const spark = { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.3-codex-spark" };
-    expect(resolveDefaultableModelSelection(config, spark)).toBe(spark);
-    expect(buildModelOptions(config, null)).toMatchObject([{ selection: spark, isLegacy: false }]);
+    expect(resolveDefaultableModelSelection(config, spark, null)).toBe(spark);
+    expect(buildModelOptions(config, null, undefined, null)).toMatchObject([
+      { selection: spark, isLegacy: false },
+    ]);
   });
 
   it("groups models by provider and excludes retired OpenAI entries", () => {
@@ -121,13 +132,51 @@ describe("mobile model options", () => {
       ],
     } as unknown as ServerConfig;
 
-    expect(groupByProvider(buildModelOptions(config, null))).toMatchObject([
+    expect(groupByProvider(buildModelOptions(config, null, undefined, null))).toMatchObject([
       {
         providerKey: "codex",
         providerLabel: "Codex",
         models: [{ key: "codex:gpt-5.6-sol", label: "GPT-5.6 Sol", isLegacy: false }],
       },
     ]);
+  });
+
+  it("carries configured ACP identity into model and provider catalogs", () => {
+    const iconUrl = "https://cdn.agentclientprotocol.com/registry/v1/latest/antigravity-acp.svg";
+    const config = {
+      providers: [
+        {
+          instanceId: "acpRegistry_antigravity",
+          driver: "acpRegistry",
+          displayName: "Antigravity",
+          iconUrl,
+          enabled: true,
+          installed: true,
+          auth: { status: "authenticated" },
+          models: [
+            {
+              slug: "default",
+              name: "Default",
+              isCustom: false,
+              capabilities: null,
+            },
+          ],
+        },
+      ],
+    } as unknown as ServerConfig;
+
+    const [group] = groupByProvider(buildModelOptions(config, null, undefined, null));
+
+    expect(group).toMatchObject({
+      providerKey: "acpRegistry_antigravity",
+      providerLabel: "Antigravity",
+      models: [
+        {
+          providerDriver: "acpRegistry",
+          providerIconUrl: iconUrl,
+        },
+      ],
+    });
   });
 
   it("distinguishes same-name OpenCode models without changing their routing", () => {
@@ -160,7 +209,7 @@ describe("mobile model options", () => {
       model: "github-copilot/claude-fable-5",
     };
 
-    const options = buildModelOptions(config, selection);
+    const options = buildModelOptions(config, selection, undefined, null);
 
     expect(options).toMatchObject(
       sources.map((source) => ({
@@ -214,22 +263,101 @@ describe("mobile model options", () => {
       ],
     } as unknown as ServerConfig;
 
-    const [option] = buildModelOptions(config, {
-      instanceId: ProviderInstanceId.make("codex"),
-      model: "gpt-5.6-sol",
-      options: [{ id: "fastMode", value: true }],
-    });
+    const [option] = buildModelOptions(
+      config,
+      {
+        instanceId: ProviderInstanceId.make("codex"),
+        model: "gpt-5.6-sol",
+        options: [{ id: "fastMode", value: true }],
+      },
+      undefined,
+      null,
+    );
 
     expect(option?.capabilities?.optionDescriptors?.[0]?.id).toBe("serviceTier");
     expect(option?.selection.options).toBeUndefined();
 
-    const [explicitOption] = buildModelOptions(config, {
-      instanceId: ProviderInstanceId.make("codex"),
-      model: "gpt-5.6-sol",
-      options: [{ id: "serviceTier", value: "priority" }],
-    });
+    const [emptyOption] = buildModelOptions(
+      config,
+      {
+        instanceId: ProviderInstanceId.make("codex"),
+        model: "gpt-test",
+        options: [],
+      },
+      undefined,
+      null,
+    );
+    expect(emptyOption?.selection).toEqual(option?.selection);
+
+    const [explicitOption] = buildModelOptions(
+      config,
+      {
+        instanceId: ProviderInstanceId.make("codex"),
+        model: "gpt-5.6-sol",
+        options: [{ id: "serviceTier", value: "priority" }],
+      },
+      undefined,
+      null,
+    );
     expect(explicitOption?.selection.options).toEqual([{ id: "serviceTier", value: "priority" }]);
   });
+
+  it("limits existing threads to their provider while new tasks keep every provider", () => {
+    const providers = ["codex", "claudeAgent"].map((instanceId) => ({
+      instanceId,
+      driver: instanceId,
+      enabled: true,
+      installed: true,
+      auth: { status: "authenticated" },
+      models: [
+        {
+          slug: instanceId === "codex" ? "gpt-6.1-sol" : "test",
+          name: instanceId,
+          capabilities: null,
+        },
+      ],
+    }));
+    const config = { providers } as unknown as ServerConfig;
+    const selection = { instanceId: ProviderInstanceId.make("codex"), model: "gpt-6.1-sol" };
+
+    expect(
+      buildModelOptions(config, selection, undefined, null).map((option) => option.providerKey),
+    ).toEqual(["codex", "claudeAgent"]);
+    expect(buildModelOptions(config, selection, selection.instanceId, null)).toEqual(
+      buildModelOptions(config, selection, undefined, null).filter(
+        (option) => option.providerKey === "codex",
+      ),
+    );
+  });
+
+  it.each(["disabled", "unavailable", "missing"] as const)(
+    "retains the selected %s provider's fallback in a filtered catalog",
+    (state) => {
+      const selection = {
+        instanceId: ProviderInstanceId.make("google_work"),
+        model: "saved-model",
+        options: [{ id: "native-option", value: "saved-choice" }],
+      };
+      const provider = {
+        instanceId: selection.instanceId,
+        driver: "antigravity",
+        displayName: "Google Work",
+        enabled: state !== "disabled",
+        installed: true,
+        availability: state === "unavailable" ? "unavailable" : "available",
+        auth: { status: "authenticated" },
+        models: [{ slug: selection.model, name: "Saved model", capabilities: null }],
+      };
+      const config = {
+        providers: state === "missing" ? [] : [provider],
+        settings: { providerInstances: { google_work: { driver: "antigravity" } } },
+      } as unknown as ServerConfig;
+      const options = buildModelOptions(config, selection, selection.instanceId, null);
+      expect(options).toEqual(buildModelOptions(config, selection, undefined, null));
+      expect(options).toHaveLength(1);
+      expect(options[0]).toMatchObject({ selection, isUnavailable: true });
+    },
+  );
 
   it("rejects stored selections whose provider is not usable", () => {
     const config = {
@@ -266,12 +394,15 @@ describe("mobile model options", () => {
       model: "gpt-5.6-sol",
     };
 
-    expect(resolveSelectableModelSelection(config, usable)).toBe(usable);
-    expect(resolveSelectableModelSelection(config, disabled)).toBeNull();
-    expect(resolveSelectableModelSelection(config, removed)).toBeNull();
-    expect(isModelSelectionUnavailable(config, disabled)).toBe(false);
+    expect(resolveSelectableModelSelection(config, usable, null)).toBe(usable);
+    expect(resolveSelectableModelSelection(config, disabled, null)).toBeNull();
+    expect(resolveSelectableModelSelection(config, removed, null)).toBeNull();
+    // Disabled is disabled even with no settings to consult; only a provider
+    // that is merely missing or unauthenticated falls through silently.
+    expect(isModelSelectionUnavailable(config, disabled, null)).toBe(true);
+    expect(isModelSelectionUnavailable(config, removed, null)).toBe(false);
     // An offline environment has no config to validate.
-    expect(resolveSelectableModelSelection(null, disabled)).toBe(disabled);
+    expect(resolveSelectableModelSelection(null, disabled, null)).toBe(disabled);
   });
 
   describe("Antigravity selections", () => {
@@ -324,11 +455,11 @@ describe("mobile model options", () => {
         providers: config.providers.map((provider) => ({ ...provider, ...update })),
       };
 
-      expect(resolveSelectableModelSelection(unavailableConfig, selection)).toBe(selection);
-      expect(resolveDefaultableModelSelection(unavailableConfig, selection)).toBe(selection);
-      expect(isModelSelectionUnavailable(unavailableConfig, selection)).toBe(true);
-      expect(buildModelOptions(unavailableConfig, null)).toEqual([]);
-      const [option] = buildModelOptions(unavailableConfig, selection);
+      expect(resolveSelectableModelSelection(unavailableConfig, selection, null)).toBe(selection);
+      expect(resolveDefaultableModelSelection(unavailableConfig, selection, null)).toBe(selection);
+      expect(isModelSelectionUnavailable(unavailableConfig, selection, null)).toBe(true);
+      expect(buildModelOptions(unavailableConfig, null, undefined, null)).toEqual([]);
+      const [option] = buildModelOptions(unavailableConfig, selection, undefined, null);
       expect(option).toMatchObject({
         key: `google_work:${selection.model}`,
         label: model.name,
@@ -353,9 +484,9 @@ describe("mobile model options", () => {
         })),
       };
 
-      expect(resolveDefaultableModelSelection(changedConfig, selection)).toBe(selection);
-      expect(isModelSelectionUnavailable(changedConfig, selection)).toBe(true);
-      const options = buildModelOptions(changedConfig, selection);
+      expect(resolveDefaultableModelSelection(changedConfig, selection, null)).toBe(selection);
+      expect(isModelSelectionUnavailable(changedConfig, selection, null)).toBe(true);
+      const options = buildModelOptions(changedConfig, selection, undefined, null);
       const missing = options.find((option) => option.selection.model === selection.model);
       expect(missing).toMatchObject({
         label: selection.model,
@@ -368,18 +499,20 @@ describe("mobile model options", () => {
       expect(
         resolveNewTaskModelSelection({
           draftSelection: null,
-          projectDefaultSelection: resolveDefaultableModelSelection(changedConfig, selection),
+          projectDefaultSelection: resolveDefaultableModelSelection(changedConfig, selection, null),
           stickySelection: null,
           modelOptions: options,
         }),
       ).toBe(selection);
 
-      const [restored] = buildModelOptions(config, selection);
-      expect(isModelSelectionUnavailable(config, selection)).toBe(false);
+      const [restored] = buildModelOptions(config, selection, undefined, null);
+      expect(isModelSelectionUnavailable(config, selection, null)).toBe(false);
       expect(restored?.isUnavailable).not.toBe(true);
       expect(restored?.selection).toBe(selection);
-      expect(resolveDefaultableModelSelection(config, selection)).toBe(selection);
-      expect(buildModelOptions(config, null)[0]?.selection.options).toBeUndefined();
+      expect(resolveDefaultableModelSelection(config, selection, null)).toBe(selection);
+      expect(
+        buildModelOptions(config, null, undefined, null)[0]?.selection.options,
+      ).toBeUndefined();
     });
 
     it("uses configured instance metadata when provider status is missing", () => {
@@ -392,9 +525,11 @@ describe("mobile model options", () => {
         },
       } as unknown as ServerConfig;
 
-      expect(resolveDefaultableModelSelection(missingStatusConfig, selection)).toBe(selection);
-      expect(isModelSelectionUnavailable(missingStatusConfig, selection)).toBe(true);
-      expect(buildModelOptions(missingStatusConfig, selection)).toMatchObject([
+      expect(resolveDefaultableModelSelection(missingStatusConfig, selection, null)).toBe(
+        selection,
+      );
+      expect(isModelSelectionUnavailable(missingStatusConfig, selection, null)).toBe(true);
+      expect(buildModelOptions(missingStatusConfig, selection, undefined, null)).toMatchObject([
         {
           providerDriver: "antigravity",
           providerLabel: "Google Work",
@@ -407,12 +542,12 @@ describe("mobile model options", () => {
     it("keeps offline selections without assuming that an unknown instance is Antigravity", () => {
       const unknownConfig = { ...config, providers: [] };
 
-      expect(resolveDefaultableModelSelection(null, selection)).toBe(selection);
-      expect(isModelSelectionUnavailable(null, selection)).toBe(false);
-      expect(buildModelOptions(null, selection)[0]?.selection).toBe(selection);
-      expect(buildModelOptions(null, selection)[0]?.isUnavailable).not.toBe(true);
-      expect(isModelSelectionUnavailable(unknownConfig, selection)).toBe(false);
-      expect(resolveSelectableModelSelection(unknownConfig, selection)).toBeNull();
+      expect(resolveDefaultableModelSelection(null, selection, null)).toBe(selection);
+      expect(isModelSelectionUnavailable(null, selection, null)).toBe(false);
+      expect(buildModelOptions(null, selection, undefined, null)[0]?.selection).toBe(selection);
+      expect(buildModelOptions(null, selection, undefined, null)[0]?.isUnavailable).not.toBe(true);
+      expect(isModelSelectionUnavailable(unknownConfig, selection, null)).toBe(false);
+      expect(resolveSelectableModelSelection(unknownConfig, selection, null)).toBeNull();
     });
   });
 
@@ -443,10 +578,10 @@ describe("mobile model options", () => {
     const current = { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.6-sol" };
     const legacy = { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.4" };
 
-    expect(resolveDefaultableModelSelection(config, current)).toBe(current);
+    expect(resolveDefaultableModelSelection(config, current, null)).toBe(current);
     // A legacy last-used selection falls through to the provider default.
-    expect(resolveDefaultableModelSelection(config, legacy)).toBeNull();
-    expect(resolveDefaultableModelSelection(null, legacy)).toBeNull();
+    expect(resolveDefaultableModelSelection(config, legacy, null)).toBeNull();
+    expect(resolveDefaultableModelSelection(null, legacy, null)).toBeNull();
   });
 
   it("resolves new tasks from draft, project, sticky, then provider defaults", () => {
@@ -483,5 +618,316 @@ describe("mobile model options", () => {
         modelOptions: [unavailable],
       }),
     ).toBeNull();
+  });
+
+  describe("project-aware enablement", () => {
+    const projectId = ProjectId.make("project-a");
+    const instanceId = ProviderInstanceId.make("codex_work");
+
+    function configWith(settings: ServerSettings): ServerConfig {
+      return {
+        providers: [
+          {
+            instanceId,
+            driver: "codex",
+            displayName: "Codex Work",
+            enabled: true,
+            installed: true,
+            auth: { status: "authenticated" },
+            models: [{ slug: "gpt-6.1-sol", name: "Model A", isCustom: false, capabilities: null }],
+          },
+        ],
+        settings,
+      } as unknown as ServerConfig;
+    }
+
+    it("words a project's own turn-off apart from missing setup", () => {
+      const settings: ServerSettings = {
+        ...DEFAULT_SERVER_SETTINGS,
+        providerInstances: {
+          [instanceId]: { driver: ProviderDriverKind.make("codex"), enabled: true },
+        },
+        projectSettingsOverrides: {
+          [projectId]: { providerInstances: { [instanceId]: { enabled: false } } },
+        },
+      };
+      const selection = { instanceId, model: "gpt-6.1-sol" };
+
+      expect(
+        describeUnavailableModelSelection(configWith(settings), selection, projectId).title,
+      ).toBe("Model turned off for this project");
+      expect(describeUnavailableModelSelection(configWith(settings), selection, null).title).toBe(
+        "Antigravity model unavailable",
+      );
+    });
+
+    it("refuses to send a non-Antigravity model the project turned off", () => {
+      const settings: ServerSettings = {
+        ...DEFAULT_SERVER_SETTINGS,
+        providerInstances: {
+          [instanceId]: { driver: ProviderDriverKind.make("codex"), enabled: true },
+        },
+        projectSettingsOverrides: {
+          [projectId]: { providerInstances: { [instanceId]: { enabled: false } } },
+        },
+      };
+      const selection = { instanceId, model: "gpt-6.1-sol" };
+
+      expect(isModelSelectionUnavailable(configWith(settings), selection, projectId)).toBe(true);
+      expect(isModelSelectionUnavailable(configWith(settings), selection, null)).toBe(false);
+    });
+
+    it("hides an instance the project disables even though the machine enables it", () => {
+      const settings: ServerSettings = {
+        ...DEFAULT_SERVER_SETTINGS,
+        providerInstances: {
+          [instanceId]: { driver: ProviderDriverKind.make("codex"), enabled: true },
+        },
+        projectSettingsOverrides: {
+          [projectId]: { providerInstances: { [instanceId]: { enabled: false } } },
+        },
+      };
+
+      expect(buildModelOptions(configWith(settings), null, undefined, projectId)).toEqual([]);
+    });
+
+    it("shows an instance the project enables even though the machine disables it", () => {
+      const settings: ServerSettings = {
+        ...DEFAULT_SERVER_SETTINGS,
+        providerInstances: {
+          [instanceId]: { driver: ProviderDriverKind.make("codex"), enabled: false },
+        },
+        projectSettingsOverrides: {
+          [projectId]: { providerInstances: { [instanceId]: { enabled: true } } },
+        },
+      };
+
+      expect(buildModelOptions(configWith(settings), null, undefined, projectId)).toHaveLength(1);
+    });
+
+    it("falls back to the machine value with no project in scope", () => {
+      const settings: ServerSettings = {
+        ...DEFAULT_SERVER_SETTINGS,
+        providerInstances: {
+          [instanceId]: { driver: ProviderDriverKind.make("codex"), enabled: true },
+        },
+        projectSettingsOverrides: {
+          [projectId]: { providerInstances: { [instanceId]: { enabled: false } } },
+        },
+      };
+
+      expect(buildModelOptions(configWith(settings), null, undefined, null)).toHaveLength(1);
+    });
+
+    it("hides a machine-disabled instance for a project with no override, even though another project's keep-alive left it running", () => {
+      const otherProjectId = ProjectId.make("project-b");
+      const settings: ServerSettings = {
+        ...DEFAULT_SERVER_SETTINGS,
+        providerInstances: {
+          [instanceId]: { driver: ProviderDriverKind.make("codex"), enabled: false },
+        },
+        projectSettingsOverrides: {
+          [otherProjectId]: { providerInstances: { [instanceId]: { enabled: true } } },
+        },
+      };
+
+      // configWith's snapshot always reports enabled: true, standing in for
+      // the server keeping the instance alive to serve project-b's override.
+      expect(buildModelOptions(configWith(settings), null, undefined, projectId)).toEqual([]);
+    });
+
+    it("refuses to send an instance the project merely inherits as disabled, not just an explicit override", () => {
+      const settings: ServerSettings = {
+        ...DEFAULT_SERVER_SETTINGS,
+        providerInstances: {
+          [instanceId]: { driver: ProviderDriverKind.make("codex"), enabled: false },
+        },
+      };
+      const selection = { instanceId, model: "gpt-6.1-sol" };
+
+      // configWith's snapshot always reports enabled: true, standing in for
+      // the server keeping the instance alive for another project's keep-alive.
+      expect(isModelSelectionUnavailable(configWith(settings), selection, projectId)).toBe(true);
+      expect(
+        describeUnavailableModelSelection(configWith(settings), selection, projectId).title,
+      ).toBe("Model turned off for this project");
+      // With no project in scope, the machine value applies and is disabled.
+      expect(isModelSelectionUnavailable(configWith(settings), selection, null)).toBe(true);
+    });
+
+    it("marks a project-disabled instance's fallback selection unavailable instead of reviving it", () => {
+      const settings: ServerSettings = {
+        ...DEFAULT_SERVER_SETTINGS,
+        providerInstances: {
+          [instanceId]: { driver: ProviderDriverKind.make("codex"), enabled: true },
+        },
+        projectSettingsOverrides: {
+          [projectId]: { providerInstances: { [instanceId]: { enabled: false } } },
+        },
+      };
+      const fallback = { instanceId, model: "gpt-6.1-sol" };
+
+      const options = buildModelOptions(configWith(settings), fallback, undefined, projectId);
+
+      expect(options).toHaveLength(1);
+      expect(options[0]).toMatchObject({ selection: fallback, isUnavailable: true });
+    });
+
+    it("rejects a project-disabled instance's selection via resolveSelectableModelSelection", () => {
+      const settings: ServerSettings = {
+        ...DEFAULT_SERVER_SETTINGS,
+        providerInstances: {
+          [instanceId]: { driver: ProviderDriverKind.make("codex"), enabled: true },
+        },
+        projectSettingsOverrides: {
+          [projectId]: { providerInstances: { [instanceId]: { enabled: false } } },
+        },
+      };
+      const selection = { instanceId, model: "gpt-6.1-sol" };
+
+      expect(
+        resolveSelectableModelSelection(configWith(settings), selection, projectId),
+      ).toBeNull();
+      expect(resolveSelectableModelSelection(configWith(settings), selection, null)).toBe(
+        selection,
+      );
+    });
+
+    it("rejects a project-disabled antigravity instance's selection instead of keeping it", () => {
+      const antigravityInstanceId = ProviderInstanceId.make("antigravity_work");
+      const config = {
+        providers: [
+          {
+            instanceId: antigravityInstanceId,
+            driver: "antigravity",
+            displayName: "Antigravity Work",
+            enabled: true,
+            installed: true,
+            auth: { status: "authenticated" },
+            availability: "available",
+            models: [{ slug: "model-a", name: "Model A", isCustom: false, capabilities: null }],
+          },
+        ],
+        settings: {
+          ...DEFAULT_SERVER_SETTINGS,
+          providerInstances: {
+            [antigravityInstanceId]: {
+              driver: ProviderDriverKind.make("antigravity"),
+              enabled: true,
+            },
+          },
+          projectSettingsOverrides: {
+            [projectId]: { providerInstances: { [antigravityInstanceId]: { enabled: false } } },
+          },
+        },
+      } as unknown as ServerConfig;
+      const selection = { instanceId: antigravityInstanceId, model: "model-a" };
+
+      expect(resolveSelectableModelSelection(config, selection, projectId)).toBeNull();
+      expect(resolveSelectableModelSelection(config, selection, null)).toBe(selection);
+      expect(
+        resolveSelectableModelSelection({ ...config, providers: [] }, selection, projectId),
+      ).toBeNull();
+    });
+  });
+});
+
+describe("synchronized mobile model visibility", () => {
+  const provider = ProviderInstanceId.make("codex_work");
+  const other = ProviderInstanceId.make("codex_personal");
+  const models = [
+    { slug: "gpt-6-luna", name: "Hidden", isCustom: false, capabilities: null },
+    { slug: "gpt-6.1-sol", name: "First", isCustom: false, capabilities: null },
+    { slug: "gpt-6-astra", name: "Second", isCustom: false, capabilities: null },
+    { slug: "gpt-5.3-codex-spark", name: "Custom", isCustom: true, capabilities: null },
+  ];
+  const config = {
+    settings: {
+      ...DEFAULT_SERVER_SETTINGS,
+      // A live snapshot entry always has a matching configured instance (or
+      // is a driver's own default id); these are stand-ins for neither, so
+      // the enablement fixture needs its own entry to read as enabled.
+      providerInstances: {
+        [provider]: { driver: ProviderDriverKind.make("codex"), enabled: true },
+        [other]: { driver: ProviderDriverKind.make("codex"), enabled: true },
+      },
+      providerModelPreferences: {
+        [provider]: {
+          hiddenModels: ["gpt-6-luna", "gpt-5.3-codex-spark", "missing"],
+          modelOrder: ["gpt-6-astra", "gpt-6.1-sol"],
+        },
+      },
+    },
+    providers: [provider, other].map((instanceId) => ({
+      instanceId,
+      driver: "codex",
+      enabled: true,
+      installed: true,
+      auth: { status: "authenticated" },
+      models,
+    })),
+  } as unknown as ServerConfig;
+
+  it("applies server visibility and ordering independently to each provider instance", () => {
+    const options = buildModelOptions(config, null, undefined, null);
+    expect(
+      options
+        .filter((option) => option.providerKey === provider)
+        .map((option) => option.selection.model),
+    ).toEqual(["gpt-6-astra", "gpt-6.1-sol", "gpt-5.3-codex-spark"]);
+    expect(
+      options
+        .filter((option) => option.providerKey === other)
+        .map((option) => option.selection.model),
+    ).toEqual(["gpt-6-luna", "gpt-6.1-sol", "gpt-6-astra", "gpt-5.3-codex-spark"]);
+  });
+
+  it("exposes hidden built-ins for management without offering custom visibility controls", () => {
+    const options = buildModelOptions(
+      config,
+      { instanceId: provider, model: "gpt-6-luna" },
+      provider,
+      null,
+      true,
+    );
+    expect(options.map((option) => option.selection.model)).toEqual([
+      "gpt-6-astra",
+      "gpt-6.1-sol",
+      "gpt-6-luna",
+      "gpt-5.3-codex-spark",
+    ]);
+    expect(options.find((option) => option.selection.model === "gpt-6-luna")).toMatchObject({
+      isHidden: true,
+      canHide: true,
+    });
+    expect(
+      options.find((option) => option.selection.model === "gpt-5.3-codex-spark"),
+    ).toMatchObject({
+      isHidden: false,
+      canHide: false,
+    });
+  });
+
+  it.each(["gpt-6-luna", "missing"])("does not resurrect the hidden fallback %s", (model) => {
+    expect(
+      buildModelOptions(config, { instanceId: provider, model }, provider, null).map(
+        (option) => option.selection.model,
+      ),
+    ).toEqual(["gpt-6-astra", "gpt-6.1-sol", "gpt-5.3-codex-spark"]);
+  });
+
+  it("keeps custom models visible and restores built-in models when the server clears hidden models", () => {
+    expect(
+      buildModelOptions(
+        config,
+        { instanceId: provider, model: "gpt-5.3-codex-spark" },
+        provider,
+        null,
+      ).map((option) => option.selection.model),
+    ).toContain("gpt-5.3-codex-spark");
+    const cleared = { ...config, settings: { ...config.settings, providerModelPreferences: {} } };
+    expect(
+      buildModelOptions(cleared, null, provider, null).map((option) => option.selection.model),
+    ).toEqual(["gpt-6-luna", "gpt-6.1-sol", "gpt-6-astra", "gpt-5.3-codex-spark"]);
   });
 });

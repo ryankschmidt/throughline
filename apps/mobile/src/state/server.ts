@@ -1,11 +1,12 @@
 import { createServerEnvironmentAtoms } from "@t3tools/client-runtime/state/server";
 import { createEnvironmentServerConfigsAtom } from "@t3tools/client-runtime/state/shell";
 import type { EnvironmentTheme } from "@t3tools/contracts";
-import { Atom } from "effect/unstable/reactivity";
+import { Atom } from "effect/reactivity";
 
 import { environmentCatalog } from "../connection/catalog";
 import { connectionAtomRuntime } from "../connection/runtime";
 import { environmentSession } from "./session";
+import { createThreadListEnvironmentsAtom } from "./thread-list-environments";
 
 export const serverEnvironment = createServerEnvironmentAtoms(connectionAtomRuntime, {
   initialConfigValueAtom: environmentSession.initialConfigValueAtom,
@@ -40,3 +41,7 @@ export const environmentPublishedThemesAtom = Atom.make((get): ReadonlyArray<Env
   }
   return byId.size === 0 ? EMPTY_ENVIRONMENT_THEMES : [...byId.values()];
 }).pipe(Atom.withLabel("mobile-environment-published-themes"));
+
+export const threadListEnvironmentsAtom = createThreadListEnvironmentsAtom(
+  environmentServerConfigsAtom,
+);

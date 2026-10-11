@@ -15,8 +15,6 @@ import {
   getAppModelOptionsForInstance,
   resolveAppModelSelectionForInstance,
   resolveAppModelSelectionState,
-  resolvePlanAgentHealPatch,
-  withoutPlanAgentSelection,
   resolveThreadAnsweringModel,
 } from "./modelSelection";
 
@@ -61,6 +59,7 @@ function provider(input: {
   provider?: ProviderDriverKind;
   instanceId: string;
   models?: ReadonlyArray<string>;
+  supportsTextGeneration?: boolean;
 }): ServerProvider {
   const driver =
     input.provider ??
@@ -70,6 +69,9 @@ function provider(input: {
   return {
     instanceId: ProviderInstanceId.make(input.instanceId),
     driver,
+    ...(input.supportsTextGeneration === undefined
+      ? {}
+      : { supportsTextGeneration: input.supportsTextGeneration }),
     enabled: true,
     installed: true,
     version: null,
@@ -719,14 +721,11 @@ describe("instance-scoped model selection", () => {
     const nativeModel = "gemini-3.1-pro";
     const settings: UnifiedSettings = {
       ...DEFAULT_UNIFIED_SETTINGS,
-      providers: {
-        ...DEFAULT_UNIFIED_SETTINGS.providers,
-        antigravity: {
-          ...DEFAULT_UNIFIED_SETTINGS.providers.antigravity,
-          customModels: ["api-only-model"],
-        },
-      },
       providerInstances: {
+        [ProviderInstanceId.make("antigravity")]: {
+          driver,
+          config: { customModels: ["api-only-model"] },
+        },
         [customId]: { driver, config: { customModels: ["unknown-model"] } },
       },
     };
@@ -896,6 +895,31 @@ describe("instance-scoped model selection", () => {
     });
   });
 
+  it("self-heals a persisted selection pointing at a text-generation-incapable instance", () => {
+    const providers = [
+      provider({
+        provider: ProviderDriverKind.make("acpRegistry"),
+        instanceId: "acp_gemini",
+        models: ["default"],
+        supportsTextGeneration: false,
+      }),
+      provider({
+        instanceId: "codex",
+        models: ["gpt-5.6-luna"],
+      }),
+    ];
+    const settings: UnifiedSettings = {
+      ...settingsWithProviderInstances(),
+      textGenerationModelSelection: {
+        instanceId: ProviderInstanceId.make("acp_gemini"),
+        model: "default",
+      },
+    };
+
+    expect(resolveAppModelSelectionState(settings, providers).instanceId).toBe(
+      ProviderInstanceId.make("codex"),
+    );
+  });
   it("does not select a provider that cannot generate system text", () => {
     const instanceId = ProviderInstanceId.make("antigravity");
     const unsupported = {
@@ -921,81 +945,65 @@ describe("instance-scoped model selection", () => {
   });
 });
 
-describe("withoutPlanAgentSelection", () => {
-  const instance = ProviderInstanceId.make("opencode");
-  const model = "opencode/gpt-5.4";
-
-  it("drops a stored plan agent option", () => {
-    const selection = createModelSelection(instance, model, [
-      { id: "variant", value: "high" },
+describe("resolveAppModelSelectionState with the opencode plan agent", () => {
+  const instanceId = ProviderInstanceId.make("opencode");
+  // ThroughLine: exercise stored agent options on a currently allowed model,
+  // not an obsolete model that the product deliberately refuses to offer.
+  const model = "opencode/gpt-6.1-sol";
+  const opencode: ServerProvider = {
+    ...provider({ provider: ProviderDriverKind.make("opencode"), instanceId: "opencode" }),
+    models: [
+      {
+        slug: model,
+        name: model,
+        isCustom: false,
+        capabilities: {
+          optionDescriptors: [
+            {
+              id: "agent",
+              label: "Agent",
+              type: "select",
+              options: [
+                { id: "build", label: "Build", isDefault: true },
+                { id: "plan", label: "Plan" },
+              ],
+              currentValue: "build",
+            },
+          ],
+        },
+      },
+    ],
+  };
+  const settings: UnifiedSettings = {
+    ...DEFAULT_UNIFIED_SETTINGS,
+    planModeEnabled: false,
+    textGenerationModelSelection: createModelSelection(instanceId, model, [
       { id: "agent", value: "plan" },
-    ]);
-    expect(withoutPlanAgentSelection(selection)).toEqual(
-      createModelSelection(instance, model, [{ id: "variant", value: "high" }]),
+    ]),
+  };
+
+  it("keeps a stored plan agent this device did not pick", () => {
+    expect(resolveAppModelSelectionState(settings, [opencode])).toEqual(
+      createModelSelection(instanceId, model, [{ id: "agent", value: "plan" }]),
     );
   });
 
-  it("keeps non-plan agent options", () => {
-    const selection = createModelSelection(instance, model, [{ id: "agent", value: "build" }]);
-    expect(withoutPlanAgentSelection(selection)).toBe(selection);
-  });
-
-  it("omits options entirely when plan was the only stored option", () => {
-    const selection = createModelSelection(instance, model, [{ id: "agent", value: "plan" }]);
-    expect(withoutPlanAgentSelection(selection)).toEqual({ instanceId: instance, model });
-  });
-
-  it("returns null and undefined selections unchanged", () => {
-    expect(withoutPlanAgentSelection(null)).toBeNull();
-    expect(withoutPlanAgentSelection(undefined)).toBeUndefined();
-  });
-});
-
-describe("resolvePlanAgentHealPatch", () => {
-  const instance = ProviderInstanceId.make("opencode");
-  const model = "opencode/gpt-5.4";
-  const healed = createModelSelection(instance, model, [{ id: "variant", value: "high" }]);
-  const storedPlan = createModelSelection(instance, model, [
-    { id: "variant", value: "high" },
-    { id: "agent", value: "plan" },
-  ]);
-  const nullPatch = {
-    planModeEnabled: true,
-    textGenerationModelSelection: storedPlan,
-    sourceControlWriterModelSelection: null,
-  };
-
-  it("returns null when plan mode is on", () => {
-    expect(resolvePlanAgentHealPatch(nullPatch)).toBeNull();
-  });
-
-  it("returns null when nothing needs healing", () => {
+  it("does not bring back a retired-only catalogue to preserve its stored agent option", () => {
+    const retired = "opencode/gpt-5.4";
+    const retiredProvider = {
+      ...opencode,
+      models: opencode.models.map((row) => ({ ...row, slug: retired, name: retired })),
+    };
     expect(
-      resolvePlanAgentHealPatch({
-        planModeEnabled: false,
-        textGenerationModelSelection: healed,
-        sourceControlWriterModelSelection: null,
-      }),
-    ).toBeNull();
-  });
-
-  it("patches the stored text generation selection to drop the plan agent", () => {
-    expect(
-      resolvePlanAgentHealPatch({
-        planModeEnabled: false,
-        textGenerationModelSelection: storedPlan,
-        sourceControlWriterModelSelection: null,
-      }),
-    ).toEqual({ textGenerationModelSelection: healed });
-  });
-
-  it("patches a stored source control writer selection that uses the plan agent", () => {
-    expect(
-      resolvePlanAgentHealPatch({
-        planModeEnabled: false,
-        textGenerationModelSelection: healed,
-        sourceControlWriterModelSelection: storedPlan,
-      }),
-    ).toEqual({ sourceControlWriterModelSelection: healed });
+      resolveAppModelSelectionState(
+        {
+          ...settings,
+          textGenerationModelSelection: createModelSelection(instanceId, retired, [
+            { id: "agent", value: "plan" },
+          ]),
+        },
+        [retiredProvider],
+      ),
+    ).toEqual(createModelSelection(instanceId, "", []));
   });
 });

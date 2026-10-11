@@ -1,20 +1,19 @@
+import * as McpToolAccess from "../../McpToolAccess.ts";
 import { CommandId, MessageId, ThreadId } from "@t3tools/contracts";
-import type { OrchestrationCommand } from "@t3tools/contracts";
+import type { OrchestrationV2Command } from "@t3tools/contracts";
 import type { PeerIdentity } from "@ryan/agent-mcp-relay";
-import * as NodeCrypto from "node:crypto";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 
 import * as ComsNetTransport from "../../ComsNetTransport.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
-import { OrchestrationEngineService } from "../../../orchestration/Services/OrchestrationEngine.ts";
-import type { OrchestrationEngineShape } from "../../../orchestration/Services/OrchestrationEngine.ts";
+import * as IntakeAdmission from "../../../throughline/admission/IntakeAdmission.ts";
+import * as ThreadManagement from "../../../orchestration-v2/ThreadManagementService.ts";
 import {
   senderFromMcpScope,
   withAuthenticatedSender,
 } from "../../../throughline/identity/sender-stamp.ts";
-import { ProjectionSnapshotQuery } from "../../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { ComsNetToolkit, ComsNetToolError } from "./tools.ts";
 
 const asFailure = (error: unknown): string =>
@@ -99,12 +98,26 @@ const requestText = (request: {
   ].join("\n");
 };
 
-export const dispatchFromAuthenticatedMcp = (
-  engine: Pick<OrchestrationEngineShape, "dispatch">,
-  command: OrchestrationCommand,
+export const dispatchFromAuthenticatedMcp = <A, E, R>(
+  engine: { dispatch: (command: OrchestrationV2Command) => Effect.Effect<A, E, R> },
+  command: OrchestrationV2Command,
   scope: McpInvocationContext.McpInvocationScope,
   payload: unknown,
-) => withAuthenticatedSender(engine.dispatch(command), senderFromMcpScope(scope), payload);
+) => {
+  // Bind authenticated caller metadata when the Effect is constructed, not run.
+  const caller = {
+    ...scope,
+    ...(scope.thread === undefined ? {} : { thread: { ...scope.thread } }),
+  };
+  return Effect.gen(function* () {
+    const threaded = yield* McpInvocationContext.requireThreadScope(caller, "ComsNet dispatch");
+    return yield* withAuthenticatedSender(
+      engine.dispatch(command),
+      senderFromMcpScope({ ...threaded.thread, issuedAt: caller.issuedAt }),
+      payload,
+    );
+  });
+};
 
 export type ComsNetPeerView = PeerIdentity & { readonly isSelf: boolean };
 
@@ -115,12 +128,12 @@ export const markCallerPeer = (
   peers.map((peer) => ({
     ...peer,
     isSelf:
-      peer.threadId === scope.threadId &&
-      peer.providerInstanceId === scope.providerInstanceId &&
-      peer.providerSessionId === scope.providerSessionId,
+      peer.threadId === scope.thread?.threadId &&
+      peer.providerInstanceId === scope.thread?.providerInstanceId &&
+      peer.providerSessionId === scope.thread?.providerSessionId,
   }));
 
-const handlers = {
+const rawHandlers = {
   comsnet_peers: () =>
     Effect.gen(function* () {
       const scope = yield* McpInvocationContext.requireComsNetCapability();
@@ -132,18 +145,16 @@ const handlers = {
     Effect.gen(function* () {
       const scope = yield* McpInvocationContext.requireComsNetCapability();
       const transport = yield* ComsNetTransport.ComsNetTransport;
-      const snapshotQuery = yield* ProjectionSnapshotQuery;
-      const engine = yield* OrchestrationEngineService;
+      const snapshotQuery = yield* ThreadManagement.ThreadManagementService;
+      const engine = { dispatch: IntakeAdmission.dispatchCommand };
       const request = yield* transport.send(scope, input);
       const currentRequest = yield* transport.status(scope, request.requestId);
       if (currentRequest.status === "delivered" && currentRequest.receiverTurnId !== undefined) {
         yield* transport.markDispatchSucceeded(scope, request.requestId);
         return currentRequest;
       }
-      const target = yield* snapshotQuery.getThreadShellById(
-        ThreadId.make(request.receiverThreadId),
-      );
-      if (Option.isNone(target)) {
+      const target = yield* snapshotQuery.getThreadShell(ThreadId.make(request.receiverThreadId));
+      if (target === null) {
         const reason = "receiver thread is no longer current";
         yield* transport.failDispatch(scope, request.requestId, reason);
         return yield* Effect.fail(reason);
@@ -158,20 +169,15 @@ const handlers = {
           dispatchFromAuthenticatedMcp(
             engine,
             {
-              type: "thread.turn.start",
+              type: "message.dispatch",
               commandId: CommandId.make(`comsnet:${request.requestId}`),
               threadId: ThreadId.make(request.receiverThreadId),
-              message: {
-                messageId: MessageId.make(
-                  `comsnet:${request.requestId}:${NodeCrypto.randomUUID()}`,
-                ),
-                role: "user",
-                text: requestText(request),
-                attachments: [],
-              },
-              runtimeMode: target.value.runtimeMode,
-              interactionMode: target.value.interactionMode,
-              createdAt: request.createdAt,
+              messageId: MessageId.make(`comsnet:${request.requestId}:message`),
+              text: requestText(request),
+              attachments: [],
+              createdBy: "agent",
+              creationSource: "mcp",
+              dispatchMode: { type: "start_immediately" },
             },
             scope,
             input.payload,
@@ -187,11 +193,11 @@ const handlers = {
     Effect.gen(function* () {
       const scope = yield* McpInvocationContext.requireComsNetCapability();
       const transport = yield* ComsNetTransport.ComsNetTransport;
-      const snapshotQuery = yield* ProjectionSnapshotQuery;
-      const currentThread = yield* snapshotQuery.getThreadShellById(ThreadId.make(scope.threadId));
-      const receiverTurnId = Option.isSome(currentThread)
-        ? (currentThread.value.session?.activeTurnId ?? undefined)
-        : undefined;
+      const snapshotQuery = yield* ThreadManagement.ThreadManagementService;
+      const projection = yield* snapshotQuery.getThreadProjection(ThreadId.make(scope.threadId));
+      const receiverTurnId = projection.runs.findLast((run) =>
+        ["preparing", "starting", "running", "waiting"].includes(run.status),
+      )?.id;
       const requests = yield* transport.subscribe(scope, {
         ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
         ...(receiverTurnId === undefined || receiverTurnId === null ? {} : { receiverTurnId }),
@@ -220,4 +226,11 @@ const handlers = {
     }).pipe(Effect.mapError(asToolFailure)),
 } satisfies Parameters<typeof ComsNetToolkit.toLayer>[0];
 
-export const ComsNetToolkitHandlersLive = ComsNetToolkit.toLayer(handlers);
+const handlers = {
+  comsnet_peers: McpToolAccess.readsAsCaller(rawHandlers.comsnet_peers),
+  comsnet_send: McpToolAccess.actsAsCaller(rawHandlers.comsnet_send),
+  comsnet_subscribe: McpToolAccess.actsAsCaller(rawHandlers.comsnet_subscribe),
+  comsnet_status: McpToolAccess.readsAsCaller(rawHandlers.comsnet_status),
+  comsnet_result: McpToolAccess.actsAsCaller(rawHandlers.comsnet_result),
+} satisfies McpToolAccess.Handlers<typeof ComsNetToolkit.tools>;
+export const ComsNetToolkitHandlersLive = McpToolAccess.toLayer(ComsNetToolkit, handlers);

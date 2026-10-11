@@ -13,6 +13,36 @@ export type ClaudeForkOrigin = { readonly sessionId: string; readonly messageUui
 export type ClaudeSessionLineage = ReadonlyMap<string, ClaudeForkOrigin | null>;
 const sessionUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Exact owning-host path discovery only. Never reads or guesses transcript content. */
+export async function resolveClaudeNativeTranscriptPath(
+  sessionId: string,
+  configDir = join(homedir(), ".claude"),
+): Promise<string | undefined> {
+  if (!sessionUuid.test(sessionId)) return undefined;
+  let projects: string;
+  try {
+    projects = await realpath(join(configDir.normalize("NFC"), "projects"));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+  const candidates = new Set<string>();
+  for (const directory of await readdir(projects, { withFileTypes: true })) {
+    if (!directory.isDirectory()) continue;
+    try {
+      const file = await realpath(join(projects, directory.name, `${sessionId}.jsonl`));
+      const confined = relative(projects, file);
+      if (isAbsolute(confined) || confined === ".." || confined.startsWith("../"))
+        throw new Error("Claude transcript escapes its provider projects directory.");
+      candidates.add(file);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  if (candidates.size > 1) throw new Error("Claude native transcript path is ambiguous.");
+  return candidates.values().next().value;
+}
+
 // Versioned, reproducible assignment BEFORE submission, not a guess about existing history.
 // The namespace must remain stable across releases and app restarts.
 export function claudeDisplayedMessageUuid(threadId: string, messageId: string): string {

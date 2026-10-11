@@ -26,15 +26,15 @@
  */
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { ORCHESTRATION_WS_METHODS, WsRpcGroup } from "@t3tools/contracts";
+import { WsRpcGroup } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as ManagedRuntime from "effect/ManagedRuntime";
 import * as Scope from "effect/Scope";
-import { RpcClient } from "effect/unstable/rpc";
-import * as RpcSerialization from "effect/unstable/rpc/RpcSerialization";
-import * as Socket from "effect/unstable/socket/Socket";
+import * as RpcClient from "effect/rpc/RpcClient";
+import * as RpcSerialization from "effect/rpc/RpcSerialization";
+import * as Socket from "effect/socket/Socket";
 import type { ThreadTransport } from "./thread-driver.ts";
 
 export type WsRpcTransportOptions = {
@@ -82,6 +82,10 @@ function wsUrl(serverUrl: string): string {
 export async function makeWsRpcTransport(
   opts: WsRpcTransportOptions,
 ): Promise<WsRpcTransportHandle> {
+  // V1 commands/replay are not doors in V2. Keep the source reconcilable, but
+  // refuse before opening a socket; the carried runtime uses the V2 in-process intake.
+  throw new Error("legacy-ws-transport-retired: V2 intake is required");
+
   const pollIntervalMs = opts.pollIntervalMs ?? 2000;
 
   // Bearer rides the upgrade request. Node's global WebSocket (undici) takes an
@@ -115,7 +119,7 @@ export async function makeWsRpcTransport(
   const client = await runtime.runPromise(Scope.provide(makeWsRpcProtocolClient(), clientScope));
 
   const dispatch = (command: Record<string, unknown>): Promise<unknown> =>
-    runtime.runPromise(callClient(client, ORCHESTRATION_WS_METHODS.dispatchCommand, command));
+    runtime.runPromise(callClient(client, "orchestration.dispatchCommand", command));
 
   // ThroughLine: `orchestration.replayEvents` is NOT a built door. It has no
   // entry in ORCHESTRATION_WS_METHODS, no `Rpc.make` in @t3tools/contracts, and

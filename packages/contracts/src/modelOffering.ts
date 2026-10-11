@@ -1,10 +1,10 @@
 import * as Schema from "effect/Schema";
-import { ModelSelection } from "./orchestration.ts";
+import { ModelSelection } from "./modelSelection.ts";
 import {
   CATALOGUE_SOURCE_DRIVER_KINDS,
   DEFAULT_MODEL_BY_PROVIDER,
   normalizeModelIdentityForComparison,
-} from "./model.ts";
+} from "./throughline/modelPolicy.ts";
 
 /**
  * ThroughLine: the one model list, owned by the server.

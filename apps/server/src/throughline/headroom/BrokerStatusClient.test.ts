@@ -3,34 +3,12 @@ import * as NodeHttp from "node:http";
 import { beforeAll, afterAll, describe, expect, test, vi } from "vite-plus/test";
 import { it as effectIt } from "@effect/vitest";
 import * as Effect from "effect/Effect";
-import * as Layer from "effect/Layer";
 import * as DateTime from "effect/DateTime";
 import * as Fiber from "effect/Fiber";
-import * as Stream from "effect/Stream";
+import * as Deferred from "effect/Deferred";
 import * as TestClock from "effect/testing/TestClock";
-import * as NodeServices from "@effect/platform-node/NodeServices";
-import {
-  ProviderDriverKind,
-  ProviderInstanceId,
-  ThreadId,
-  TurnId,
-  type ProviderSession,
-  type ProviderSendTurnInput,
-} from "@t3tools/contracts";
 import { BrokerStatusClient } from "./BrokerStatusClient.ts";
-import { makeProviderServiceLive } from "../../provider/Layers/ProviderService.ts";
-import * as ProviderService from "../../provider/Services/ProviderService.ts";
-import * as Registry from "../../provider/Services/ProviderAdapterRegistry.ts";
-import type { ProviderAdapterShape } from "../../provider/Services/ProviderAdapter.ts";
-import type { ProviderAdapterError } from "../../provider/Errors.ts";
-import { makeAdapterRegistryMock } from "../../provider/testUtils/providerAdapterRegistryMock.ts";
-import { ProviderSessionDirectoryLive } from "../../provider/Layers/ProviderSessionDirectory.ts";
-import * as RuntimeRepository from "../../persistence/ProviderSessionRuntime.ts";
-import { SqlitePersistenceMemory } from "../../persistence/Layers/Sqlite.ts";
-import * as ServerConfig from "../../config.ts";
-import * as ServerSettings from "../../serverSettings.ts";
-import * as Analytics from "../../telemetry/AnalyticsService.ts";
-import * as EventLoggers from "../../provider/Layers/ProviderEventLoggers.ts";
+import { waitForQuota } from "./QuotaWait.ts";
 
 let body: unknown;
 let httpStatus = 200;
@@ -198,193 +176,113 @@ describe("existing observer HTTP to synchronous typed cache", () => {
   });
 });
 
-// The real service, registry and in-memory persistence; only the provider adapter is controlled.
-const driver = ProviderDriverKind.make("codex");
-const instance = ProviderInstanceId.make("codex");
-const sessions = new Map<ThreadId, ProviderSession>();
-const sendTurn = vi.fn((input: ProviderSendTurnInput) =>
-  Effect.succeed({ threadId: input.threadId, turnId: TurnId.make(`turn-${input.threadId}`) }),
-);
-const adapter: ProviderAdapterShape<ProviderAdapterError> = {
-  provider: driver,
-  capabilities: { sessionModelSwitch: "in-session" },
-  startSession: (input) =>
-    Effect.sync(() => {
-      const session: ProviderSession = {
-        provider: driver,
-        providerInstanceId: instance,
-        threadId: input.threadId,
-        status: "ready",
-        runtimeMode: input.runtimeMode,
-        cwd: input.cwd ?? process.cwd(),
-        createdAt: "2026-01-01T00:00:00Z",
-        updatedAt: "2026-01-01T00:00:00Z",
-      };
-      sessions.set(input.threadId, session);
-      return session;
-    }),
-  sendTurn,
-  interruptTurn: () => Effect.void,
-  respondToRequest: () => Effect.void,
-  respondToUserInput: () => Effect.void,
-  stopSession: (id) =>
-    Effect.sync(() => {
-      sessions.delete(id);
-    }),
-  listSessions: () => Effect.succeed([...sessions.values()]),
-  hasSession: (id) => Effect.succeed(sessions.has(id)),
-  readThread: (id) => Effect.succeed({ threadId: id, turns: [] }),
-  rollbackThread: (id) => Effect.succeed({ threadId: id, turns: [] }),
-  stopAll: () => Effect.sync(() => sessions.clear()),
-  streamEvents: Stream.empty,
-};
+// Same HTTP inputs and dispatch outcomes as the old V1 consumer tests, now through
+// the namespace wait helper. This does not prove the V2 admission mount or a provider adapter.
+const sendTurn = vi.fn((input: string) => Effect.succeed(input));
 let activeCache: BrokerStatusClient | undefined;
 const configured = [
   { identity: "loaded", provider: "codex" },
   { identity: "unloaded", provider: "codex" },
 ];
-const repository = RuntimeRepository.layer.pipe(Layer.provide(SqlitePersistenceMemory));
-const directory = ProviderSessionDirectoryLive.pipe(Layer.provide(repository));
-const providerLayer = makeProviderServiceLive({
-  issueMcpCredential: () => Effect.succeed(undefined),
-  readHeadroomSnapshot: () => {
-    const snapshot = activeCache?.read().snapshot;
-    return { configured, ...(snapshot ? { snapshot } : {}), freshnessMs: 120_000 };
-  },
-}).pipe(
-  Layer.provide(NodeServices.layer),
-  Layer.provide(
-    Layer.succeed(Registry.ProviderAdapterRegistry, makeAdapterRegistryMock({ [driver]: adapter })),
-  ),
-  Layer.provide(directory),
-  Layer.provide(ServerSettings.ServerSettingsService.layerTest()),
-  Layer.provide(
-    ServerConfig.layerTest(process.cwd(), process.cwd()).pipe(Layer.provide(NodeServices.layer)),
-  ),
-  Layer.provideMerge(Analytics.layerTest),
-  Layer.provide(
-    Layer.succeed(EventLoggers.ProviderEventLoggers, EventLoggers.NoOpProviderEventLoggers),
-  ),
-);
-effectIt.layer(Layer.mergeAll(providerLayer, directory, repository, NodeServices.layer))(
-  "real HTTP cache to ProviderService",
-  (it) => {
-    it.effect(
-      "absent, old, failed, malformed and reset-unknown HTTP observations admit actual adapter dispatch",
-      () =>
-        Effect.gen(function* () {
-          const provider = yield* ProviderService.ProviderService;
-          const threadId = ThreadId.make("cache-unknown");
-          yield* provider.startSession(threadId, {
-            provider: driver,
-            providerInstanceId: instance,
-            threadId,
-            runtimeMode: "full-access",
-          });
-          sendTurn.mockClear();
-          const now = DateTime.toEpochMillis(yield* DateTime.now);
-          activeCache = client(() => now);
-          yield* provider.sendTurn({ threadId, input: "absent" });
-          const responses = [
-            payload(
-              configured.map((row) => ({
-                ...account(row.identity, now),
-                quota: {
-                  state: "empty",
-                  observed_at: iso(now - 180_000),
-                  reset_at: "2099-01-01T00:00:00Z",
-                },
-              })),
-            ),
-            "not-json",
-            payload(
-              configured.map((row) => ({
-                ...account(row.identity, now),
-                quota: { state: "empty", observed_at: iso(now) },
-              })),
-            ),
-          ];
-          httpStatus = 200;
-          for (const value of responses) {
-            body = value;
-            yield* Effect.promise(() => activeCache!.refresh());
-            yield* provider.sendTurn({ threadId, input: "controlled unknown" });
-          }
-          httpStatus = 503;
-          yield* Effect.promise(() => activeCache!.refresh());
-          yield* provider.sendTurn({ threadId, input: "failed" });
-          expect(sendTurn).toHaveBeenCalledTimes(5);
-        }),
-    );
-    it.effect("fresh known-empty HTTP observations hold the actual adapter until reset", () =>
+const dispatch = (input: string, publishWaiting: Effect.Effect<void> = Effect.void) =>
+  waitForQuota({
+    readHeadroomSnapshot: () => {
+      const cached = activeCache?.read();
+      return {
+        configured,
+        ...(cached?.snapshot ? { snapshot: cached.snapshot } : {}),
+        receivedAt: cached?.receivedAt ?? null,
+        freshnessMs: 120_000,
+      };
+    },
+    publishWaiting,
+  }).pipe(Effect.andThen(() => sendTurn(input)));
+
+describe("real HTTP cache to namespace quota wait", () => {
+  const it = effectIt;
+  it.effect(
+    "absent, old, failed, malformed and reset-unknown HTTP observations admit controlled consumer dispatch",
+    () =>
       Effect.gen(function* () {
-        const provider = yield* ProviderService.ProviderService;
-        const threadId = ThreadId.make("cache-known-empty");
+        sendTurn.mockClear();
         const now = DateTime.toEpochMillis(yield* DateTime.now);
         activeCache = client(() => now);
-        httpStatus = 200;
-        body = payload(configured.map((row) => account(row.identity, now)));
-        yield* Effect.promise(() => activeCache!.refresh());
-        yield* provider.startSession(threadId, {
-          provider: driver,
-          providerInstanceId: instance,
-          threadId,
-          runtimeMode: "full-access",
-        });
-        sendTurn.mockClear();
-        const waiting = yield* provider.streamEvents.pipe(
-          Stream.filter(
-            (event) => event.type === "session.state.changed" && event.payload.state === "waiting",
-          ),
-          Stream.take(1),
-          Stream.runCollect,
-          Effect.forkScoped,
-        );
-        const sending = yield* provider
-          .sendTurn({ threadId, input: "controlled empty" })
-          .pipe(Effect.forkScoped);
-        yield* TestClock.adjust("1 millis");
-        expect(sendTurn).toHaveBeenCalledTimes(0);
-        expect((yield* Fiber.join(waiting)).length).toBe(1);
-        yield* TestClock.adjust("59999 millis");
-        yield* Fiber.join(sending);
-        expect(sendTurn).toHaveBeenCalledTimes(1);
-      }),
-    );
-    it.effect(
-      "expired transport does not revive a future-clock quota observation into a hold",
-      () =>
-        Effect.gen(function* () {
-          const provider = yield* ProviderService.ProviderService;
-          const threadId = ThreadId.make("cache-expired-transport");
-          let now = DateTime.toEpochMillis(yield* DateTime.now);
-          activeCache = client(() => now);
-          httpStatus = 200;
-          body = payload(
+        yield* dispatch("absent");
+        const responses = [
+          payload(
             configured.map((row) => ({
               ...account(row.identity, now),
               quota: {
                 state: "empty",
-                observed_at: iso(now + 120_000),
-                reset_at: iso(now + 180_000),
+                observed_at: iso(now - 180_000),
+                reset_at: "2099-01-01T00:00:00Z",
               },
             })),
-          );
+          ),
+          "not-json",
+          payload(
+            configured.map((row) => ({
+              ...account(row.identity, now),
+              quota: { state: "empty", observed_at: iso(now) },
+            })),
+          ),
+        ];
+        httpStatus = 200;
+        for (const value of responses) {
+          body = value;
           yield* Effect.promise(() => activeCache!.refresh());
-          yield* provider.startSession(threadId, {
-            provider: driver,
-            providerInstanceId: instance,
-            threadId,
-            runtimeMode: "full-access",
-          });
-          sendTurn.mockClear();
-          yield* TestClock.adjust("120000 millis");
-          now = DateTime.toEpochMillis(yield* DateTime.now);
-          expect(activeCache.read().state).toBe("stale");
-          expect(activeCache.read().snapshot).toBeUndefined();
-          yield* provider.sendTurn({ threadId, input: "expired transport" });
-          expect(sendTurn).toHaveBeenCalledTimes(1);
-        }),
-    );
-  },
-);
+          yield* dispatch("controlled unknown");
+        }
+        httpStatus = 503;
+        yield* Effect.promise(() => activeCache!.refresh());
+        yield* dispatch("failed");
+        expect(sendTurn).toHaveBeenCalledTimes(5);
+      }),
+  );
+  it.effect("fresh known-empty HTTP observations hold the controlled consumer until reset", () =>
+    Effect.gen(function* () {
+      const now = DateTime.toEpochMillis(yield* DateTime.now);
+      activeCache = client(() => now);
+      httpStatus = 200;
+      body = payload(configured.map((row) => account(row.identity, now)));
+      yield* Effect.promise(() => activeCache!.refresh());
+      sendTurn.mockClear();
+      const waiting = yield* Deferred.make<readonly { state: "waiting" }[]>();
+      const sending = yield* dispatch(
+        "controlled empty",
+        Deferred.succeed(waiting, [{ state: "waiting" }]).pipe(Effect.asVoid),
+      ).pipe(Effect.forkScoped);
+      yield* TestClock.adjust("1 millis");
+      expect(sendTurn).toHaveBeenCalledTimes(0);
+      expect((yield* Deferred.await(waiting)).length).toBe(1);
+      yield* TestClock.adjust("59999 millis");
+      yield* Fiber.join(sending);
+      expect(sendTurn).toHaveBeenCalledTimes(1);
+    }),
+  );
+  it.effect("expired transport does not revive a future-clock quota observation into a hold", () =>
+    Effect.gen(function* () {
+      let now = DateTime.toEpochMillis(yield* DateTime.now);
+      activeCache = client(() => now);
+      httpStatus = 200;
+      body = payload(
+        configured.map((row) => ({
+          ...account(row.identity, now),
+          quota: {
+            state: "empty",
+            observed_at: iso(now + 120_000),
+            reset_at: iso(now + 180_000),
+          },
+        })),
+      );
+      yield* Effect.promise(() => activeCache!.refresh());
+      sendTurn.mockClear();
+      yield* TestClock.adjust("120000 millis");
+      now = DateTime.toEpochMillis(yield* DateTime.now);
+      expect(activeCache.read().state).toBe("stale");
+      expect(activeCache.read().snapshot).toBeUndefined();
+      yield* dispatch("expired transport");
+      expect(sendTurn).toHaveBeenCalledTimes(1);
+    }),
+  );
+});

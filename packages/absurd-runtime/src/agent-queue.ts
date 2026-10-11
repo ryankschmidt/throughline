@@ -23,7 +23,7 @@
  */
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { Absurd } from "absurd-sdk";
+import { Absurd, type AbsurdOptions } from "absurd-sdk";
 
 import { startSupervisedWorker } from "./worker-supervisor.ts";
 
@@ -62,7 +62,10 @@ export function registerAgentWorkTask(app: Absurd): void {
       console.log(`[agent-work ${ctx.taskID}] EXECUTING label=${params.label}`);
 
       if (params.failOnceMarker && !existsSync(params.failOnceMarker)) {
-        writeFileSync(params.failOnceMarker, `${ctx.taskID} attempt-1 ${new Date().toISOString()}\n`);
+        writeFileSync(
+          params.failOnceMarker,
+          `${ctx.taskID} attempt-1 ${new Date().toISOString()}\n`,
+        );
         console.log(`[agent-work ${ctx.taskID}] INJECTED FAILURE (attempt 1, marker written)`);
         throw new Error(`injected first-attempt failure for ${params.label}`);
       }
@@ -151,6 +154,7 @@ export function registerAgentFanoutTask(app: Absurd): void {
 }
 
 export type AgentQueueWorkerHandle = {
+  readonly ready: Promise<void>;
   app: Absurd;
   queueName: string;
   close: () => Promise<void>;
@@ -160,7 +164,9 @@ export type AgentQueueWorkerHandle = {
  * Start the dedicated agent-queue worker (the backpressure bound lives here).
  * Runs inside the same host process as the main runtime worker.
  */
-export function startAgentQueueWorker(options: { concurrency?: number } = {}): AgentQueueWorkerHandle {
+export function startAgentQueueWorker(
+  options: { concurrency?: number; db?: AbsurdOptions["db"] } = {},
+): AgentQueueWorkerHandle {
   const concurrency = options.concurrency ?? 4;
   // Pool-recovery supervision (landing defect fix): recreate the app (fresh pg
   // pool) on a dead-pool error streak instead of retrying into dead
@@ -171,7 +177,11 @@ export function startAgentQueueWorker(options: { concurrency?: number } = {}): A
   // of polling a queue that may not exist.
   const supervisor = startSupervisedWorker({
     label: `agent-queue:${AGENT_QUEUE}`,
-    createApp: () => new Absurd({ queueName: AGENT_QUEUE }),
+    createApp: () =>
+      new Absurd({
+        queueName: AGENT_QUEUE,
+        ...(options.db === undefined ? {} : { db: options.db }),
+      }),
     registerTasks: registerAgentWorkTask,
     prepareQueue: async (app) => {
       try {
@@ -190,6 +200,7 @@ export function startAgentQueueWorker(options: { concurrency?: number } = {}): A
       return supervisor.app;
     },
     queueName: AGENT_QUEUE,
+    ready: supervisor.ready,
     close: () => supervisor.close(),
   };
 }

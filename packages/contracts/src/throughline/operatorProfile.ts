@@ -167,19 +167,6 @@ export const OPERATOR_PROFILE: ReadonlyArray<OperatorProfileEntry> = [
     source: { kind: "none-on-file", note: SEEDED_FROM_MAC },
   },
   {
-    key: "providers",
-    value: {
-      cursor: { enabled: false },
-      grok: { enabled: false },
-      opencode: { enabled: false },
-    },
-    merge: "deep",
-    scope: "all",
-    reason: "Cursor, Grok and OpenCode stay off; agents run through the governed launchers.",
-    decided: "2026-09-28",
-    source: { kind: "none-on-file", note: SEEDED_FROM_MAC },
-  },
-  {
     key: "providerInstances",
     item: "claudeAgent",
     value: {

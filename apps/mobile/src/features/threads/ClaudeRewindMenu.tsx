@@ -2,9 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, View } from "react-native";
 import * as Option from "effect/Option";
 import { ComposerContextId, type EnvironmentId, type ThreadId } from "@t3tools/contracts";
-import { buildRewindEntries, type RewindEntry } from "@t3tools/shared/claudeComposerMenus";
+import { buildV2RewindEntries, type V2RewindEntry } from "../../throughline/rewind/v2Entries";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
-import { requestOlderThreadTurns } from "@t3tools/client-runtime/state/threads";
 import { AppText as Text } from "../../components/AppText";
 import {
   environmentThreadDetails,
@@ -34,21 +33,23 @@ export function ClaudeRewindMenu(props: {
 }) {
   const state = useEnvironmentThread(props.environmentId, props.threadId);
   const thread = Option.getOrNull(state.data);
-  const historyCoverage = rewindHistoryCoverage(Option.getOrNull(state.page));
-  const entries = useMemo(
-    () =>
-      buildRewindEntries({
-        messages: thread?.messages ?? [],
-        checkpoints: thread?.checkpoints ?? [],
-      }),
-    [thread?.messages, thread?.checkpoints],
-  );
-  const [selected, setSelected] = useState<RewindEntry | null>(null);
+  const historyCoverage = rewindHistoryCoverage({
+    hasMore: state.history.hasMoreHistory,
+    loadingOlder: state.history.loading,
+  });
+  const entries = useMemo(() => buildV2RewindEntries(thread), [thread]);
+  const [selected, setSelected] = useState<V2RewindEntry | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const revert = useAtomCommand(threadEnvironment.revertCheckpoint, { reportFailure: false });
-  const isRunning = thread?.session?.status === "running" || thread?.session?.status === "starting";
+  const loadEarlier = useAtomCommand(threadEnvironment.loadEarlierHistory, {
+    reportFailure: false,
+  });
+  const isRunning =
+    thread?.providerSessions.some(
+      (session) => session.status === "running" || session.status === "starting",
+    ) ?? false;
   const close = () => {
     if (!busyRef.current) {
       setSelected(null);
@@ -58,7 +59,7 @@ export function ClaudeRewindMenu(props: {
   };
   const restore = async (restoreFiles: boolean) => {
     if (!thread || !selected || busyRef.current || isRunning) return;
-    const message = thread.messages.find((message) => message.id === selected.id);
+    const message = entries.find((message) => message.id === selected.id);
     if (!message) return;
     busyRef.current = true;
     setBusy(true);
@@ -81,16 +82,12 @@ export function ClaudeRewindMenu(props: {
           ),
         ),
       );
-      const atom = environmentThreadDetails.detailAtom({
+      const atom = environmentThreadDetails.threadAtom({
         environmentId: props.environmentId,
         threadId: props.threadId,
       });
-      const previousFailures = new Set(
-        thread.activities
-          .filter((activity) => activity.kind === "checkpoint.revert.failed")
-          .map((activity) => activity.id),
-      );
-      const turnCount = selected.turnCount ?? 0;
+      if (restoreFiles && selected.fileCheckpoint === null)
+        throw new Error("No explicit file-checkpoint target exists.");
       await new Promise<void>((resolve, reject) => {
         let accepted = false;
         let settled = false;
@@ -104,34 +101,13 @@ export function ClaudeRewindMenu(props: {
           else resolve();
         };
         const inspect = () => {
-          const current = appAtomRegistry.get(atom);
-          if (!current) return;
-          const failure = current.activities.find(
-            (activity) =>
-              activity.kind === "checkpoint.revert.failed" && !previousFailures.has(activity.id),
-          );
-          if (failure) {
-            const payload = failure.payload;
-            finish(
-              new Error(
-                typeof payload === "object" &&
-                  payload !== null &&
-                  "detail" in payload &&
-                  typeof payload.detail === "string"
-                  ? payload.detail
-                  : failure.summary,
-              ),
-            );
-            return;
-          }
+          const current = appAtomRegistry.get(atom)?.projection;
           if (
             accepted &&
-            !current.messages.some((row) => row.id === message.id) &&
-            (!restoreFiles ||
-              current.checkpoints.every((row) => row.checkpointTurnCount <= turnCount)) &&
-            (!restoreFiles || turnCount === 0
-              ? current.latestTurn === null
-              : current.checkpoints.some((row) => row.turnId === current.latestTurn?.turnId))
+            current &&
+            !current.visibleTurnItems.some(
+              ({ item }) => item.type === "user_message" && item.messageId === message.id,
+            )
           )
             finish();
         };
@@ -150,9 +126,8 @@ export function ClaudeRewindMenu(props: {
           environmentId: props.environmentId,
           input: {
             threadId: props.threadId,
-            turnCount,
             restoreFiles,
-            ...(!restoreFiles ? { beforeMessageId: message.id } : {}),
+            ...(restoreFiles ? selected.fileCheckpoint! : { targetMessageId: message.id }),
           },
         }).then(
           (result) => {
@@ -224,7 +199,7 @@ export function ClaudeRewindMenu(props: {
                   {busy ? "Restoring…" : "Rewind conversation · keep files"}
                 </Text>
               </Pressable>
-              {thread?.worktreePath && selected.turnCount !== null && (
+              {thread?.thread.worktreePath && selected.fileCheckpoint !== null && (
                 <Pressable
                   accessibilityRole="button"
                   disabled={busy || isRunning}
@@ -248,11 +223,13 @@ export function ClaudeRewindMenu(props: {
                   className="mb-3 rounded-xl border border-border bg-card p-4 active:bg-row-hover"
                   onPress={() => {
                     setError(null);
-                    if (!requestOlderThreadTurns(props.environmentId, props.threadId)) {
-                      setError(
-                        "Earlier history is unavailable or a request is already queued. Reconnect if it does not load.",
-                      );
-                    }
+                    void loadEarlier({
+                      environmentId: props.environmentId,
+                      input: { threadId: props.threadId },
+                    }).then((result) => {
+                      if (result._tag === "Failure")
+                        setError(String(squashAtomCommandFailure(result)));
+                    });
                   }}
                 >
                   <Text className="text-base text-foreground">

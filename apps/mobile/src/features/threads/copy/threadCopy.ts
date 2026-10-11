@@ -1,3 +1,4 @@
+import type { OrchestrationV2ThreadProjection } from "@t3tools/contracts";
 export type ThreadCopyRef = { readonly environmentId: string; readonly threadId: string };
 export type ThreadCopyIdentity = ThreadCopyRef & {
   readonly session?: {
@@ -7,6 +8,26 @@ export type ThreadCopyIdentity = ThreadCopyRef & {
   } | null;
 };
 export type ThreadCopyField = "thread" | "provider-session" | "native-session" | "transcript";
+
+/** Only recorded native refs are copied; a provider row id is never a substitute. */
+export function threadCopyIdentityFromV2(
+  environmentId: string,
+  projection: Pick<OrchestrationV2ThreadProjection, "thread" | "providerThreads">,
+): ThreadCopyIdentity {
+  const provider = projection.providerThreads.find(
+    (row) => row.id === projection.thread.activeProviderThreadId,
+  );
+  return {
+    environmentId,
+    threadId: projection.thread.id,
+    session: {
+      providerSessionId: provider?.providerSessionId ?? null,
+      nativeSessionId: provider?.nativeThreadRef?.nativeId ?? null,
+      // V2's public projection exposes no recorded transcript path.
+      nativeTranscriptPath: null,
+    },
+  };
+}
 
 function available(value: string | null | undefined): string | null {
   return value && value.trim().length > 0 ? value : null;

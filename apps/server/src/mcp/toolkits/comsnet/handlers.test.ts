@@ -32,9 +32,11 @@ describe("ComsNet peer roster caller relation", () => {
       },
     ];
     const scope = {
-      threadId: "thread-a",
-      providerInstanceId: "codex-instance",
-      providerSessionId: "mcp-session-a",
+      thread: {
+        threadId: "thread-a",
+        providerInstanceId: "codex-instance",
+        providerSessionId: "mcp-session-a",
+      },
     } as McpInvocationScope;
 
     expect(markCallerPeer(scope, peers).map(({ peerId, isSelf }) => ({ peerId, isSelf }))).toEqual([

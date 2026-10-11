@@ -5,8 +5,8 @@ import * as NodePath from "node:path";
 import { afterEach, expect, it, vi } from "vite-plus/test";
 
 let platform = "darwin";
-vi.mock("../hostProcess.ts", () => ({
-  HostProcessPlatform: { defaultValue: () => platform },
+vi.mock("../HostProcess.ts", () => ({
+  Platform: { defaultValue: () => platform },
 }));
 
 let directory: string | undefined;

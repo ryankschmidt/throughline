@@ -27,10 +27,10 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Ref from "effect/Ref";
-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 
 import packageJson from "../../../package.json" with { type: "json" };
-import { writeFileStringAtomically } from "../../atomicWrite.ts";
+import { writeFileStringAtomically } from "@t3tools/shared/atomicWrite";
 import * as ServerConfig from "../../config.ts";
 import {
   applyOperatorProfile,
@@ -118,7 +118,7 @@ export const make = (options: OperatorProfileOptions = {}) =>
     const pathService = yield* Path.Path;
     const latestRef = yield* Ref.make(Option.none<OperatorProfileReport>());
     const profile = options.profile ?? OPERATOR_PROFILE;
-    const host = options.host ?? hostFromPlatform(yield* HostProcessPlatform);
+    const host = options.host ?? hostFromPlatform(yield* HostProcess.Platform);
     const home = options.home ?? NodeOS.homedir();
     const receiptPath = pathService.join(config.stateDir, OPERATOR_PROFILE_RECEIPT_FILE);
     const overridesPath = pathService.join(config.stateDir, OPERATOR_PROFILE_OVERRIDES_FILE);

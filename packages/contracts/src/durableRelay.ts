@@ -1,31 +1,37 @@
 import * as Schema from "effect/Schema";
 
-import { IsoDateTime, MessageId, NonNegativeInt, PositiveInt, TrimmedNonEmptyString } from "./baseSchemas.ts";
+import {
+  IsoDateTime,
+  MessageId,
+  NonNegativeInt,
+  PositiveInt,
+  TrimmedNonEmptyString,
+} from "./baseSchemas.ts";
 
-const makeRelayId = <Brand extends string>(brand: Brand) => TrimmedNonEmptyString.pipe(Schema.brand(brand));
-
-export const RelaySeatId = makeRelayId("RelaySeatId");
+export const RelaySeatId = TrimmedNonEmptyString.pipe(Schema.brand("RelaySeatId"));
 export type RelaySeatId = typeof RelaySeatId.Type;
 
-export const RelayDeliveryId = makeRelayId("RelayDeliveryId");
+export const RelayDeliveryId = TrimmedNonEmptyString.pipe(Schema.brand("RelayDeliveryId"));
 export type RelayDeliveryId = typeof RelayDeliveryId.Type;
 
-export const RelayResponseId = makeRelayId("RelayResponseId");
+export const RelayResponseId = TrimmedNonEmptyString.pipe(Schema.brand("RelayResponseId"));
 export type RelayResponseId = typeof RelayResponseId.Type;
 
-export const RelayReceiptId = makeRelayId("RelayReceiptId");
+export const RelayReceiptId = TrimmedNonEmptyString.pipe(Schema.brand("RelayReceiptId"));
 export type RelayReceiptId = typeof RelayReceiptId.Type;
 
-export const RelayGrantId = makeRelayId("RelayGrantId");
+export const RelayGrantId = TrimmedNonEmptyString.pipe(Schema.brand("RelayGrantId"));
 export type RelayGrantId = typeof RelayGrantId.Type;
 
-export const RelayDecisionRequestId = makeRelayId("RelayDecisionRequestId");
+export const RelayDecisionRequestId = TrimmedNonEmptyString.pipe(
+  Schema.brand("RelayDecisionRequestId"),
+);
 export type RelayDecisionRequestId = typeof RelayDecisionRequestId.Type;
 
-export const RelayLeaseId = makeRelayId("RelayLeaseId");
+export const RelayLeaseId = TrimmedNonEmptyString.pipe(Schema.brand("RelayLeaseId"));
 export type RelayLeaseId = typeof RelayLeaseId.Type;
 
-export const RelayIdempotencyKey = makeRelayId("RelayIdempotencyKey");
+export const RelayIdempotencyKey = TrimmedNonEmptyString.pipe(Schema.brand("RelayIdempotencyKey"));
 export type RelayIdempotencyKey = typeof RelayIdempotencyKey.Type;
 
 export const RelayAuthorityTier = Schema.Literals([
@@ -126,10 +132,19 @@ export const RelayRetryClassification = Schema.Literals([
 ]);
 export type RelayRetryClassification = typeof RelayRetryClassification.Type;
 
-export const RelayToolName = Schema.Literals(["relay.list", "relay.send", "relay.get", "relay.await"]);
+export const RelayToolName = Schema.Literals([
+  "relay.list",
+  "relay.send",
+  "relay.get",
+  "relay.await",
+]);
 export type RelayToolName = typeof RelayToolName.Type;
 
-export const RelayTransportResponseMethod = Schema.Literals(["relay.send", "relay.get", "relay.await"]);
+export const RelayTransportResponseMethod = Schema.Literals([
+  "relay.send",
+  "relay.get",
+  "relay.await",
+]);
 export type RelayTransportResponseMethod = typeof RelayTransportResponseMethod.Type;
 
 export const RelaySeatHealthState = Schema.Literals(["healthy", "tripped", "near-full", "stale"]);

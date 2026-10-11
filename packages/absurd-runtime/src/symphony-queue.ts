@@ -22,7 +22,7 @@
  * owns the probe that reads this queue's reachability; this module only
  * starts/stops the worker).
  */
-import { Absurd } from "absurd-sdk";
+import { Absurd, type AbsurdOptions } from "absurd-sdk";
 
 import { registerThreadRunTask, type ThreadTransport } from "./thread-driver.ts";
 import { startSupervisedWorker } from "./worker-supervisor.ts";
@@ -31,6 +31,7 @@ import { startSupervisedWorker } from "./worker-supervisor.ts";
 export const SYMPHONY_QUEUE = "t3-symphony" as const;
 
 export type SymphonyQueueWorkerHandle = {
+  readonly ready: Promise<void>;
   app: Absurd;
   queueName: string;
   close: () => Promise<void>;
@@ -64,6 +65,7 @@ function readSymphonyConcurrencyEnv(): number | undefined {
 export function startSymphonyQueueWorker(options: {
   concurrency?: number;
   transport: ThreadTransport;
+  db?: AbsurdOptions["db"];
 }): SymphonyQueueWorkerHandle {
   const concurrency = options.concurrency ?? readSymphonyConcurrencyEnv() ?? 2;
   const transport = options.transport;
@@ -77,7 +79,11 @@ export function startSymphonyQueueWorker(options: {
   // exist.
   const supervisor = startSupervisedWorker({
     label: `symphony-queue:${SYMPHONY_QUEUE}`,
-    createApp: () => new Absurd({ queueName: SYMPHONY_QUEUE }),
+    createApp: () =>
+      new Absurd({
+        queueName: SYMPHONY_QUEUE,
+        ...(options.db === undefined ? {} : { db: options.db }),
+      }),
     registerTasks: (app) => registerThreadRunTask(app, transport),
     prepareQueue: async (app) => {
       try {
@@ -98,6 +104,7 @@ export function startSymphonyQueueWorker(options: {
       return supervisor.app;
     },
     queueName: SYMPHONY_QUEUE,
+    ready: supervisor.ready,
     close: () => supervisor.close(),
   };
 }

@@ -1,3 +1,4 @@
+import { fillNativeTranscriptPath } from "../throughline/observation/NativeTranscriptFill.ts";
 import {
   ComsNetError,
   JsonFileComsNetStore,
@@ -17,9 +18,12 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
 import { ServerConfig } from "../config.ts";
-import { ProjectionSnapshotQuery } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
+import * as ThreadManagement from "../orchestration-v2/ThreadManagementService.ts";
+import * as ProjectStore from "../orchestration-v2/ProjectStore.ts";
+import * as ProviderInstanceRegistry from "../provider/ProviderInstanceRegistry.ts";
+import * as SqlClient from "effect/sql/SqlClient";
 import type { McpInvocationScope } from "./McpInvocationContext.ts";
-import * as McpProviderSession from "./McpProviderSession.ts";
+import * as McpProviderSession from "@t3tools/provider-core/server/McpProviderSessions";
 
 export const COMSNET_REQUEST_LEASE_MS = 120_000;
 
@@ -96,45 +100,45 @@ const fromPromise = <A>(operation: () => Promise<A>): Effect.Effect<A, ComsNetTr
 
 export const make = Effect.gen(function* () {
   const config = yield* ServerConfig;
-  const snapshotQuery = yield* ProjectionSnapshotQuery;
+  const threads = yield* ThreadManagement.ThreadManagementService;
+  const projects = yield* ProjectStore.ProjectStoreV2;
+  const mcpSessions = yield* McpProviderSession.McpProviderSessions;
+  const instances = yield* ProviderInstanceRegistry.ProviderInstanceRegistry;
+  const sql = yield* SqlClient.SqlClient;
+  const context = yield* Effect.context<never>();
+  const runPromise = Effect.runPromiseWith(context);
 
   const peers: PeerDirectory = {
     list: async () => {
-      const snapshot = await Effect.runPromise(snapshotQuery.getShellSnapshot());
+      const snapshot = await runPromise(threads.getShellSnapshot());
+      const projectRows = await runPromise(projects.listShells());
       const workspaceByProject = new Map(
-        snapshot.projects.map((project) => [project.id, project.workspaceRoot] as const),
+        projectRows.map((project) => [project.id, project.workspaceRoot] as const),
       );
       const identities: Array<PeerIdentity> = [];
       for (const thread of snapshot.threads) {
-        const session = thread.session;
-        const mcpSession = McpProviderSession.readMcpProviderSession(thread.id);
-        if (
-          session === null ||
-          session.providerName === null ||
-          session.providerInstanceId === undefined ||
-          mcpSession === undefined ||
-          mcpSession.providerInstanceId !== session.providerInstanceId ||
-          session.status === "stopped"
-        ) {
-          continue;
-        }
+        const mcpSession = await runPromise(mcpSessions.read(thread.id));
+        if (mcpSession === undefined) continue;
+        const instance = await runPromise(instances.getInstance(mcpSession.providerInstanceId));
+        if (instance === undefined) continue;
         const cwd = thread.worktreePath ?? workspaceByProject.get(thread.projectId);
         if (cwd === undefined) continue;
-        const providerName = session.providerName;
-        const providerInstanceId = session.providerInstanceId;
-        // The MCP credential session is minted and owned by ThroughLine before
-        // the native provider starts. It is therefore the identity that the
-        // authenticated caller presents. A provider-native resume/thread id
-        // is separate metadata and must never be compared with this value.
-        const providerSessionId = mcpSession.providerSessionId;
+        await runPromise(
+          fillNativeTranscriptPath(thread.id).pipe(Effect.provideService(SqlClient.SqlClient, sql)),
+        );
+        const native = await runPromise(
+          sql<{
+            native_transcript_path: string | null;
+          }>`SELECT native_transcript_path FROM throughline_thread_identity WHERE thread_id=${thread.id}`,
+        );
         identities.push({
-          peerId: `${providerName}:${providerSessionId}`,
+          peerId: `${instance.driverKind}:${mcpSession.providerSessionId}`,
           threadId: thread.id,
-          providerName,
-          providerInstanceId,
-          providerSessionId,
-          ...(typeof session.nativeTranscriptPath === "string"
-            ? { transcriptPath: session.nativeTranscriptPath }
+          providerName: instance.driverKind,
+          providerInstanceId: mcpSession.providerInstanceId,
+          providerSessionId: mcpSession.providerSessionId,
+          ...(native[0]?.native_transcript_path
+            ? { transcriptPath: native[0].native_transcript_path }
             : {}),
           cwd,
         });
@@ -157,9 +161,9 @@ export const make = Effect.gen(function* () {
     fromPromise(async () => {
       const principal = (await peers.list()).find(
         (peer) =>
-          peer.threadId === scope.threadId &&
-          peer.providerSessionId === scope.providerSessionId &&
-          peer.providerInstanceId === scope.providerInstanceId,
+          peer.threadId === scope.thread?.threadId &&
+          peer.providerSessionId === scope.thread?.providerSessionId &&
+          peer.providerInstanceId === scope.thread?.providerInstanceId,
       );
       if (principal === undefined) {
         throw new ComsNetTransportError({

@@ -10,7 +10,7 @@ import {
   compareSelectedAndAnsweringModel,
   isOfferedProviderModel,
   isProductDefaultModel,
-} from "./model.ts";
+} from "./throughline/modelPolicy.ts";
 import { ProviderDriverKind } from "./providerInstance.ts";
 
 it("recognizes OpenAI model identities across providers and preserves other models", () => {

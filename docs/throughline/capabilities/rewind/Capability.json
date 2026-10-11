@@ -1,7 +1,7 @@
 {
   "schema": "throughline.capability.v1",
   "name": "rewind",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "rule": "rewind keeps the same Claude native session, like the CLI's /rewind; adopt upstream types around it",
   "baseline": {
     "throughline": "0.0.51",
@@ -35,8 +35,19 @@
     "apps/server/src/provider/Layers/ClaudeAdapter.test.ts",
     "apps/server/src/provider/Layers/ClaudeAdapter.ts",
     "apps/server/src/provider/Layers/ProviderService.ts",
-    "apps/server/src/provider/Services/ProviderAdapter.ts",
     "apps/server/src/provider/Services/ProviderService.ts",
+    "apps/server/src/throughline/http.test.ts",
+    "apps/server/src/throughline/http.ts",
+    "apps/server/src/throughline/rewind/CheckpointContention.v2.test.ts",
+    "apps/server/src/throughline/rewind/ExactMessageRewindRuntime.test.ts",
+    "apps/server/src/throughline/rewind/ExactMessageRewindRuntime.ts",
+    "apps/server/src/throughline/rewind/ExactMessageRewindV2.test.ts",
+    "apps/server/src/throughline/rewind/ExactMessageRewindV2.ts",
+    "apps/server/src/throughline/rewind/claudeTranscriptParent.ts",
+    "apps/server/src/throughline/rewind/http.test.ts",
+    "apps/server/src/throughline/rewind/http.ts",
+    "apps/server/src/throughline/rewind/testing/CheckpointHarness.ts",
+    "apps/server/src/throughline/rewind/testing/FaultingProjectionStore.ts",
     "apps/web/src/components/ChatView.logic.ts",
     "apps/web/src/components/ChatView.tsx",
     "apps/web/src/components/chat/ChatComposer.tsx",
@@ -45,15 +56,130 @@
     "apps/web/src/components/chat/RewindMenu.tsx",
     "packages/client-runtime/src/operations/commands.test.ts",
     "packages/client-runtime/src/operations/commands.ts",
-    "packages/client-runtime/src/state/threadReducer.test.ts",
-    "packages/client-runtime/src/state/threadReducer.ts",
-    "packages/contracts/src/orchestration.ts",
+    "packages/client-runtime/src/throughline/rewindHttp.test.ts",
+    "packages/client-runtime/src/throughline/rewindHttp.ts",
     "packages/shared/package.json",
     "packages/shared/src/claudeComposerMenus.test.ts",
-    "packages/shared/src/claudeComposerMenus.ts",
-    "apps/server/src/throughline/rewind/claudeTranscriptParent.ts"
+    "packages/shared/src/claudeComposerMenus.ts"
   ],
   "regression": [
+    {
+      "file": "apps/server/src/throughline/rewind/ExactMessageRewindRuntime.test.ts",
+      "package": "apps/server",
+      "cases": [
+        "rewinds the first Claude prompt in place with zero file checkpoints",
+        "unknown native markers refuse before opening or trimming",
+        "provider refusal leaves no pending cut that could trim history on restart",
+        "restart replays a pending cut with the same session and run boundary",
+        "restart preserves work created after the durable cut",
+        "rewinds again and again in the same native session",
+        "rewinds a compacted session in place and keeps its markers",
+        "refuses a first-message rewind when nothing precedes it and keeps the session",
+        "restores the prior durable cut when a subsequent provider rewind refuses",
+        "a later exact-message rollback cuts at the right message",
+        "refuses a message it cannot line up with the saved markers",
+        "keeps the cut through a restart until the next reply commits it",
+        "the upstream Claude adapter opens the next SDK turn on the same session at the exact cut",
+        "first rewind discovers its transcript without a prior identity GET",
+        "restart cannot roll back post-cut work whose requested time is earlier than the server clock",
+        "the persisted source tip preserves post-cut ordinals while trimming pre-cut work",
+        "one stale provider cut refuses only its thread while another pending cut recovers",
+        "startup with one malformed cut resolves and leaves ordinary turn execution available",
+        "a new cut replaces a refused row for the same message with real SQL",
+        "a new cut replaces a refused row for a different message with real SQL",
+        "a refused replacement preserves the previous cut and all native messages",
+        "startup readiness finishes after the actual pending-cut recovery"
+      ]
+    },
+    {
+      "file": "apps/server/src/throughline/rewind/ExactMessageRewindV2.test.ts",
+      "package": "apps/server",
+      "cases": [
+        "keeps work from message-less turns recorded before the rewind boundary",
+        "retains explicit earlier messages without file checkpoints",
+        "refuses an unknown native message without forking or restarting",
+        "carries an intra-run rewind as refusal and loses no message",
+        "admits a waiting checkpoint run whose active provider turn is terminal",
+        "refuses a non-terminal active provider turn even when its run is completed",
+        "refuses a waiting approval_request node",
+        "refuses a waiting user_input_request node"
+      ]
+    },
+    {
+      "file": "apps/server/src/throughline/rewind/http.test.ts",
+      "package": "apps/server",
+      "cases": [
+        "requires authentication before executing",
+        "refuses read-only authorization",
+        "acknowledges the same message and thread for an authorized operator",
+        "cannot turn file restore or checkpoint fields into a conversation cut",
+        "returns a truthful safe refusal rather than an acknowledgment",
+        "does not expose a GET mutation door",
+        "a refused row then POST with the same messageId executes against the live projection",
+        "a refused row then POST with a different messageId executes against the live projection",
+        "POST during startup recovery returns recovery-in-progress and does not execute",
+        "a recovered-awaiting-reply row then POST executes for repeated rewind",
+        "a new refusal retains the previous recovery reason in the response"
+      ]
+    },
+    {
+      "file": "packages/client-runtime/src/throughline/rewindHttp.test.ts",
+      "package": "packages/client-runtime",
+      "cases": [
+        "sends exact-message rewind through a command older hosts cannot mistake for file restore",
+        "retains previous-cut recovery metadata on a successful replacement",
+        "retains new refusal and previous-cut reason without retrying the command"
+      ]
+    },
+    {
+      "file": "packages/shared/src/claudeComposerMenus.test.ts",
+      "package": "packages/shared",
+      "cases": [
+        "recognizes only whole commands, not requests mentioning commands",
+        "uses absolute checkpoint counts, never the index of a paginated message"
+      ]
+    },
+    {
+      "file": "apps/mobile/src/features/threads/use-composer-command-menu.test.ts",
+      "package": "apps/mobile",
+      "cases": [
+        "offers Claude client menus once, only in an existing thread"
+      ]
+    },
+    {
+      "file": "apps/server/src/throughline/http.test.ts",
+      "package": "apps/server",
+      "cases": [
+        "constructs the actual namespace runtime and refuses an unknown thread without a provider",
+        "retains the authenticated refusal after startup recovery constructs"
+      ]
+    },
+    {
+      "file": "apps/server/src/throughline/rewind/CheckpointContention.v2.test.ts",
+      "package": "apps/server",
+      "cases": [
+        "checkpoint-contention V2: a still-valid waiting capture publishes through real SQLite and Git",
+        "checkpoint-contention V2: an in-flight filesystem capture cannot publish after the exact HTTP cut",
+        "checkpoint-contention V2: a public capture-read failure is loud and the next capture progresses",
+        "checkpoint-contention V2: a capture committed before the exact cut leaves no live removed-run checkpoint",
+        "checkpoint-contention V2: exact cut precedes queued capture, queued=false",
+        "checkpoint-contention V2: exact cut precedes queued capture, queued=true",
+        "checkpoint-contention V2: lost run ownership cannot publish a removed completion",
+        "checkpoint-contention V2: lost provider ownership cannot publish a removed completion",
+        "checkpoint-contention V2: a still-valid blocked capture publishes, case=retained-message-less",
+        "checkpoint-contention V2: a still-valid blocked capture publishes, case=failed-provider-rollback",
+        "checkpoint-contention V2: a still-valid blocked capture publishes, case=older-retained-completion",
+        "checkpoint-contention V2: exact rewind rejects invalid boundary or active session, guard=missing",
+        "checkpoint-contention V2: exact rewind rejects invalid boundary or active session, guard=assistant",
+        "checkpoint-contention V2: exact rewind rejects invalid boundary or active session, guard=starting",
+        "checkpoint-contention V2: exact rewind rejects invalid boundary or active session, guard=running",
+        "checkpoint-contention V2: a genuinely new post-cut intake run captures normally"
+      ]
+    }
+  ],
+  "version_file": "VERSION.md",
+  "changelog_file": "CHANGELOG.md",
+  "legacy_regression": [
     {
       "file": "apps/server/src/provider/Layers/ClaudeAdapter.test.ts",
       "package": "apps/server",
@@ -74,7 +200,14 @@
       "package": "apps/server",
       "cases": [
         "conversation rewind preserves earlier history with zero checkpoint counts",
-        "conversation rewind keeps message-less turn work recorded before it"
+        "conversation rewind keeps message-less turn work recorded before it",
+        "checkpoint-contention: a still-valid blocked capture publishes, case=%s",
+        "checkpoint-contention: already-queued removed completion cannot publish after a cut",
+        "checkpoint-contention: genuinely new unprojected post-cut turn captures normally",
+        "checkpoint-contention: retention admission query failure is loud and later provider event still captures",
+        "checkpoint-contention: exact conversation rewind completes before blocked capture, queued=%s",
+        "checkpoint-contention: released capture cannot resurrect a same-thread rewound turn",
+        "checkpoint-contention: exact rewind rejects invalid boundary or active session, guard=%s"
       ]
     },
     {
@@ -108,6 +241,13 @@
       ]
     }
   ],
-  "version_file": "VERSION.md",
-  "changelog_file": "CHANGELOG.md"
+  "v2_carry": {
+    "design": "Fable-Delta-Upstream-V2-R3.json answers 1/3/6 and recorded corrections; safe intra-run refusal remains",
+    "boundary": "source fixtures over V2 service, real migrated SQLite and upstream Claude adapter with a controlled SDK runner; no installed-device/real-SDK-consumer acceptance",
+    "intra_run": "carried as refusal, Fable design pending",
+    "legacy_source": "byte-exact originals under execution/phase-04/upstream-reconcile/V1-Test-Evidence; original names retained above for traceability",
+    "change": "exact-message HTTP replaces ambiguous checkpoint/turn-count transport; file checkpoint rollback stays upstream",
+    "recovery": "monotonic source tip ordinal and event sequence; per-thread refusal without server startup failure; no clock ordering",
+    "checkpoint_contention": "Seven original templates preserved against real V2 SQL/Git/capture/ingestion/intake, same typed semantics and original guard/retained variants; no live provider process or effect worker in source fixture. Original pair retained pending independent current-head feedback and retirement review."
+  }
 }

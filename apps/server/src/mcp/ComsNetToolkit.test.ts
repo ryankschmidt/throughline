@@ -6,34 +6,44 @@ import {
   ProviderInstanceId,
   ThreadId,
   TurnId,
-  type OrchestrationShellSnapshot,
+  type OrchestrationV2ShellSnapshot,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import { McpSchema, McpServer, Tool } from "effect/unstable/ai";
+import { McpSchema, McpServer, Tool } from "effect/ai";
 
 import { ServerConfig } from "../config.ts";
-import {
-  OrchestrationEngineService,
-  type OrchestrationEngineShape,
-} from "../orchestration/Services/OrchestrationEngine.ts";
-import { ProjectionSnapshotQuery } from "../orchestration/Services/ProjectionSnapshotQuery.ts";
+import type { AbsurdRuntimeHandle } from "@t3tools/absurd-runtime";
+import * as Threads from "../orchestration-v2/ThreadManagementService.ts";
+import * as Projects from "../orchestration-v2/ProjectStore.ts";
+import * as Instances from "../provider/ProviderInstanceRegistry.ts";
+import * as ThreadLaunch from "../orchestration-v2/ThreadLaunchService.ts";
+import * as Sqlite from "../persistence/Sqlite.ts";
+import { DurableIntake } from "../throughline/admission/IntakeAdmission.ts";
 import * as Transport from "./ComsNetTransport.ts";
 import { ComsNetToolkitRegistrationLive } from "./McpHttpServer.ts";
 import * as Invocation from "./McpInvocationContext.ts";
-import * as ProviderSession from "./McpProviderSession.ts";
+import * as ProviderSession from "@t3tools/provider-core/server/McpProviderSessions";
 import { ComsNetToolkit } from "./toolkits/comsnet/tools.ts";
 
 const environmentId = EnvironmentId.make("comsnet-response-test");
 const providerInstanceId = ProviderInstanceId.make("codex");
-const scope = (name: string): Invocation.McpInvocationScope => ({
+const scope = (name: string) => ({
+  client: undefined,
+  thread: {
+    threadId: ThreadId.make(`thread-${name}`),
+    providerSessionId: `mcp-${name}`,
+    providerInstanceId,
+  },
+  requestNamespace: `fixture-${name}`,
   environmentId,
   providerInstanceId,
   threadId: ThreadId.make(`thread-${name}`),
   providerSessionId: `mcp-${name}`,
-  capabilities: new Set(["comsnet"]),
+  capabilities: new Set<Invocation.McpCapability>(["comsnet"]),
+  browserToolsAvailable: false,
   issuedAt: 1,
 });
 const sender = scope("a");
@@ -42,6 +52,11 @@ const snapshot = {
   projects: [{ id: ProjectId.make("project"), workspaceRoot: "/workspace" }],
   threads: [sender, receiver].map((seat) => ({
     id: seat.threadId,
+    deletedAt: null,
+    archivedAt: null,
+    providerInstanceId,
+    activeRunId: "turn-b",
+    activeProviderThreadId: "provider-thread-b",
     projectId: ProjectId.make("project"),
     worktreePath: null,
     runtimeMode: "full-access",
@@ -53,7 +68,7 @@ const snapshot = {
       activeTurnId: TurnId.make("turn-b"),
     },
   })),
-} as unknown as OrchestrationShellSnapshot;
+} as unknown as OrchestrationV2ShellSnapshot;
 const client = McpSchema.McpServerClient.of({
   clientId: 1,
   clientCapabilities: {},
@@ -66,36 +81,69 @@ const client = McpSchema.McpServerClient.of({
   },
   getClient: Effect.die("unused"),
 });
-const projection = Layer.mock(ProjectionSnapshotQuery)({
-  getShellSnapshot: () => Effect.succeed(snapshot),
-  getThreadShellById: (id) =>
-    Effect.succeed(Option.fromUndefinedOr(snapshot.threads.find((thread) => thread.id === id))),
-});
+const projection = Layer.mergeAll(
+  Layer.mock(Threads.ThreadManagementService)({
+    getShellSnapshot: () => Effect.succeed(snapshot),
+    getThreadShell: (id) =>
+      Effect.succeed(snapshot.threads.find((thread) => thread.id === id) ?? null),
+    getThreadProjection: () =>
+      Effect.succeed({ runs: [{ id: "turn-b", status: "running" }] } as never),
+  }),
+  Layer.mock(Projects.ProjectStoreV2)({
+    listShells: () =>
+      Effect.succeed([{ id: ProjectId.make("project"), workspaceRoot: "/workspace" }] as never),
+  }),
+  Layer.mock(Instances.ProviderInstanceRegistry)({
+    getInstance: () => Effect.succeed({ driverKind: "codex" } as never),
+  }),
+  Layer.mock(ThreadLaunch.ThreadLaunchService)({}),
+  Sqlite.layerMemory,
+  ProviderSession.layer,
+);
 const makeTestLayer = (
   transportLayer = Transport.layer,
-  dispatch: OrchestrationEngineShape["dispatch"] = () => Effect.succeed({ sequence: 1 }),
-) =>
-  ComsNetToolkitRegistrationLive.pipe(
+  dispatch: (command: unknown) => Effect.Effect<{ sequence: number }> = () =>
+    Effect.succeed({ sequence: 1 }),
+) => {
+  let result: { sequence: number } = { sequence: 1 };
+  const runtime = {
+    queueName: "t3-interactive-turns",
+    app: {
+      listQueues: async () => ["t3-interactive-turns"],
+      spawn: async (_name: string, payload: { call: { input: unknown } }) => {
+        result = await Effect.runPromise(dispatch(payload.call.input));
+        return { taskID: "fixture-dispatch" };
+      },
+      awaitTaskResult: async () => ({
+        state: "completed",
+        result: { ...result, storedEvents: [] },
+      }),
+    },
+  } as unknown as AbsurdRuntimeHandle;
+  return ComsNetToolkitRegistrationLive.pipe(
     Layer.provideMerge(McpServer.McpServer.layer),
     Layer.provideMerge(transportLayer),
     Layer.provideMerge(projection),
-    Layer.provide(Layer.mock(OrchestrationEngineService)({ dispatch })),
-    Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "comsnet-response-test-" })),
-    Layer.provide(NodeServices.layer),
+    Layer.provide(Layer.succeed(DurableIntake, { runtime })),
+    Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "comsnet-response-test-" })),
+    Layer.provideMerge(NodeServices.layer),
   );
+};
 const TestLayer = makeTestLayer();
 const sessions = Effect.acquireRelease(
-  Effect.sync(() => {
+  Effect.gen(function* () {
+    const store = yield* ProviderSession.McpProviderSessions;
     for (const seat of [sender, receiver])
-      ProviderSession.setMcpProviderSession({
+      yield* store.set({
         ...seat,
         endpoint: "http://localhost/mcp",
         authorizationHeader: "Bearer fixture-only",
       });
   }),
   () =>
-    Effect.sync(() => {
-      for (const seat of [sender, receiver]) ProviderSession.clearMcpProviderSession(seat.threadId);
+    Effect.gen(function* () {
+      const store = yield* ProviderSession.McpProviderSessions;
+      for (const seat of [sender, receiver]) yield* store.clear(seat.threadId);
     }),
 );
 const sendInput = { targetPeerId: "codex:mcp-b", kind: "question", payload: { text: "one fact" } };

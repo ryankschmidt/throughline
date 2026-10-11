@@ -1,4 +1,5 @@
 import "vite-plus/test/config";
+import { configDefaults } from "vite-plus/test/config";
 import { defineConfig } from "vite-plus";
 
 import { isDesktopRuntimeExternalDependency } from "../../scripts/lib/desktop-external-packages.ts";
@@ -143,6 +144,8 @@ export default defineConfig({
     },
   ],
   test: {
+    // These installer regressions use node:test and execute separately with node --test.
+    exclude: [...configDefaults.exclude, "mac/install-mac.test.ts", "linux/install-linux.test.ts"],
     // The Windows lane runs workspace suites concurrently; filesystem-heavy
     // desktop integration tests can exceed Vitest's 5 second default there.
     testTimeout: 15_000,

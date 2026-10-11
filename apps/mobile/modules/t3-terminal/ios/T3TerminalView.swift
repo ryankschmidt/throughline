@@ -292,6 +292,14 @@ public final class T3TerminalView: ExpoView, UITextFieldDelegate {
     }
   }
 
+  var readOnly = false {
+    didSet {
+      if readOnly {
+        inputField.resignFirstResponder()
+      }
+    }
+  }
+
   var autoFocus = true {
     didSet {
       guard oldValue != autoFocus else { return }
@@ -333,7 +341,8 @@ public final class T3TerminalView: ExpoView, UITextFieldDelegate {
 
     applyTheme()
     clipsToBounds = true
-    contentScaleFactor = UIScreen.main.scale
+    // The real scale arrives with the window; layoutSubviews corrects it.
+    contentScaleFactor = traitCollection.displayScale
 
     terminalViewport.clipsToBounds = true
     terminalViewport.contentScaleFactor = contentScaleFactor
@@ -627,7 +636,7 @@ public final class T3TerminalView: ExpoView, UITextFieldDelegate {
       guard let input = String(data: bytes, encoding: .utf8), !input.isEmpty else { return }
 
       DispatchQueue.main.async {
-        view.onInput(["data": input])
+        view.emitInput(input)
       }
     }, userdata)
   }
@@ -695,20 +704,22 @@ public final class T3TerminalView: ExpoView, UITextFieldDelegate {
   }
 
   private func updateContentScale() {
-    let scale = window?.screen.scale ?? UIScreen.main.scale
+    // The trait collection follows the scene the view is in, which matters once
+    // iPhone apps run resizable and on external displays; UIScreen.main does not.
+    let scale = traitCollection.displayScale
     if contentScaleFactor != scale {
       contentScaleFactor = scale
     }
   }
 
   private func requestKeyboardFocus() {
-    guard window != nil else { return }
+    guard window != nil, !readOnly else { return }
     inputField.becomeFirstResponder()
     textInputModeDidChange()
   }
 
   private func emitInput(_ data: String) {
-    guard !data.isEmpty else { return }
+    guard !readOnly, !data.isEmpty else { return }
     onInput(["data": data])
   }
 

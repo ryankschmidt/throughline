@@ -10,7 +10,7 @@
  * drift) that the WS transport suffered.
  *
  * Dependency direction is preserved: this file imports ONLY the local
- * `ThreadTransport` seam and `node:crypto`. The server binds `dispatchCommand`
+ * `ThreadTransport` seam and Effect Crypto/NodeCrypto. The server binds `dispatchCommand`
  * and `replayEvents` to its in-process `OrchestrationEngineService` and passes
  * them in as `deps` — the transport never reaches back into server code.
  *
@@ -23,7 +23,8 @@
  * is no default model on this path. The command is built with an explicit
  * `modelSelection`; a missing model throws before any thread is created.
  */
-import * as NodeCrypto from "node:crypto";
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
+import * as Crypto from "effect/Crypto";
 import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -64,6 +65,13 @@ export interface InProcessTransportDeps {
  * run inside the durable `t3.thread-run` steps, so a kill/restart re-polls from
  * the durable cursor with no external session to re-establish.
  */
+const randomUuid = () =>
+  Effect.runPromise(
+    Effect.flatMap(Crypto.Crypto, (crypto) => crypto.randomUUIDv4).pipe(
+      Effect.provide(NodeCrypto.layer),
+    ),
+  );
+
 export function makeInProcessTransport(deps: InProcessTransportDeps): ThreadTransport {
   const pollIntervalMs = deps.pollIntervalMs ?? 1000;
 
@@ -82,10 +90,10 @@ export function makeInProcessTransport(deps: InProcessTransportDeps): ThreadTran
           "in-process-transport: model is required to create a thread (no default model on this path)",
         );
       }
-      const threadId = NodeCrypto.randomUUID();
+      const threadId = await randomUuid();
       await deps.dispatchCommand({
         type: "thread.create",
-        commandId: NodeCrypto.randomUUID(),
+        commandId: await randomUuid(),
         threadId,
         projectId: deps.projectId,
         title: "symphony thread-run (TQ-039)",
@@ -108,21 +116,21 @@ export function makeInProcessTransport(deps: InProcessTransportDeps): ThreadTran
       if (turnCommand) {
         const message = turnCommand["message"] as { messageId?: unknown } | undefined;
         const messageId =
-          typeof message?.messageId === "string" ? message.messageId : NodeCrypto.randomUUID();
+          typeof message?.messageId === "string" ? message.messageId : await randomUuid();
         await deps.dispatchCommand(turnCommand, trustedSenderContext);
         return {
           turnId: `seq:${turnCursor}:${messageId}`,
           dispatchedAt: await Effect.runPromise(Effect.map(DateTime.now, DateTime.formatIso)),
         };
       }
-      const messageId = NodeCrypto.randomUUID();
+      const messageId = await randomUuid();
       // modelSelection is intentionally omitted: the turn inherits the thread's
       // model set at create time. Keeping it off this command means there is no
       // second place a default model could sneak in.
       await deps.dispatchCommand(
         {
           type: "thread.turn.start",
-          commandId: NodeCrypto.randomUUID(),
+          commandId: await randomUuid(),
           threadId,
           message: { messageId, role: "user", text: prompt, attachments: [] },
           runtimeMode: "full-access",
