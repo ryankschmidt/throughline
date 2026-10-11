@@ -9,15 +9,46 @@ import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 
 import { checkoutNewTaskBranch } from "./checkout-new-task-branch";
 
-const exec = NodeUtil.promisify(NodeChildProcess.execFile);
+const execFile = NodeUtil.promisify(NodeChildProcess.execFile);
 let directory: string;
 let cwd: string;
+let gitEnvironment: NodeJS.ProcessEnv;
+const exec = (file: string, args: string[]) => execFile(file, args, { env: gitEnvironment });
 const git = (...args: string[]) => exec("git", ["-C", cwd, ...args]);
 const branch = { name: "feature/a", current: false, isDefault: false, worktreePath: null };
 const environmentId = EnvironmentId.make("branch-test-environment");
 
 beforeEach(async () => {
   directory = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "t3-branch-selection-"));
+  const home = NodePath.join(directory, "home");
+  const emptyHooks = NodePath.join(directory, "empty-hooks");
+  const emptyTemplate = NodePath.join(directory, "empty-template");
+  const emptyConfig = NodePath.join(directory, "empty.gitconfig");
+  await Promise.all([home, emptyHooks, emptyTemplate].map((path) => NodeFSP.mkdir(path)));
+  await NodeFSP.writeFile(emptyConfig, "");
+  // A fixture commit must never invoke the user's signer, hooks or credential helpers.
+  gitEnvironment = {
+    NODE_ENV: "test",
+    PATH: process.env.PATH,
+    SystemRoot: process.env.SystemRoot,
+    HOME: home,
+    USERPROFILE: home,
+    TMPDIR: directory,
+    TMP: directory,
+    TEMP: directory,
+    LANG: "C",
+    LC_ALL: "C",
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_CONFIG_SYSTEM: emptyConfig,
+    GIT_CONFIG_GLOBAL: emptyConfig,
+    GIT_TEMPLATE_DIR: emptyTemplate,
+    GIT_TERMINAL_PROMPT: "0",
+    GIT_CONFIG_COUNT: "2",
+    GIT_CONFIG_KEY_0: "commit.gpgsign",
+    GIT_CONFIG_VALUE_0: "false",
+    GIT_CONFIG_KEY_1: "core.hooksPath",
+    GIT_CONFIG_VALUE_1: emptyHooks,
+  };
   cwd = NodePath.join(directory, "project");
   await exec("git", ["init", "-b", "main", cwd]);
   await git("config", "user.name", "Branch test");
@@ -53,6 +84,13 @@ const switchRef: Parameters<typeof checkoutNewTaskBranch>[0]["switchRef"] = (req
   });
 
 describe("new-task branch checkout", () => {
+  it("keeps fixture Git signing and hooks independent of the user's configuration", async () => {
+    expect((await git("config", "--get", "commit.gpgsign")).stdout.trim()).toBe("false");
+    expect((await git("config", "--get", "core.hooksPath")).stdout.trim()).toBe(
+      NodePath.join(directory, "empty-hooks"),
+    );
+    expect((await git("config", "--global", "--list")).stdout).toBe("");
+  });
   it("switches main to the older thread's feature branch before returning a selection", async () => {
     const result = await selectBranch(switchRef);
     expect(result._tag).toBe("Success");
