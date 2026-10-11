@@ -136,6 +136,7 @@ const present = (p: string) => {
 const regularFile = (p: unknown): p is string =>
   typeof p === "string" && isAbsolute(p) && existsSync(p) && lstatSync(p).isFile();
 const oldHomeAliasFindings = (m: any): Fail[] => {
+  if (beforeClose) return present(OLD_HOME) ? ["old-home alias remains before closure"] : [];
   if (m.admission_state === "moved") {
     if (!present(OLD_HOME)) return ["old-home compatibility alias is required while moved"];
     if (!lstatSync(OLD_HOME).isSymbolicLink() || canonical(OLD_HOME) !== canonical(HOME))
@@ -1807,10 +1808,10 @@ async function runRepositoryMoveFixtures(): Promise<void> {
   json(specPath, spec);
   const rows = (values: unknown[]) =>
     file(annotations, values.map((x) => JSON.stringify(x)).join("\n") + "\n");
-  const run = (id: string, expected: number, reason?: string) => {
+  const run = (id: string, expected: number, reason?: string, flags: string[] = []) => {
     const r = spawnSync(
       process.execPath,
-      [join(HERE, "slice-1-repository-move.mts"), "--spec", specPath, "--only", id],
+      [join(HERE, "slice-1-repository-move.mts"), "--spec", specPath, ...flags, "--only", id],
       {
         encoding: "utf8",
         env: { ...process.env, PATH: join(root, "bin") + ":" + process.env.PATH },
@@ -1822,6 +1823,47 @@ async function runRepositoryMoveFixtures(): Promise<void> {
   };
   const cases: Array<[string, () => void]> = [];
   const test = (name: string, fn: () => void) => cases.push([name, fn]);
+  const withOldHomeAlias = (fn: () => void) => {
+    mkdirSync(dirname(spec.repository.old_home), { recursive: true });
+    symlinkSync(home, spec.repository.old_home);
+    try {
+      fn();
+    } finally {
+      unlinkSync(spec.repository.old_home);
+    }
+  };
+  test("S1-C03 moved before-close accepts the absent old-home alias", () => {
+    json(movePath, { ...move, admission_state: "moved" });
+    rows(chain);
+    run("S1-C03", 0, undefined, ["--before-close"]);
+  });
+  test("S1-C03 moved before-close refuses a present old-home alias", () => {
+    json(movePath, { ...move, admission_state: "moved" });
+    rows(chain);
+    withOldHomeAlias(() =>
+      run("S1-C03", 1, "old-home alias remains before closure", ["--before-close"]),
+    );
+  });
+  test("S1-C03 ordinary moved accepts the repository-resolving old-home alias", () => {
+    json(movePath, { ...move, admission_state: "moved" });
+    rows(chain);
+    withOldHomeAlias(() => run("S1-C03", 0));
+  });
+  test("S1-C03 ordinary moved still refuses an absent old-home alias", () => {
+    json(movePath, { ...move, admission_state: "moved" });
+    rows(chain);
+    run("S1-C03", 1, "old-home compatibility alias is required while moved");
+  });
+  test("S1-C03 closed accepts the absent old-home alias", () => {
+    json(movePath, { ...move, admission_state: "closed" });
+    rows(chain);
+    run("S1-C03", 0);
+  });
+  test("S1-C03 closed still refuses a present old-home alias", () => {
+    json(movePath, { ...move, admission_state: "closed" });
+    rows(chain);
+    withOldHomeAlias(() => run("S1-C03", 1, "old-home alias remains after closure"));
+  });
   test("S1-C03 valid two-rebase chain with exact passing reviews", () => {
     json(movePath, move);
     rows(chain);
