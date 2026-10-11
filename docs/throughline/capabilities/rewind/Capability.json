@@ -89,7 +89,15 @@
         "a new cut replaces a refused row for a different message with real SQL",
         "a refused replacement preserves the previous cut and all native messages",
         "startup readiness finishes after the actual pending-cut recovery"
-      ]
+      ],
+      "population_pin": {
+        "state": "pending-measurement",
+        "head_commit": null,
+        "sha256": null,
+        "executed": null,
+        "excluded": null,
+        "measured_by": null
+      }
     },
     {
       "file": "apps/server/src/throughline/rewind/ExactMessageRewindV2.test.ts",
@@ -103,7 +111,15 @@
         "refuses a non-terminal active provider turn even when its run is completed",
         "refuses a waiting approval_request node",
         "refuses a waiting user_input_request node"
-      ]
+      ],
+      "population_pin": {
+        "state": "pending-measurement",
+        "head_commit": null,
+        "sha256": null,
+        "executed": null,
+        "excluded": null,
+        "measured_by": null
+      }
     },
     {
       "file": "apps/server/src/throughline/rewind/http.test.ts",
@@ -174,7 +190,15 @@
         "checkpoint-contention V2: exact rewind rejects invalid boundary or active session, guard=starting",
         "checkpoint-contention V2: exact rewind rejects invalid boundary or active session, guard=running",
         "checkpoint-contention V2: a genuinely new post-cut intake run captures normally"
-      ]
+      ],
+      "population_pin": {
+        "state": "pending-measurement",
+        "head_commit": null,
+        "sha256": null,
+        "executed": null,
+        "excluded": null,
+        "measured_by": null
+      }
     }
   ],
   "version_file": "VERSION.md",
@@ -248,6 +272,28 @@
     "legacy_source": "byte-exact originals under execution/phase-04/upstream-reconcile/V1-Test-Evidence; original names retained above for traceability",
     "change": "exact-message HTTP replaces ambiguous checkpoint/turn-count transport; file checkpoint rollback stays upstream",
     "recovery": "monotonic source tip ordinal and event sequence; per-thread refusal without server startup failure; no clock ordering",
-    "checkpoint_contention": "Seven original templates preserved against real V2 SQL/Git/capture/ingestion/intake, same typed semantics and original guard/retained variants; no live provider process or effect worker in source fixture. Original pair retained pending independent current-head feedback and retirement review."
+    "checkpoint_contention": "Seven original templates preserved against real V2 SQL/Git/capture/ingestion/intake, same typed semantics and original guard/retained variants; no live provider process or effect worker in source fixture. Original pair retained pending independent current-head feedback and retirement review.",
+    "compiled_population_witness": {
+      "state": "v1 compiled population witness retired; v2 population pin pending measurement",
+      "ruling": "Fable-Delta-Upstream-V2-R3.json answer 10",
+      "accepted": false,
+      "required_measurer": "non-builder on landed head with real runner",
+      "required_fields": [
+        "head_commit",
+        "consumer_path",
+        "consumer_sha256",
+        "executed_count",
+        "excluded_count"
+      ],
+      "consumers": [
+        "apps/server/src/throughline/rewind/ExactMessageRewindRuntime.test.ts",
+        "apps/server/src/throughline/rewind/ExactMessageRewindV2.test.ts",
+        "apps/server/src/throughline/rewind/CheckpointContention.v2.test.ts",
+        "packages/provider-pi/src/server/adapter.test.ts",
+        "apps/server/src/throughline/compat-tests/piGauntlet.test.ts"
+      ],
+      "head_commit": null,
+      "measured_by": null
+    }
   }
 }
