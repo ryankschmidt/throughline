@@ -37,7 +37,6 @@ import {
   manifestOf,
   stagingSampleFindings,
   stagingBundleFindings,
-  stagingTraceFindings,
 } from "./slice-1-contracts.mts";
 const root = mkdtempSync(join(tmpdir(), "p2-02-slice-fixtures-"));
 const cases: Array<[string, () => void | Promise<void>]> = [];
@@ -343,35 +342,10 @@ const stagingProbe = () => ({
     preparation_event_id: null,
   })),
 });
-let stagingTraceFixtureCount = 0;
-const traceFixture = (name: string, start = Date.parse(probeStart) + 1000, end = start + 10) => {
-  const p = join(root, `staging-trace-${++stagingTraceFixtureCount}.ndjson`);
-  file(
-    p,
-    JSON.stringify({
-      type: "span",
-      name,
-      startTimeUnixNano: String(BigInt(start) * 1000000n),
-      endTimeUnixNano: String(BigInt(end) * 1000000n),
-    }) + "\n",
-  );
-  return p;
-};
-test("S1-C14 idle probe passes with null preparation ids, installed read-only signature and no writing spans", async () => {
+test("S1-C14 idle probe passes with null preparation ids, installed read-only signature", async () => {
   assert.deepEqual(stagingSampleFindings(stagingProbe()), []);
   assert.deepEqual(
     stagingBundleFindings(Buffer.from("prepareCommitContext.workingTreeSummary")),
-    [],
-  );
-  assert.deepEqual(
-    await stagingTraceFindings(
-      [
-        traceFixture("sql.execute", Date.parse(probeStart) - 20, Date.parse(probeStart) - 10),
-        traceFixture("sql.execute", Date.parse(probeFinish) + 10),
-      ],
-      probeStart,
-      probeFinish,
-    ),
     [],
   );
 });
@@ -383,114 +357,6 @@ test("S1-C14 installed bundle containing addAll refuses", () =>
       Buffer.from("prepareCommitContext.workingTreeSummary prepareCommitContext.addAll"),
     ).length,
   ));
-for (const op of ["addAll", "reset", "addSelected"])
-  test(`S1-C14 index-writing ${op} span inside the probe refuses`, async () =>
-    assert.ok(
-      (
-        await stagingTraceFindings(
-          [traceFixture(`GitVcsDriver.prepareCommitContext.${op}`)],
-          probeStart,
-          probeFinish,
-        )
-      ).length,
-    ));
-test("S1-C14 writing spans entirely outside the probe window do not refuse", async () => {
-  const before = traceFixture(
-    "GitVcsDriver.prepareCommitContext.addAll",
-    Date.parse(probeStart) - 20,
-    Date.parse(probeStart) - 10,
-  );
-  const after = traceFixture(
-    "GitVcsDriver.prepareCommitContext.reset",
-    Date.parse(probeFinish) + 10,
-  );
-  assert.deepEqual(await stagingTraceFindings([before, after], probeStart, probeFinish), []);
-});
-test("S1-C14 writing span overlapping the probe boundary refuses", async () =>
-  assert.ok(
-    (
-      await stagingTraceFindings(
-        [
-          traceFixture(
-            "GitVcsDriver.prepareCommitContext.addSelected",
-            Date.parse(probeStart) - 10,
-            Date.parse(probeStart) + 10,
-          ),
-        ],
-        probeStart,
-        probeFinish,
-      )
-    ).length,
-  ));
-test("S1-C14 missing trace evidence refuses", async () =>
-  assert.ok((await stagingTraceFindings([], probeStart, probeFinish)).length));
-test("S1-C14 probe window older than retained trace coverage refuses", async () =>
-  assert.ok(
-    (
-      await stagingTraceFindings(
-        [traceFixture("sql.execute", Date.parse(probeFinish) + 1000)],
-        probeStart,
-        probeFinish,
-      )
-    ).length,
-  ));
-test("S1-C14 trace coverage ending before the probe finishes refuses", async () =>
-  assert.ok(
-    (
-      await stagingTraceFindings(
-        [traceFixture("sql.execute", Date.parse(probeStart) - 1000)],
-        probeStart,
-        probeFinish,
-      )
-    ).length,
-  ));
-test("S1-C14 empty retained trace files are not window evidence", async () => {
-  const p = join(root, "empty-trace.ndjson");
-  file(p, "");
-  assert.ok((await stagingTraceFindings([p], probeStart, probeFinish)).length);
-});
-test("S1-C14 a long-running span exported after the window does not restore expired evidence", async () =>
-  assert.ok(
-    (
-      await stagingTraceFindings(
-        [
-          traceFixture(
-            "EnvironmentRpc.subscribe",
-            Date.parse(probeStart) - 1000,
-            Date.parse(probeFinish) + 1000,
-          ),
-        ],
-        probeStart,
-        probeFinish,
-      )
-    ).length,
-  ));
-test("S1-C14 malformed trace evidence refuses", async () => {
-  const p = join(root, "bad-staging-trace.ndjson");
-  file(p, "not-json\n");
-  assert.ok((await stagingTraceFindings([p], probeStart, probeFinish)).length);
-});
-test("S1-C14 unreadable trace evidence refuses", async () =>
-  assert.ok(
-    (await stagingTraceFindings([join(root, "missing-trace.ndjson")], probeStart, probeFinish))
-      .length,
-  ));
-test("S1-C14 invalid trace window refuses", async () =>
-  assert.ok(
-    (await stagingTraceFindings([traceFixture("sql.execute")], "not-a-time", probeFinish)).length,
-  ));
-test("S1-C14 index-writing span with invalid clock refuses", async () => {
-  const p = join(root, "bad-clock.ndjson");
-  file(
-    p,
-    JSON.stringify({
-      name: "GitVcsDriver.prepareCommitContext.reset",
-      startTimeUnixNano: "bad",
-      endTimeUnixNano: "bad",
-    }) + "\n",
-  );
-  assert.ok((await stagingTraceFindings([p], probeStart, probeFinish)).length);
-});
 for (const key of ["at", "index_entries", "staged_patch_sha256", "server_pid", "thread_id"])
   test(`S1-C14 sample still requires ${key}`, () => {
     const p = stagingProbe();

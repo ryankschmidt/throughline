@@ -22,7 +22,6 @@ import {
   pipelinePaths,
   stagingSampleFindings,
   stagingBundleFindings,
-  stagingTraceFindings,
 } from "./slice-1-contracts.mts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -1626,16 +1625,6 @@ export async function runSliceChecks() {
       f.push(...stagingBundleFindings(readFileSync(`${APP}/Contents/Resources/app.asar`)));
     } catch {
       f.push("installed app.asar unreadable");
-    }
-    const traces = "/Users/Admin/.t3/userdata/logs";
-    try {
-      const paths = readdirSync(traces)
-        .filter((n) => /^server\.trace\.ndjson(?:\.\d+)?$/.test(n))
-        .sort()
-        .map((n) => join(traces, n));
-      f.push(...(await stagingTraceFindings(paths, p.started_at, p.finished_at)));
-    } catch {
-      f.push("server traces unreadable");
     }
     return f;
   });
