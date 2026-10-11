@@ -20,7 +20,7 @@ export const SHA40 = /^[0-9a-f]{40}$/,
   SHA256 = /^[0-9a-f]{64}$/;
 export const same = (a: unknown, b: unknown) => isDeepStrictEqual(a, b);
 // S1-C14's idle observation needs no commit-preparation event. Keep the original
-// sample, cadence, binding and byte predicates; installed code/traces backstop it.
+// sample, cadence, binding and byte predicates; the installed bundle backstops it.
 export const stagingSampleFindings = (p: any): string[] => {
   const f: string[] = [];
   if (p.interval_seconds !== 2 || !Array.isArray(p.samples) || p.samples.length < 30)
