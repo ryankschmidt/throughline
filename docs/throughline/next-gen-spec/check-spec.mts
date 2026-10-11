@@ -1875,6 +1875,9 @@ check("X28", "messaging quotes and complete P4 retirement contract remain source
     done_when: DRIVER_RETIREMENT.done_when,
     messaging_retirement_owner: DRIVER_RETIREMENT.messaging_owner,
     non_messaging_retirement_prerequisite: DRIVER_RETIREMENT.non_messaging_prerequisite,
+    signatures: [
+      `Declared cold acceptance interface: ${DRIVER_RETIREMENT.done_when.command} => ${DRIVER_RETIREMENT.done_when.expect}`,
+    ],
     planned_checks: [DRIVER_RETIREMENT.protect],
   }))
     if (JSON.stringify(driver?.[field]) !== JSON.stringify(expected))

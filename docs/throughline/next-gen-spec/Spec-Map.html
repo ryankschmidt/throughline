@@ -5,7 +5,7 @@
     <title>ThroughLine next-generation implementation spec — map</title>
     <meta
       name="spec-sha256"
-      content="9640a910dd36609a6599913e9eca8e83dcd28e44870b777b6f2b00a3575606ca"
+      content="6b679de775638831324df5d48f199d8b0fc8a3cec0760b0f74cd8a1a8bee9a3c"
     />
     <meta name="spec-version" content="0.4.31" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -485,7 +485,7 @@
       <p class="sub">
         Machine-readable task graph <code>spec.json</code> version 0.4.31. Original design
         authorship: fable-throughline-design (ThroughLine thread
-        44973766-bbeb-4c80-b506-a4b171273e33). Current generation built Oct 11, 2026, 8:32 AM PDT by
+        44973766-bbeb-4c80-b506-a4b171273e33). Current generation built Oct 11, 2026, 8:35 AM PDT by
         codex session 01a12b7f-41c9-7190-83e1-4d3df4fb1363. Bound to ledger sha256 5dec2bd71114 (199
         items). Every task names the ledger ids it serves. The technical execution lead,
         lead-execlead-1ad87c0b, works from the JSON; this page is rendered from it.
@@ -12749,10 +12749,15 @@
                   <ul>
                     <li>
                       <code
-                        >Declared cold acceptance interface: after the ship lane installs the
-                        removal: one seat replies to the orchestrator through the CLI and the reply
-                        appears in the orchestrator thread's own record =&gt; reply visible in the
-                        receiver's record; no driver process on any host</code
+                        >Declared cold acceptance interface: Verify T7.04's same-window
+                        messaging-retirement receipt without a T10.03 gate; a seat replies through a
+                        native ComsNet client and the request/reply appears in Absurd. After
+                        T10.03's replacement proof, retire only remaining non-messaging driver/watch
+                        functions through their owning ship lane. =&gt; Every P4 messaging path
+                        retired at the D26 cutover, not held until T10.03; return routes use the
+                        target pipeline with CLI optional; the receiver record contains the request
+                        task keyed by request id and reply result. After non-messaging retirement no
+                        remaining driver process runs on any host.</code
                       >
                     </li>
                   </ul>

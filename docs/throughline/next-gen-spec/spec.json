@@ -447,7 +447,7 @@
       "outcome": "round-2 verdict FAIL on 0.2.0; its findings are disposed as J2 in audit_dispositions"
     }
   },
-  "generated_at": "2026-10-11T15:32:14.302Z",
+  "generated_at": "2026-10-11T15:35:19.988Z",
   "generated_by": {
     "note": "the seat that ran the builder, read from its environment at build time; the design author is authored_by",
     "runtime": "codex",
@@ -456,7 +456,7 @@
     "source_files": [
       {
         "path": "./spec-data.mts",
-        "sha256": "26caf9d4608c27985d735f72ab990905dae73a7c3111bc0c6777182ec2a0217b"
+        "sha256": "f48d317d8c258b4fa5d8c21146a0e5892dd6c0e83d2b34fa9906938b00dd9da6"
       },
       {
         "path": "./contracts-data.mts",
@@ -8056,7 +8056,7 @@
         "consumes": ["I-05"]
       },
       "signatures": [
-        "Declared cold acceptance interface: after the ship lane installs the removal: one seat replies to the orchestrator through the CLI and the reply appears in the orchestrator thread's own record => reply visible in the receiver's record; no driver process on any host"
+        "Declared cold acceptance interface: Verify T7.04's same-window messaging-retirement receipt without a T10.03 gate; a seat replies through a native ComsNet client and the request/reply appears in Absurd. After T10.03's replacement proof, retire only remaining non-messaging driver/watch functions through their owning ship lane. => Every P4 messaging path retired at the D26 cutover, not held until T10.03; return routes use the target pipeline with CLI optional; the receiver record contains the request task keyed by request id and reply result. After non-messaging retirement no remaining driver process runs on any host."
       ],
       "done_when": {
         "command": "Verify T7.04's same-window messaging-retirement receipt without a T10.03 gate; a seat replies through a native ComsNet client and the request/reply appears in Absurd. After T10.03's replacement proof, retire only remaining non-messaging driver/watch functions through their owning ship lane.",

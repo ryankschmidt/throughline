@@ -1260,6 +1260,16 @@ cases.push(
   },
 );
 let bad = 0;
+cases.push({
+  name: "T10.06 stale signature still requires CLI",
+  expect: "FAIL",
+  checks: ["X28"],
+  mutate: (s: any) => {
+    s.tasks.find((t: any) => t.id === "T10.06").signatures = [
+      "Declared cold acceptance interface: reply through the CLI",
+    ];
+  },
+});
 for (const c of cases) {
   const dir = mkdtempSync(join(tmpdir(), "ngspec-check-"));
   for (const f of FILES) cpSync(join(HERE, f), join(dir, f));

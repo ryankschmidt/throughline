@@ -12544,6 +12544,9 @@ driverRetirement.messaging_retirement_owner = DRIVER_RETIREMENT.messaging_owner;
 driverRetirement.non_messaging_retirement_prerequisite =
   DRIVER_RETIREMENT.non_messaging_prerequisite;
 driverRetirement.done_when = DRIVER_RETIREMENT.done_when;
+driverRetirement.signatures = [
+  `Declared cold acceptance interface: ${DRIVER_RETIREMENT.done_when.command} => ${DRIVER_RETIREMENT.done_when.expect}`,
+];
 driverRetirement.planned_checks = [DRIVER_RETIREMENT.protect];
 driverRetirement.proof_limits = [
   "T10.03 delays only non-messaging driver functions, never P4 messaging retirement; spec declarations do not prove either removal is installed.",
