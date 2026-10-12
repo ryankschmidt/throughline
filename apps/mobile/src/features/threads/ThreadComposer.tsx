@@ -369,7 +369,7 @@ export function ComposerSurface(props: {
         // The composer is a passive material containing interactive controls.
         // Keep native glass out of the interactive content's layout path.
         pointerEvents="none"
-        tintColor="transparent"
+        tintColor={colors["--color-composer-surface"]}
         layout={layoutTransition}
         style={[{ position: "absolute", inset: 0 }, animatedShapeStyle]}
       >
@@ -973,6 +973,8 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
             <Animated.View
               className={isExpanded ? "px-[14px]" : "min-w-0 flex-1 px-[4px]"}
               layout={composerResize.dragging ? undefined : COMPOSER_LAYOUT_TRANSITION}
+              // Native scroll content must not paint over the resize grip.
+              style={isExpanded ? { overflow: "hidden" } : undefined}
             >
               <ComposerEditor
                 draftKey={composerDraftKey}

@@ -107,14 +107,12 @@ export function useComposerResize(reservedOutsideHeight: number | undefined) {
         const delta = event.nativeEvent.actionName === "increment" ? 40 : -40;
         persist(clampComposerHeight(height + delta, bounds));
       }}
-      className="h-11 items-center justify-center"
+      className="items-center justify-center"
+      style={{ height: 44 }}
     >
       <View
-        className={
-          dragging
-            ? "h-1 w-11 rounded-full bg-foreground"
-            : "h-1 w-11 rounded-full bg-foreground-muted"
-        }
+        className={dragging ? "rounded-full bg-foreground" : "rounded-full bg-foreground-muted"}
+        style={{ width: 44, height: 4 }}
       />
     </View>
   );
