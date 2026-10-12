@@ -53,8 +53,8 @@
     {
       "path": ".vite-hooks/pre-commit",
       "class": "upstream-edit",
-      "reason": "2c8173bb3736f9e24db11aebc3acc9b22f49d578 Merge branch 'main' into rewind-same-session\n40b2705664b6dcf059bd357bfe60dc327c0009a3 merge: record already-folded ComsNet preservation history\nfd9b73f2225efa67f994c05ca02eb3a0d3066580 merge: fold Ryan conversation rewind repair onto the live fork source\n3e45f656f3c916e3915fc3d07193e7655f793fef merge: fold operator profile and retain Meridian repair history\n09a5a203de6066ead00991bac2a90d2895ae025d merge: fold ThroughLine 0.0.51 and retain local workspace and Meridian repairs\ncc169586b0262ea27cc1e96449790084fd7db680 pre-commit: run the staged formatter without its backup copy\n2164902aaf5ce7d5ff7a223bc2222b08b5bd4c32 Merge remote-tracking branch 'upstream/main' into claude/t3-upstream-sync-2026-08-18",
-      "reason_source": "commit-subjects",
+      "reason": "The existing repository commit boundary must refuse upstream tax violations using the same installed staged-index policy as the release tool, rather than an optional wrapper, untracked local hook replacement, or duplicated policy implementation.",
+      "reason_source": "authored",
       "imported_private_symbols": [],
       "schema_assumptions": [],
       "contract_inspection": "not-reviewed: empty symbol/schema lists do not assert absence; behavior coverage is separately capability-gated",
@@ -73,7 +73,9 @@
       ],
       "legacy_rules": [],
       "mount_lines": 1,
-      "mount_measurement": "added text lines excluding namespace import declarations"
+      "mount_measurement": "added text lines excluding namespace import declarations",
+      "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+      "approval_id": "precommit-tax-mount-2026-10-11"
     },
     {
       "path": "apps/desktop/CHANGELOG.md",
@@ -20723,5 +20725,158 @@
     "fork_sha": "25158b1e0bed29ae73abb9d7875b053004f13788",
     "admitted_at": "2026-10-10T07:42:04.807Z",
     "admitted_by": "01a123b1-74ee-7ba1-9208-ab7d606c72e4"
-  }
+  },
+  "approved_changes": [
+    {
+      "id": "settings-watcher-mount-2026-10-11",
+      "state": "approved-before-implementation",
+      "approved_by": {
+        "role": "lead-orchestrator",
+        "throughline_thread_id": "abf5e046-bb33-4f0e-97bc-d1ccbba31693"
+      },
+      "approval_date": "2026-10-11",
+      "recorded_at": "2026-10-12T00:27:19.377Z",
+      "requested_by": "worker-upmerge-6716f643",
+      "approval_source": {
+        "path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Settings-Upstream-Mount-Approval-Decision.txt",
+        "sha256": "8112f083da825bbf4f654da16931ea6780217d226eee30ff3dee08f5c5018ba1"
+      },
+      "written_reason_source": {
+        "path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Settings-Upstream-Mount-Approval.html",
+        "sha256": "63970197f0a1b6dc850823770ebaecf76bbb15e1cabf1ade840bb2f6d3378a2d"
+      },
+      "reason": "Private settings revalidation/cache publication cannot be gated by an external wrapper. The upstream service gets only the minimal fork-watcher mount; the namespace owns target preparation, registration acknowledgment, handoff, old-handle retention and errors.",
+      "reason_source": "authored",
+      "seam_side": "upstream-mount",
+      "seam_detail": "Existing upstream entry-point mount plus stock-test restoration; acknowledgment and handoff remain fork-owned.",
+      "scope_paths": [
+        "apps/server/src/serverSettings.ts",
+        "apps/server/src/serverSettings.test.ts"
+      ],
+      "permitted_changes": [
+        {
+          "path": "apps/server/src/serverSettings.ts",
+          "change": "Import and call the fork-owned acknowledged watcher coordinator through one minimal mount line. No unrelated settings, defaults or secret changes."
+        },
+        {
+          "path": "apps/server/src/serverSettings.test.ts",
+          "change": "Restore the currently uncommitted registration-gate addition to its pre-addition bytes; move its exact assertion and inputs into a fork-owned test. No new stock assertion or timeout change."
+        }
+      ],
+      "conditions": {
+        "maximum_after_count": 180,
+        "fixture_both_directions_required": true,
+        "proof_status": "pending",
+        "approval_not_inferred_from_selected_greens": true,
+        "rollback": "If Ryan overrules this approval, revert both scoped files."
+      },
+      "excluded_scope": [
+        {
+          "path": "apps/mobile/src/features/diffs/nativeReviewDiffHighlighter.ts",
+          "state": "unapproved-frozen",
+          "retroactively_approved": false
+        },
+        {
+          "path": "apps/mobile/src/features/diffs/nativeReviewDiffHighlighter.test.ts",
+          "state": "unapproved-frozen",
+          "retroactively_approved": false
+        },
+        {
+          "path": "apps/mobile/src/features/threads/checkout-new-task-branch.test.ts",
+          "state": "unapproved-frozen",
+          "retroactively_approved": false
+        }
+      ],
+      "execution_state": "No post-approval source change executed, as reported by the requesting seat; this record does not claim source, fixture, release or install acceptance.",
+      "audit": {
+        "repo": "/Users/Admin/throughline",
+        "pinned_upstream_sha": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+        "before_fork_commit": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
+        "before_committed_count": 180,
+        "before_tracked_working_count": 180,
+        "before_committed_paths_sha256": "56007256016c731a06899e27af14fc796c20ef058ca7eed1e0051005788aee0d",
+        "before_tracked_working_paths_sha256": "56007256016c731a06899e27af14fc796c20ef058ca7eed1e0051005788aee0d",
+        "before_file_sha256": [
+          {
+            "path": "apps/server/src/serverSettings.ts",
+            "working_sha256": "3a215b9492c044f782129b76c3421886a7b269e5bb876ddcaa956c3cb668bb65",
+            "committed_blob": "81296b4255c08e67b73cbb71087bd0e2007dd70e"
+          },
+          {
+            "path": "apps/server/src/serverSettings.test.ts",
+            "working_sha256": "e93191be0769cc5110c99a7e7011d086e6037dc41521d8b6935b26c3bd43ad81",
+            "committed_blob": "305230c5cb356ac8aff3f61a1ba2ca02eca0a4da"
+          }
+        ],
+        "method": {
+          "command": "/usr/bin/git -C /Users/Admin/throughline diff --name-status -z -M 5cbe82a87006a7ee472f0f9c9fce5d5f24caa795 <AUDITED_FORK_COMMIT_OR_TREE>",
+          "counted_statuses": ["M", "T", "D", "R<similarity>"],
+          "excluded_statuses": ["A"],
+          "rename_rule": "Consume old path and destination as one R record, counted once. Preserve renamed_from for provenance.",
+          "deletion_rule": "D counts as one upstream-removed file; deletion alone does not remove tax.",
+          "baseline_rule": "Use this pinned upstream and the immutable audited fork commit/tree; do not use legacy summary counts, selected test passes, directory prefixes, line counts or commit subjects.",
+          "working_snapshot_rule": "For unsaved tracked source, omit the final revision argument and label the result mutable working-tree evidence, never immutable acceptance."
+        },
+        "after_count": null,
+        "after_source": null,
+        "after_audit_state": "pending"
+      }
+    },
+    {
+      "schema": "throughline.upstream-existing-mount-approval.v1",
+      "id": "precommit-tax-mount-2026-10-11",
+      "scope_paths": [".vite-hooks/pre-commit"],
+      "requested_by": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+      "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+      "approval_source": "User message delivered to this conversation on 2026-10-11",
+      "approval_verbatim": "APPROVED with conditions by the lead orchestrator (thread abf5e046): the one existing .vite-hooks/pre-commit mount, per /Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/_meta/upstream-tax-2026-10-11/Precommit-Mount-Request.json. Conditions: the upstream-edit count does not rise; a ledger entry with your written reason and this approval; the hook is tested both ways; the Fable shepherd in thread 44973766-bbeb-4c80-b506-a4b171273e33 is told in one line and may overrule; mobile debt stays frozen.",
+      "request_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/_meta/upstream-tax-2026-10-11/Precommit-Mount-Request.json",
+      "reason": "The existing repository commit boundary must refuse upstream tax violations using the same installed staged-index policy as the release tool, rather than an optional wrapper, untracked local hook replacement, or duplicated policy implementation.",
+      "reason_source": "authored",
+      "seam_side": "upstream-mount",
+      "before_fork": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
+      "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+      "maximum_after_count": 180,
+      "conditions": [
+        "Count does not rise",
+        "Written ledger reason and approval retained",
+        "Hook tested good and bad",
+        "Design shepherd informed and may overrule",
+        "Mobile debt remains frozen"
+      ],
+      "state": "approved-before-implementation",
+      "hook_proof": "pending",
+      "shepherd_notification": "pending",
+      "after_audit": "pending",
+      "approval_file": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/_meta/upstream-tax-2026-10-11/Precommit-Mount-Approval.json"
+    },
+    {
+      "schema": "throughline.upstream-existing-mount-approval.v1",
+      "id": "mobile-array-bootstrap-2026-10-11",
+      "scope_paths": ["apps/mobile/package.json", "pnpm-lock.yaml"],
+      "requested_by": "worker-upmerge-6716f643",
+      "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+      "approval_file": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Android-Array-Bootstrap-Approval-Decision.txt",
+      "approval_verbatim": "APPROVED by the lead orchestrator (thread abf5e046) on Oct 11, 2026, with conditions, for Android-Array-Bootstrap-Approval.html in this folder. The scope is one upstream line: the mobile package.json main entry points to a fork-owned bootstrap, which loads the polyfill and then upstream's own entry unchanged. If needed, the bootstrap also gets the existing pinned core-js 3.47 dependency. Basis: Fable's design allows one mount line per upstream entry point (F01). Conditions: (1) the runtime probe confirms which method is missing before any edit; (2) the polyfill covers only the missing methods; (3) the upstream-edit count does not rise above what the Fable shepherd (thread 44973766) allows, and if it would, ask the shepherd first; (4) a ledger entry with the written reason and this approval's path; (5) proof on the tower Android emulator with an open thread. The Fable shepherd may overrule; if it does, revert.",
+      "request_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Android-Array-Bootstrap-Approval.html",
+      "reason": "The shared package entry selects a fork-owned compatibility bootstrap before unchanged upstream modules; both actual Hermes apps lack toSorted while at already works. Only the existing pinned core-js toSorted module is loaded. The lockfile change only registers its already-locked3.47 snapshot in the mobile importer.",
+      "reason_source": "authored",
+      "seam_side": "upstream-mount",
+      "before_fork": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
+      "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+      "new_upstream_filenames": 0,
+      "conditions": [
+        "Runtime probes before edit: passed both actual Hermes apps",
+        "Only missing toSorted polyfilled; at/native-method preservation controlled",
+        "No upstream filename increase",
+        "Tower Android and iPhone open-thread screenshots required",
+        "Shepherd informed and may overrule"
+      ],
+      "state": "approved-before-implementation; source controls green; device proof pending",
+      "runtime_probes": [
+        "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/iOS-App-Array-Probe.json",
+        "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Android-App-Array-Probe.json"
+      ]
+    }
+  ]
 }
