@@ -447,7 +447,7 @@
       "outcome": "round-2 verdict FAIL on 0.2.0; its findings are disposed as J2 in audit_dispositions"
     }
   },
-  "generated_at": "2026-10-11T17:06:03.762Z",
+  "generated_at": "2026-10-12T04:29:42.685Z",
   "generated_by": {
     "note": "the seat that ran the builder, read from its environment at build time; the design author is authored_by",
     "runtime": "codex",
@@ -1094,7 +1094,7 @@
       "ryan_quote": {
         "quote": "## The 4-Part ThroughLine Messaging Target:\n1) Each ComsNet request becomes an Absurd task with the request ID as its idempotency key and the reply as its result.\n2) Absurd owns the record (one request is one task or step) just as it was tested, proven and observed in thread id f19b4795-0467-4dd0-ab14-33e988203dbc pi/absurd experiment.\n3) ThroughLine keeps the socket and peer identity\n4) The pesky copycat-named agent relay and it's tools removed from ThroughLine and the active runtimes of all agents and they must *not* ship in the next ThroughLine install and be *retired* after ThroughLine is installed and steps 1-3 above are confirmed working natively as the only message options advertised to agents and made available to agents in ThroughLine.\nI DO NOT want Agents messaging each other any way other than what's described above. It must be unrepresentable. I want all ThroughLine messaging forced into the above pipeline with no other messaging channels or tools available to agents in ThroughLine. I want alternative message relays and options outside of the above target retired as soon as the above target is confirmed operational. And yes, if we want to discuss building on this foundation once it's correct with more messaging infrastructure, I'm open to that. But until my actual target messaging design is landed, live, and working, I am not willing to allow any other version of messaging to exist.\nSo please kindly identify exactly when the cutover will take place. I do not want the next version of ThroughLine to ship with any, any, any other messaging options, in the software or in the environment outside it (such as Agent Instruments), other than the above 4-part named messaging design target.",
         "source_path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/Order-Phase-4-Delivery-Lead.txt",
-        "source_sha256": "10a063fb4c4b1aedaf902dbab826653aee994855cf49fc7fef638cbf318b6d84",
+        "source_sha256": "b63115393e6dd3d6b42367b8bdb96c0b2a0e6cf404723cf122a4438b96ff5441",
         "quote_sha256": "6b182d6933dc8d0f1c7577ceed72b6b104f1825e41051e2a68442baf800b208c"
       },
       "source_role": "requirement",
