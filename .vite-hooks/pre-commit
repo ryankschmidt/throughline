@@ -1,1 +1,2 @@
+node --input-type=module --eval 'import {requireUpstreamTax} from "file:///Users/Admin/core-root/src/tools/throughline-ship/dist/upstream-tax.js"; requireUpstreamTax(process.cwd(), "staged");' || exit 1
 vp staged --no-stash
