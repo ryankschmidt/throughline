@@ -407,6 +407,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      core-js:
+        specifier: 3.47.0
+        version: 3.47.0
       diff:
         specifier: 8.0.3
         version: 8.0.3
