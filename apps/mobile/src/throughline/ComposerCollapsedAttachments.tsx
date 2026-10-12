@@ -32,13 +32,16 @@ export function ComposerCollapsedAttachments(props: ComposerAttachmentStripProps
               else props.onPressDocument?.(target.attachment);
             }}
           >
-            <View pointerEvents="none">
+            <View>
               <ComposerAttachmentThumbnail
                 environmentId={props.environmentId}
                 attachment={attachment}
                 size={24}
                 borderRadius={6}
                 compact
+                onPressPreview={props.onPressPreview}
+                onPressVideo={props.onPressVideo}
+                onPressDocument={props.onPressDocument}
               />
             </View>
             <Text numberOfLines={1} className="min-w-0 shrink text-sm text-foreground">
