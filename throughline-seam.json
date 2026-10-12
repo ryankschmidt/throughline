@@ -11,7 +11,7 @@
   "counts": {
     "upstream_edit": 180,
     "upstream_removed": 0,
-    "fork_added": 236,
+    "fork_added": 241,
     "fork_namespace": 138
   },
   "entries": [
@@ -18735,30 +18735,71 @@
       "decision": "move-to-fork-side"
     },
     {
+      "path": "docs/throughline/seam-facts.json",
+      "class": "fork-added",
+      "reason": "Publish a derived, digest-bound graph contract for the generated repository view; this output is not another editable choice registry.",
+      "reason_source": "authored",
+      "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+      "feature": "Upstream-tax bookkeeping",
+      "seam_side": "fork-outside-namespace",
+      "decision": "keep",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "The manifest remains the sole choice inventory. Derived facts bind its digest; proposed decisions, observed upstream dispositions, approval scope and proof state remain separate."
+      ],
+      "contract_inspection": "Repository projector source and focused functional tests; no application feature, device, migration-feasibility or transitive-schema acceptance.",
+      "conflict_rule": "Rebuild generated outputs from their current ledger; preserve authored intent and fail-closed lineage.",
+      "conflict_rule_source": "authored",
+      "conflict_rule_inferred": false,
+      "marker": false,
+      "relocation": "kept",
+      "relocation_reason": "Repository bookkeeping/control, not application feature implementation. No source move performed."
+    },
+    {
       "path": "docs/throughline/seam-view.html",
       "class": "fork-added",
-      "reason": "Provide seam-view.html for its fork consumers; relocation still requires consumer-path review.",
+      "reason": "Publish the generated upstream-tax operating view with the six file/feature/seam/customization/history/move projections and queryable agent context.",
       "reason_source": "authored",
       "imported_private_symbols": [],
       "schema_assumptions": [
-        "Relocation assumption for Fork namespace modules: preserve existing exported input/output contracts, optional-field defaults and persisted IDs; validate at the feature slice, not by import compilation alone.",
-        "Changed shape evidence requiring compatibility coverage: <!doctype html> | \"reason\": \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\\n2a1cc95b1cce3e68a2bde3052938947855295db4 merge(release): retain accepted upgrade source above the installed release base\\n6fa7bda869a85ff8d4714651dea005e8fca3588c fix(server): preserve staged selection during commit preparation\\n40b2705664b6dcf059bd357bfe60dc327c0009a3 merge: record already-folded ComsNet preservation history\\n09a5a203de6066ead00991bac2a90d2895ae025d merge: fold ThroughLine 0.0.51 and retain local workspace and Meridian repairs\\n52b952cfab5620418b8fa1b28aa9c105fcaf2ece Merge pinned upstream 91e53e501c9e7eb03f0ea4a5b72221d08eff9c5c for ThroughLine 0.0.47\\nc790ffeea219529f1d481d23187d6f63f8cc192a merge: upstream T3 Code sync 2026-09-12 (1,218 commits) onto fork main; conflicts resolved keeping the turn-start door and queued-turn logic; hook skipped once per lead ruling, vendored ignored path\\n19be48864e2702773b27922f644311a88793b3de merge upstream/main (a92161a05, 1,218 commits) into the ThroughLine fork, 2026-09-12\\n2164902aaf5ce7d5ff7a223bc2222b08b5bd4c32 Merge remote-tracking branch 'upstream/main' into claude/t3-upstream-sync-2026-08-18\", | \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\", | \"reason\": \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\\nf03e6ad350ae349efb9e919f56f1afc7d55aaf84 fix: mount checked durable settings owner adapter\\nebedf4722dd9732b5afbace95f26d359c5a00c88 merge(release): include the independently checked sender and model repair batch\\n30f8e3e388e3ad1ae57e05bef68a8bece1a0bedb feat(identity): preserve authenticated sender stamps and replay identity\", | \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\", | \"reason\": \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\\nf03e6ad350ae349efb9e919f56f1afc7d55aaf84 fix: mount checked durable settings owner adapter\\nebedf4722dd9732b5afbace95f26d359c5a00c88 merge(release): include the independently checked sender and model repair batch\\n30f8e3e388e3ad1ae57e05bef68a8bece1a0bedb feat(identity): preserve authenticated sender stamps and replay identity\\n40b2705664b6dcf059bd357bfe60dc327c0009a3 merge: record already-folded ComsNet preservation history\\n09a5a203de6066ead00991bac2a90d2895ae025d merge: fold ThroughLine 0.0.51 and retain local workspace and Meridian repairs\\n0d288f84eafd02bad96abe4855874f1d1e844376 Merge pinned upstream e5a46d6c5d00b89afba5274a94d42428c8d79763 for ThroughLine 0.0.48\\na899aa0ab16c08f70ffa132947c29340e74bdfd0 Revert \\\"feat(server): refuse repeat machine-driven turns at the turn-start door\\\"\\n38a81b359215e9e0402bb7531bd52c5a0a80fa47 Revert \\\"feat(server): refuse repeat machine-driven turns at the turn-start door\\\"\\nc790ffeea219529f1d481d23187d6f63f8cc192a merge: upstream T3 Code sync 2026-09-12 (1,218 commits) onto fork main; conflicts resolved keeping the turn-start door and queued-turn logic; hook skipped once per lead ruling, vendored ignored path\\n272ad251584d56a32ca2b123aabd86352154d5a2 feat(server): refuse repeat machine-driven turns at the turn-start door\\n19be48864e2702773b27922f644311a88793b3de merge upstream/main (a92161a05, 1,218 commits) into the ThroughLine fork, 2026-09-12\\n2164902aaf5ce7d5ff7a223bc2222b08b5bd4c32 Merge remote-tracking branch 'upstream/main' into claude/t3-upstream-sync-2026-08-18\", | \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\", | \"reason\": \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\\nebedf4722dd9732b5afbace95f26d359c5a00c88 merge(release): include the independently checked sender and model repair batch\\n30f8e3e388e3ad1ae57e05bef68a8bece1a0bedb feat(identity): preserve authenticated sender stamps and replay identity\", | \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\", | \"reason\": \"f21e061c154a49e569fc9ce917db8130b1f1d5ae Merge commit '14f082b29044e02bf3142dd7c5f72326d77f2ec4' into upgrade/main-green-060-20261009\\n14f082b29044e02bf3142dd7c5f72326d77f2ec4 test(server): bind fixtures to the client address family\\n8ee7961ff320a238405b76534566542a92fa375f Merge commit 'f496f9c4e305c9a9e0bbf88f486dd4d6414e1cc2' into upgrade/main-green-060-20261009\\nf496f9c4e305c9a9e0bbf88f486dd4d6414e1cc2 fix(server): expose compiled commit in environment and hello\\n7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\\n2a1cc95b1cce3e68a2bde3052938947855295db4 merge(release): retain accepted upgrade source above the installed release base\\nc6682e32f65752b1bdb2170793df12bba1cbed94 feat(rpc): negotiate compatible ThroughLine clients and servers\\n40b2705664b6dcf059bd357bfe60dc327c0009a3 merge: record already-folded ComsNet preservation history\\n09a5a203de6066ead00991bac2a90d2895ae025d merge: fold ThroughLine 0.0.51 and retain local workspace and Meridian repairs\\n1f767d508b019aeaa95c8f723b282f9e1a2f1af4 Merge pinned upstream d15210cd3da79f9a1a495a6309d912d76362a046 for ThroughLine 0.0.50\\nec2eb31a813c373895e17d3bee0e3d151ae2f639 Merge pinned upstream de251fc2971a884cb5b1305ba4daf309dc8cccb0 for ThroughLine 0.0.49\\n0d288f84eafd02bad96abe4855874f1d1e844376 Merge pinned upstream e5a46d6c5d00b89afba5274a94d42428c8d79763 for ThroughLine 0.0.48\\n52b952cfab5620418b8fa1b28aa9c105fcaf2ece Merge pinned upstream 91e53e501c9e7eb03f0ea4a5b72221d08eff9c5c for ThroughLine 0.0.47\\nc790ffeea219529f1d481d23187d6f63f8cc192a merge: upstream T3 Code sync 2026-09-12 (1,218 commits) onto fork main; conflicts resolved keeping the turn-start door and queued-turn logic; hook skipped once per lead ruling, vendored ignored path\\ne4415034c63aec3325a229a4541224c6c5f1b8a9 fmt: apply repository formatting to the nine files the merge hook left unformatted\\n19be48864e2702773b27922f644311a88793b3de merge upstream/main (a92161a05, 1,218 commits) into the ThroughLine fork, 2026-09-12\\nbdbbdb952a6d775e294dfdf710445b3b391178c6 fix: wait for bootstrap thread materialization\\naa609f786566e4b6a4617c10b4e8afc5992e064f fix: preserve spawned bootstrap threads\\n06ffff441fa318dfceaa5bfad75292d4fbb60ddb fix: converge interrupted first thread sends\\nd6b9a94a2ed5faf11944650c60764bc076be853a Normalize fork seam markers to the uniform ThroughLine vocabulary\\n2164902aaf5ce7d5ff7a223bc2222b08b5bd4c32 Merge remote-tracking branch 'upstream/main' into claude/t3-upstream-sync-2026-08-18\\n8941fbaa08894626e91633ba8eae4ce2e1fae6a3 test(server): model the absurd turn rail in the router-seam harness\", | \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\", | \"reason\": \"bad95b43a4723e6943d851e7cd644043a066f350 build(server): type-check a fresh checkout; leave the stale supervised-task check file out\\n3db60b5423e45ae262432cb44b1b5c4db6fe1d6b test(identity): type the observed origin as possibly undefined under exactOptionalPropertyTypes\\nd8da4c74195a4e3f943d24135ba61631ed5123d4 test(identity): skip the command-origin integration test that hangs on every run\\n2c8173bb3736f9e24db11aebc3acc9b22f49d578 Merge branch 'main' into rewind-same-session\\n40b2705664b6dcf059bd357bfe60dc327c0009a3 merge: record already-folded ComsNet preservation history\\nfd9b73f2225efa67f994c05ca02eb3a0d3066580 merge: fold Ryan conversation rewind repair onto the live fork source\\nba12988b05212817019ab032cfd7f24539b2ba29 Rewind repair (Ryan, Oct 1, 2026), saved from the 0.0.51 worktree\", | \"3db60b5423e45ae262432cb44b1b5c4db6fe1d6b test(identity): type the observed origin as possibly undefined under exactOptionalPropertyTypes\", | \"reason\": \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\\n2a1cc95b1cce3e68a2bde3052938947855295db4 merge(release): retain accepted upgrade source above the installed release base\\ncf26b809310b410cb23ed9a7c1b7815e851c576f feat(server): add field-limited settings intent and rollback adapters\", | \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\", | \"reason\": \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\\n2a1cc95b1cce3e68a2bde3052938947855295db4 merge(release): retain accepted upgrade source above the installed release base\\ncf26b809310b410cb23ed9a7c1b7815e851c576f feat(server): add field-limited settings intent and rollback adapters\", | \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\", | \"reason\": \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\\na5429f8466f524910ae205b5f6dd4fb88ec42517 merge(release): inherit the verified installed-version source ancestry\\nb210fb27b381532583139eb0e68c46cb57e9f27e feat(settings): bind host owners and validate environment acknowledgements\", | \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\", | \"reason\": \"7aa4977bd703fabe26eeae97f47e1a1f14f95313 fix: carry reviewed type repairs onto current fork\\na5429f8466f524910ae205b5f6dd4fb88ec42517 merge(release): inherit the verified installed-version source ancestry\\nb210fb27b381532583139eb0e68c46cb57e9f27e feat(settings): bind host owners and validate environment acknowledgements\","
+        "The manifest remains the sole choice inventory. Derived facts bind its digest; proposed decisions, observed upstream dispositions, approval scope and proof state remain separate."
       ],
-      "contract_inspection": "Pinned Git diff and static-import scan; relative upstream-internal imports include type-only symbols. Dynamic imports, property access and transitive dependencies remain unmeasured.",
-      "conflict_rule": "review",
-      "conflict_rule_source": "review",
+      "contract_inspection": "Repository projector source and focused functional tests; no application feature, device, migration-feasibility or transitive-schema acceptance.",
+      "conflict_rule": "Rebuild generated outputs from their current ledger; preserve authored intent and fail-closed lineage.",
+      "conflict_rule_source": "authored",
       "conflict_rule_inferred": false,
       "marker": false,
       "commits": [
         "25158b1e0bed29ae73abb9d7875b053004f13788 feat(throughline): project and verify the fork seam decision view"
       ],
       "legacy_rules": [],
-      "relocation": "planned",
-      "relocation_reason": "Candidate for namespace relocation at a later merge; verify consumer/tooling paths first. No file move performed by T2.02.",
+      "relocation": "kept",
+      "relocation_reason": "Repository bookkeeping/control, not application feature implementation. No source move performed.",
       "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
-      "feature": "Fork namespace modules",
+      "feature": "Upstream-tax bookkeeping",
       "seam_side": "fork-outside-namespace",
-      "decision": "move-to-fork-side"
+      "decision": "keep"
+    },
+    {
+      "path": "docs/throughline/upstream-tax-plan.html",
+      "class": "fork-added",
+      "reason": "Publish the proposed per-file reduction plan from ledger rows, separating original 160 moves, three frozen debts and seventeen unproved retained slots.",
+      "reason_source": "authored",
+      "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+      "feature": "Upstream-tax bookkeeping",
+      "seam_side": "fork-outside-namespace",
+      "decision": "keep",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "The manifest remains the sole choice inventory. Derived facts bind its digest; proposed decisions, observed upstream dispositions, approval scope and proof state remain separate."
+      ],
+      "contract_inspection": "Repository projector source and focused functional tests; no application feature, device, migration-feasibility or transitive-schema acceptance.",
+      "conflict_rule": "Rebuild generated outputs from their current ledger; preserve authored intent and fail-closed lineage.",
+      "conflict_rule_source": "authored",
+      "conflict_rule_inferred": false,
+      "marker": false,
+      "relocation": "kept",
+      "relocation_reason": "Repository bookkeeping/control, not application feature implementation. No source move performed."
     },
     {
       "path": "package.json",
@@ -26040,19 +26081,18 @@
     {
       "path": "scripts/throughline/seam-view.ts",
       "class": "fork-added",
-      "reason": "Provide seam-view.ts for its fork consumers; relocation still requires consumer-path review.",
+      "reason": "Regenerate and verify both tax views and their facts from the ledger through the existing repository projector; reject stale derived output.",
       "reason_source": "authored",
       "imported_private_symbols": [
         "type { SeamManifest } from ./check-seam.ts",
         "{ bindRepository, git, RepositoryBindingError } from ./seam/repo-binding.ts"
       ],
       "schema_assumptions": [
-        "Relocation assumption for Fork namespace modules: preserve existing exported input/output contracts, optional-field defaults and persisted IDs; validate at the feature slice, not by import compilation alone.",
-        "Changed shape evidence requiring compatibility coverage: import type { SeamManifest } from \"./check-seam.ts\"; | return `<!doctype html> | if (formatted.status !== 0 || !formatted.stdout.trimStart().startsWith(\"<!doctype html>\"))"
+        "The manifest remains the sole choice inventory. Derived facts bind its digest; proposed decisions, observed upstream dispositions, approval scope and proof state remain separate."
       ],
-      "contract_inspection": "Pinned Git diff and static-import scan; relative upstream-internal imports include type-only symbols. Dynamic imports, property access and transitive dependencies remain unmeasured.",
-      "conflict_rule": "review",
-      "conflict_rule_source": "review",
+      "contract_inspection": "Repository projector source and focused functional tests; no application feature, device, migration-feasibility or transitive-schema acceptance.",
+      "conflict_rule": "Rebuild generated outputs from their current ledger; preserve authored intent and fail-closed lineage.",
+      "conflict_rule_source": "authored",
       "conflict_rule_inferred": false,
       "marker": false,
       "commits": [
@@ -26060,11 +26100,11 @@
       ],
       "legacy_rules": [],
       "relocation": "kept",
-      "relocation_reason": "Repository-level seam contract/control script explicitly placed here by T2.01/T2.02.",
+      "relocation_reason": "Repository bookkeeping/control, not application feature implementation. No source move performed.",
       "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
-      "feature": "Fork namespace modules",
+      "feature": "Upstream-tax bookkeeping",
       "seam_side": "fork-outside-namespace",
-      "decision": "move-to-fork-side"
+      "decision": "keep"
     },
     {
       "path": "scripts/throughline/seam/classify.ts",
@@ -26178,6 +26218,69 @@
       "feature": "Fork namespace modules",
       "seam_side": "fork-outside-namespace",
       "decision": "move-to-fork-side"
+    },
+    {
+      "path": "scripts/throughline/seam/tax-map.ts",
+      "class": "fork-added",
+      "reason": "Project the upstream-tax ownership graph, proof-bound node inspection, refusal-preserving state labels and copyable agent packets from supplied facts.",
+      "reason_source": "authored",
+      "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+      "feature": "Upstream-tax bookkeeping",
+      "seam_side": "fork-outside-namespace",
+      "decision": "keep",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "The manifest remains the sole choice inventory. Derived facts bind its digest; proposed decisions, observed upstream dispositions, approval scope and proof state remain separate."
+      ],
+      "contract_inspection": "Repository projector source and focused functional tests; no application feature, device, migration-feasibility or transitive-schema acceptance.",
+      "conflict_rule": "Rebuild generated outputs from their current ledger; preserve authored intent and fail-closed lineage.",
+      "conflict_rule_source": "authored",
+      "conflict_rule_inferred": false,
+      "marker": false,
+      "relocation": "kept",
+      "relocation_reason": "Repository bookkeeping/control, not application feature implementation. No source move performed."
+    },
+    {
+      "path": "scripts/throughline/seam/tax-views.test.ts",
+      "class": "fork-added",
+      "reason": "Protect generated view coverage, safe text escaping, graph-cycle and stale-lineage refusals, and honest binary/baseline/current size labels.",
+      "reason_source": "authored",
+      "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+      "feature": "Upstream-tax bookkeeping",
+      "seam_side": "fork-outside-namespace",
+      "decision": "keep",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "The manifest remains the sole choice inventory. Derived facts bind its digest; proposed decisions, observed upstream dispositions, approval scope and proof state remain separate."
+      ],
+      "contract_inspection": "Repository projector source and focused functional tests; no application feature, device, migration-feasibility or transitive-schema acceptance.",
+      "conflict_rule": "Rebuild generated outputs from their current ledger; preserve authored intent and fail-closed lineage.",
+      "conflict_rule_source": "authored",
+      "conflict_rule_inferred": false,
+      "marker": false,
+      "relocation": "kept",
+      "relocation_reason": "Repository bookkeeping/control, not application feature implementation. No source move performed."
+    },
+    {
+      "path": "scripts/throughline/seam/tax-views.ts",
+      "class": "fork-added",
+      "reason": "Project every-file, feature, seam, customization, measured-history and proposed-move views from the sole authored ledger without executing source moves.",
+      "reason_source": "authored",
+      "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+      "feature": "Upstream-tax bookkeeping",
+      "seam_side": "fork-outside-namespace",
+      "decision": "keep",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "The manifest remains the sole choice inventory. Derived facts bind its digest; proposed decisions, observed upstream dispositions, approval scope and proof state remain separate."
+      ],
+      "contract_inspection": "Repository projector source and focused functional tests; no application feature, device, migration-feasibility or transitive-schema acceptance.",
+      "conflict_rule": "Rebuild generated outputs from their current ledger; preserve authored intent and fail-closed lineage.",
+      "conflict_rule_source": "authored",
+      "conflict_rule_inferred": false,
+      "marker": false,
+      "relocation": "kept",
+      "relocation_reason": "Repository bookkeeping/control, not application feature implementation. No source move performed."
     },
     {
       "path": "throughline-seam.json",

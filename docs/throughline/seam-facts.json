@@ -1,0 +1,190 @@
+{
+  "variant": "current-state-operating-map",
+  "primary_data": {
+    "path": "/Users/Admin/throughline/throughline-seam.json",
+    "sha256": "f151ba55368974995217a2f156d2730dc4bbdb7a091fcf99cb937b1070896f98"
+  },
+  "nodes": [
+    {
+      "id": "upstream",
+      "label": "Pinned Git comparison",
+      "kind": "artifact",
+      "owner": "upstream",
+      "x": 140,
+      "y": 325,
+      "lifecycle": "candidate",
+      "proofStatus": "proof-pending",
+      "summary": "Source contract only; installed consumption is unknown without named proof bindings.",
+      "secret": "This artifact/adapter owns no independent feature policy.",
+      "publicContract": "Consume the recorded contract; never grant authority.",
+      "mustNotOwn": ["No hidden inventory, feature moves or inferred approvals."],
+      "editHere": [],
+      "sourceAnchors": [],
+      "proofAnchors": []
+    },
+    {
+      "id": "approval",
+      "label": "Written approval",
+      "kind": "artifact",
+      "owner": "seam",
+      "x": 410,
+      "y": 125,
+      "lifecycle": "candidate",
+      "proofStatus": "proof-pending",
+      "summary": "Source contract only; installed consumption is unknown without named proof bindings.",
+      "secret": "This artifact/adapter owns no independent feature policy.",
+      "publicContract": "Consume the recorded contract; never grant authority.",
+      "mustNotOwn": ["No hidden inventory, feature moves or inferred approvals."],
+      "editHere": [],
+      "sourceAnchors": [],
+      "proofAnchors": []
+    },
+    {
+      "id": "ledger",
+      "label": "Authored decision registry",
+      "kind": "module",
+      "owner": "seam",
+      "x": 410,
+      "y": 325,
+      "lifecycle": "candidate",
+      "proofStatus": "proof-pending",
+      "summary": "559 source choices; proposed decisions are not approvals.",
+      "secret": "Which recorded file choices serve the fork",
+      "publicContract": "One versioned file with authored reasons and scope",
+      "mustNotOwn": ["No hidden inventory, feature moves or inferred approvals."],
+      "editHere": [],
+      "sourceAnchors": [],
+      "proofAnchors": []
+    },
+    {
+      "id": "policy",
+      "label": "Shared tax admission",
+      "kind": "module",
+      "owner": "ours",
+      "x": 700,
+      "y": 325,
+      "lifecycle": "candidate",
+      "proofStatus": "proof-pending",
+      "summary": "Source contract only; installed consumption is unknown without named proof bindings.",
+      "secret": "How physical upstream tax is admitted",
+      "publicContract": "Actual path coverage, reasons and advance-approved growth",
+      "mustNotOwn": ["No hidden inventory, feature moves or inferred approvals."],
+      "editHere": [],
+      "sourceAnchors": [],
+      "proofAnchors": []
+    },
+    {
+      "id": "release",
+      "label": "Release boundary",
+      "kind": "adapter",
+      "owner": "ours",
+      "x": 1010,
+      "y": 130,
+      "lifecycle": "candidate",
+      "proofStatus": "proof-pending",
+      "summary": "Source contract only; installed consumption is unknown without named proof bindings.",
+      "secret": "This artifact/adapter owns no independent feature policy.",
+      "publicContract": "Consume the recorded contract; never grant authority.",
+      "mustNotOwn": ["No hidden inventory, feature moves or inferred approvals."],
+      "editHere": [],
+      "sourceAnchors": [],
+      "proofAnchors": []
+    },
+    {
+      "id": "commit",
+      "label": "Commit boundary",
+      "kind": "adapter",
+      "owner": "ours",
+      "x": 1010,
+      "y": 275,
+      "lifecycle": "candidate",
+      "proofStatus": "proof-pending",
+      "summary": "Source contract only; installed consumption is unknown without named proof bindings.",
+      "secret": "This artifact/adapter owns no independent feature policy.",
+      "publicContract": "Consume the recorded contract; never grant authority.",
+      "mustNotOwn": ["No hidden inventory, feature moves or inferred approvals."],
+      "editHere": [],
+      "sourceAnchors": [],
+      "proofAnchors": []
+    },
+    {
+      "id": "views",
+      "label": "Facts-to-HTML projector",
+      "kind": "module",
+      "owner": "ours",
+      "x": 1010,
+      "y": 420,
+      "lifecycle": "candidate",
+      "proofStatus": "proof-pending",
+      "summary": "Source contract only; installed consumption is unknown without named proof bindings.",
+      "secret": "How recorded choices become queryable",
+      "publicContract": "Consume the recorded contract; never grant authority.",
+      "mustNotOwn": ["No hidden inventory, feature moves or inferred approvals."],
+      "editHere": [],
+      "sourceAnchors": [],
+      "proofAnchors": []
+    },
+    {
+      "id": "plan",
+      "label": "Proposed open moves",
+      "kind": "artifact",
+      "owner": "ours",
+      "x": 1010,
+      "y": 565,
+      "lifecycle": "planned",
+      "proofStatus": "proof-pending",
+      "summary": "Source contract only; installed consumption is unknown without named proof bindings.",
+      "secret": "This artifact/adapter owns no independent feature policy.",
+      "publicContract": "Consume the recorded contract; never grant authority.",
+      "mustNotOwn": ["No hidden inventory, feature moves or inferred approvals."],
+      "editHere": [],
+      "sourceAnchors": [],
+      "proofAnchors": []
+    }
+  ],
+  "edges": [
+    {
+      "id": "upstream-ledger",
+      "from": "upstream",
+      "to": "ledger",
+      "contract": "real diff"
+    },
+    {
+      "id": "approval-ledger",
+      "from": "approval",
+      "to": "ledger",
+      "contract": "written scope"
+    },
+    {
+      "id": "ledger-policy",
+      "from": "ledger",
+      "to": "policy",
+      "contract": "admission input"
+    },
+    {
+      "id": "policy-release",
+      "from": "policy",
+      "to": "release",
+      "contract": "release policy"
+    },
+    {
+      "id": "policy-commit",
+      "from": "policy",
+      "to": "commit",
+      "contract": "staged policy"
+    },
+    {
+      "id": "ledger-views",
+      "from": "ledger",
+      "to": "views",
+      "contract": "one source"
+    },
+    {
+      "id": "ledger-plan",
+      "from": "ledger",
+      "to": "plan",
+      "contract": "proposed moves"
+    }
+  ],
+  "proof_limits": ["Installed state is unknown without separate witnesses."]
+}

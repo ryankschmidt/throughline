@@ -5,8 +5,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { SeamManifest } from "./check-seam.ts";
 import { bindRepository, git, RepositoryBindingError } from "./seam/repo-binding.ts";
+import { renderTaxViews } from "./seam/tax-views.ts";
+import { defaultTaxMap, type TaxMapContext } from "./seam/tax-map.ts";
 
 const OUTPUT = "docs/throughline/seam-view.html";
+const PLAN_OUTPUT = "docs/throughline/upstream-tax-plan.html";
+const FACTS_OUTPUT = "docs/throughline/seam-facts.json";
 const INSTALLED =
   "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/references/repository/repository.json";
 const SHA = /^[a-f0-9]{40}$/;
@@ -114,16 +118,23 @@ function main() {
   let repo = "",
     out = OUTPUT,
     override: string | undefined,
+    taxFactsPath: string | undefined,
     verify = false;
   for (let i = 0; i < args.length; i++) {
     const flag = args[i];
     if (flag === "--verify") verify = true;
-    else if (flag === "--repo" || flag === "--out" || flag === "--installed-commit") {
+    else if (
+      flag === "--repo" ||
+      flag === "--out" ||
+      flag === "--installed-commit" ||
+      flag === "--tax-facts"
+    ) {
       const value = args[++i];
       if (!value || value.startsWith("--"))
         throw new RepositoryBindingError(`Missing value for ${flag}`);
       if (flag === "--repo") repo = value;
       else if (flag === "--out") out = value;
+      else if (flag === "--tax-facts") taxFactsPath = value;
       else override = value;
     } else throw new RepositoryBindingError(`Unknown option: ${flag}`);
   }
@@ -141,12 +152,24 @@ function main() {
   // The ship step runs after frozen dependencies and before any signed build.
   // Invoke the installed formatter directly: pnpm exec may auto-install when module
   // metadata differs, which would make a supposedly read-only verification mutate dependencies.
+  const taxFacts = manifest as unknown as Parameters<typeof renderTaxViews>[0];
+  const taxProjection = taxFacts.tax_policy !== undefined;
+  const mapFacts = taxFactsPath
+    ? (JSON.parse(readFileSync(taxFactsPath, "utf8")) as TaxMapContext["facts"])
+    : taxProjection
+      ? defaultTaxMap(taxFacts, digest)
+      : undefined;
+  const taxContext: TaxMapContext | undefined = mapFacts
+    ? { facts: mapFacts, factsPath: taxFactsPath ?? FACTS_OUTPUT }
+    : undefined;
   const formatted = spawnSync(
     join(root, "node_modules/.bin/vp"),
     ["fmt", `--stdin-filepath=${OUTPUT}`],
     {
       cwd: root,
-      input: render(root, manifest, digest, override),
+      input: taxProjection
+        ? renderTaxViews(taxFacts, digest, false, taxContext)
+        : render(root, manifest, digest, override),
       encoding: "utf8",
       maxBuffer: 64 * 1024 * 1024,
     },
@@ -167,6 +190,36 @@ function main() {
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, html);
     console.log(`seam-view: generated ${out} from ${digest}`);
+  }
+  if (taxProjection) {
+    const factsFile = join(root, FACTS_OUTPUT);
+    const factsBytes = JSON.stringify(mapFacts, null, 2) + "\n";
+    if (verify) {
+      if (!existsSync(factsFile) || readFileSync(factsFile, "utf8") !== factsBytes)
+        throw Error(`VIEW_STALE_OR_MODIFIED: ${FACTS_OUTPUT}`);
+    } else writeFileSync(factsFile, factsBytes);
+    const planFormatted = spawnSync(
+      join(root, "node_modules/.bin/vp"),
+      ["fmt", `--stdin-filepath=${PLAN_OUTPUT}`],
+      {
+        cwd: root,
+        input: renderTaxViews(taxFacts, digest, true, taxContext),
+        encoding: "utf8",
+        maxBuffer: 64 * 1024 * 1024,
+      },
+    );
+    if (
+      planFormatted.status !== 0 ||
+      !planFormatted.stdout.trimStart().startsWith("<!doctype html>")
+    )
+      throw Error(`PLAN_FORMATTER_REFUSED: ${planFormatted.stderr}`);
+    const planFile = join(root, PLAN_OUTPUT);
+    if (verify) {
+      if (!existsSync(planFile) || readFileSync(planFile, "utf8") !== planFormatted.stdout)
+        throw Error(`VIEW_STALE_OR_MODIFIED: ${PLAN_OUTPUT}`);
+    } else {
+      writeFileSync(planFile, planFormatted.stdout);
+    }
   }
 }
 try {
