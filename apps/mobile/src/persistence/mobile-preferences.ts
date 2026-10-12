@@ -18,6 +18,7 @@ import {
 } from "../lib/mobileTheme";
 
 import type { ComposerEnterBehavior } from "../lib/composerEnterBehavior";
+import { isComposerEditorHeight } from "../throughline/composerHeight";
 import type { VoiceOptimizationProvider } from "../features/voice-input/messageOptimizer";
 
 import type { FollowUpBehavior } from "../lib/followUpBehavior";
@@ -46,6 +47,8 @@ export interface Preferences {
   readonly collapsedProjectGroups?: readonly string[];
   /** What the Return key does in the composer on a hardware keyboard. iOS only. */
   readonly composerEnterBehavior?: ComposerEnterBehavior;
+  /** Preferred editor height; keyboard fitting never changes this value. */
+  readonly composerEditorHeight?: number;
   /** Device-local voice optimization; absent means Claude. */
   readonly voiceOptimizationProvider?: VoiceOptimizationProvider;
   /**
@@ -127,6 +130,7 @@ function sanitizePreferences(parsed: Preferences): Preferences {
     connectOnboardingOptOutAccounts?: ReadonlyArray<string>;
     collapsedProjectGroups?: readonly string[];
     composerEnterBehavior?: ComposerEnterBehavior;
+    composerEditorHeight?: number;
     voiceOptimizationProvider?: VoiceOptimizationProvider;
     followUpBehavior?: FollowUpBehavior;
     microphones?: ReadonlyArray<MicrophoneEntry>;
@@ -140,6 +144,9 @@ function sanitizePreferences(parsed: Preferences): Preferences {
     threadListWorkingShelfExpanded?: boolean;
   } = {};
 
+  if (isComposerEditorHeight(parsed.composerEditorHeight)) {
+    preferences.composerEditorHeight = parsed.composerEditorHeight;
+  }
   if (typeof parsed.pullRequestHideTestFiles === "boolean") {
     preferences.pullRequestHideTestFiles = parsed.pullRequestHideTestFiles;
   }

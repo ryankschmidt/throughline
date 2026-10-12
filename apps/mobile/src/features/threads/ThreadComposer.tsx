@@ -76,10 +76,9 @@ import { scopeProjectRef } from "@t3tools/client-runtime/environment";
 
 import { AppText as Text } from "../../components/AppText";
 import { ComposerAttachmentButton } from "../../components/ComposerAttachmentButton";
-import {
-  ComposerAttachmentStrip,
-  ComposerAttachmentThumbnail,
-} from "../../components/ComposerAttachmentStrip";
+import { ComposerAttachmentThumbnail } from "../../components/ComposerAttachmentStrip";
+import { ComposerCollapsedAttachments } from "../../throughline/ComposerCollapsedAttachments";
+import { useComposerResize } from "../../throughline/useComposerResize";
 import { VideoPreviewModal, type VideoPreviewSource } from "../../components/VideoPreviewModal";
 import { GlassSurface } from "../../components/GlassSurface";
 import { ComposerEditor, type ComposerEditorHandle } from "../../components/ComposerEditor";
@@ -158,6 +157,8 @@ export interface ThreadComposerProps {
   readonly placeholder: string;
   readonly contentMaxWidth?: number;
   readonly bottomInset?: number;
+  /** Header and floating context controls that must stay above an expanded draft. */
+  readonly resizeReservedHeight?: number;
   readonly connectionState: RemoteClientConnectionState;
   readonly environmentLabel: string | null;
   /**
@@ -554,6 +555,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
   const isVoiceInputPresented = voicePresentation.statusLabel !== null;
   // An open draft stays visible; only a collapsed composer becomes a voice strip.
   const isExpanded = isFocused || settingsSheetPresentation.keepsComposerExpanded;
+  const composerResize = useComposerResize(props.resizeReservedHeight);
   const showsCompactDictation = isVoiceInputPresented && !isExpanded;
   const isToolbarVisible = isExpanded || isVoiceInputPresented;
   const attachmentBlockReason = composerAttachmentUploadBlockReason({
@@ -821,6 +823,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
   return (
     <Animated.View
       className="px-[12px]"
+      onLayout={isExpanded ? composerResize.onRootLayout : undefined}
       style={{
         paddingTop: isExpanded ? 8 : 6,
         paddingBottom: (props.bottomInset ?? 0) + (isExpanded ? 8 : 6),
@@ -893,6 +896,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
         ) : null}
 
         <ComposerSurface
+          animateLayout={!composerResize.dragging}
           style={
             isExpanded
               ? {
@@ -900,7 +904,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
                   minHeight: 140,
                   overflow: "hidden" as const,
                   paddingBottom: 6,
-                  paddingTop: 14,
+                  paddingTop: 0,
                 }
               : {
                   // Keep the numeric radius close to the expanded card so the
@@ -911,6 +915,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
                 }
           }
         >
+          {isExpanded ? composerResize.handle : null}
           <ComposerDictationDraftContent
             className={isExpanded ? undefined : "flex-row items-center"}
             compact={!isExpanded}
@@ -945,7 +950,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
                 entering={COMPOSER_ATTACHMENT_ENTERING}
                 exiting={FadeOut.duration(120)}
               >
-                <ComposerAttachmentStrip
+                <ComposerCollapsedAttachments
                   environmentId={props.environmentId}
                   attachments={stripAttachments}
                   onRemove={voiceInput.isBusy ? () => undefined : props.onRemoveDraftImage}
@@ -967,7 +972,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
             ) : null}
             <Animated.View
               className={isExpanded ? "px-[14px]" : "min-w-0 flex-1 px-[4px]"}
-              layout={COMPOSER_LAYOUT_TRANSITION}
+              layout={composerResize.dragging ? undefined : COMPOSER_LAYOUT_TRANSITION}
             >
               <ComposerEditor
                 draftKey={composerDraftKey}
@@ -1094,8 +1099,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
                 style={
                   isExpanded
                     ? {
-                        minHeight: 72,
-                        maxHeight: 160,
+                        height: composerResize.height,
                         paddingVertical: 4,
                       }
                     : {
@@ -1230,13 +1234,6 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
                         maxWidth="100%"
                         onPress={openSettings}
                       />
-                      <Text
-                        accessibilityLabel={answeringModelLabel}
-                        numberOfLines={2}
-                        className="px-2 text-2xs text-foreground-secondary"
-                      >
-                        {answeringModelLabel}
-                      </Text>
                     </View>
                   </View>
                 )}
@@ -1269,6 +1266,14 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
               </ComposerToolbarRow>
             </ComposerDictationToolbar>
           </Animated.View>
+          {isExpanded && !isVoiceInputPresented ? (
+            <Text
+              accessibilityLabel={answeringModelLabel}
+              className="px-[14px] pb-1 text-2xs text-foreground-secondary"
+            >
+              {answeringModelLabel}
+            </Text>
+          ) : null}
         </ComposerSurface>
 
         {props.connectionState === "connected" && !props.canOperateThread ? (

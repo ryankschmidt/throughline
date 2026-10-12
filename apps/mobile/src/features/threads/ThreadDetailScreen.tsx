@@ -1434,6 +1434,12 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
                   ) : (
                     <>
                       <ThreadComposer
+                        resizeReservedHeight={
+                          navigationHeaderHeight +
+                          FLOATING_WORKING_CONTROL_COVERAGE +
+                          controlInsets.bottom +
+                          8
+                        }
                         canOperateThread={props.canOperateThread}
                         reportedModelSelection={reportedModelSelection}
                         editorRef={composerEditorRef}
