@@ -9,10 +9,10 @@
   },
   "merge_base": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
   "counts": {
-    "upstream_edit": 180,
+    "upstream_edit": 181,
     "upstream_removed": 0,
-    "fork_added": 241,
-    "fork_namespace": 138
+    "fork_added": 245,
+    "fork_namespace": 141
   },
   "entries": [
     {
@@ -26373,6 +26373,23 @@
         },
         "restore_upstream_path": "vite.config.ts"
       }
+    },
+    {
+      "path": "apps/server/src/device/LocalDeviceHost.ts",
+      "class": "upstream-edit",
+      "reason": "Delegate live daemon identity and declared Mac launch environment to the fork lifecycle module; both decisions are inside the stock host closure.",
+      "reason_source": "authored",
+      "reason_author": "worker-composer-053ab44e",
+      "feature": "Declared device toolchain and live daemon endpoint",
+      "seam_side": "upstream-mount",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Live executable P8 throughline.ship-pipeline.v2 with absolute host_toolchain.mac.developer_dir and iOS simulator_runtime; draft/absent declarations refuse launch.",
+        "Agent-device daemon metadata carries loopback httpPort and a private capability token; health acquisition plus body is bounded to two seconds."
+      ],
+      "contract_inspection": "Internal launch environment and ensureAgentReady cache inspected; use fork declaredDaemonEnvironment/liveDaemonEndpoint, leave public service contract and stock tests unchanged.",
+      "decision": "keep",
+      "approved_change_ids": ["device-lifecycle-mount-2026-10-13"]
     }
   ],
   "upstream_changes": [
@@ -30769,7 +30786,7 @@
     "baseline_count": 180,
     "baseline_fork": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
     "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
-    "approved_growth_files": [],
+    "approved_growth_files": ["docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json"],
     "count_history": [
       {
         "fork": "25158b1e0bed29ae73abb9d7875b053004f13788",
@@ -30788,6 +30805,12 @@
         "upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
         "count": 180,
         "label": "Current source; 3 additions since the merge, before this refresh"
+      },
+      {
+        "fork": "f56a3e7abe028b367bc00fdb81070e85f0a11ebd",
+        "count": 181,
+        "staged": true,
+        "label": "Advance-approved one-file D10 lifecycle mount"
       }
     ],
     "proposed_retained_mounts": [
@@ -33570,6 +33593,34 @@
       "runtime_probes": [
         "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/iOS-App-Array-Probe.json",
         "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Android-App-Array-Probe.json"
+      ]
+    },
+    {
+      "schema": "throughline.upstream-mount-approval.v1",
+      "id": "device-lifecycle-mount-2026-10-13",
+      "scope_paths": ["apps/server/src/device/LocalDeviceHost.ts"],
+      "requested_by": "worker-composer-053ab44e",
+      "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+      "approval_file": "docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json",
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/D10-Advance-Growth-Approval-20261013.txt",
+      "reason": "Delegate live daemon identity and declared Mac launch environment to the fork lifecycle module; both decisions are inside the stock host closure.",
+      "reason_source": "authored",
+      "seam_side": "upstream-mount",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Live executable P8 throughline.ship-pipeline.v2 with absolute host_toolchain.mac.developer_dir and iOS simulator_runtime; draft/absent declarations refuse launch.",
+        "Agent-device daemon metadata carries loopback httpPort and a private capability token; health acquisition plus body is bounded to two seconds."
+      ],
+      "before_fork": "800ff95da99213a2a3d6fd9972500f7d107689c1",
+      "approval_commit": "f56a3e7abe028b367bc00fdb81070e85f0a11ebd",
+      "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+      "new_upstream_filenames": 1,
+      "recorded_at": "2026-10-13T09:28:18.060Z",
+      "state": "approved-before-implementation; source/native acceptance pending",
+      "conditions": [
+        "Only LocalDeviceHost.ts stock mount; stock tests unchanged",
+        "Land through worker-upmerge-6716f643",
+        "P8 activation and native/panel acceptance remain separate"
       ]
     }
   ]

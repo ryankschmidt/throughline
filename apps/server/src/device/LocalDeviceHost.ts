@@ -46,6 +46,7 @@ import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 import { writeFileStringAtomically } from "@t3tools/shared/atomicWrite";
 import * as ServerConfig from "../config.ts";
 import * as ProcessRunner from "../processRunner.ts";
+import * as DeviceLifecycle from "../throughline/device/LocalDeviceLifecycle.ts";
 import * as DeviceHost from "./DeviceHost.ts";
 import {
   agentDeviceStateDir,
@@ -498,12 +499,45 @@ export const make = Effect.fn("LocalDeviceHost.make")(function* () {
   const startAgentDeviceDaemon = Effect.fn("LocalDeviceHost.startAgentDeviceDaemon")(function* (
     agentTool: DeviceToolPaths,
     nodePath: string,
-  ): Effect.fn.Return<DeviceHost.AgentDeviceEndpoint, DeviceHost.DeviceHostTimeoutError> {
+  ): Effect.fn.Return<
+    DeviceHost.AgentDeviceEndpoint,
+    DeviceHost.DeviceHostError | DeviceHost.DeviceHostTimeoutError
+  > {
     const stateDir = agentDeviceStateDir(path, config.stateDir);
     yield* fs.makeDirectory(stateDir, { recursive: true }).pipe(Effect.ignore);
     const existing = yield* readDaemonFile().pipe(Effect.option);
+    const toEndpoint = (
+      file: typeof AgentDeviceDaemonFile.Type,
+    ): DeviceHost.AgentDeviceEndpoint => ({
+      baseUrl: `http://127.0.0.1:${file.httpPort}`,
+      token: file.token,
+      entryPath: agentTool.entryPath,
+    });
+    const live = yield* DeviceLifecycle.liveDaemonEndpoint(
+      config.stateDir,
+      agentTool.entryPath,
+    ).pipe(
+      Effect.provideService(FileSystem.FileSystem, fs),
+      Effect.provideService(Path.Path, path),
+      Effect.provideService(HttpClient.HttpClient, httpClient),
+    );
+    if (Option.isSome(live)) return live.value;
+    if (existing._tag === "Some") {
+      yield* fs.remove(daemonFilePath(), { force: true }).pipe(Effect.ignore);
+    }
     const daemonEnvironment: NodeJS.ProcessEnv = {
-      ...hostEnvironment,
+      ...(yield* DeviceLifecycle.declaredDaemonEnvironment(hostEnvironment, hostPlatform).pipe(
+        Effect.provideService(FileSystem.FileSystem, fs),
+        Effect.provideService(Path.Path, path),
+        Effect.mapError(
+          (cause) =>
+            new DeviceHost.DeviceHostError({
+              hostId,
+              step: "reading declared device toolchain",
+              cause,
+            }),
+        ),
+      )),
       AGENT_DEVICE_STATE_DIR: stateDir,
       AGENT_DEVICE_DAEMON_SERVER_MODE: "http",
       // The daemon idles out after five minutes by default; the server owns
@@ -513,27 +547,6 @@ export const make = Effect.fn("LocalDeviceHost.make")(function* () {
       FORCE_COLOR: "0",
       NO_COLOR: "1",
     };
-    const toEndpoint = (
-      file: typeof AgentDeviceDaemonFile.Type,
-    ): DeviceHost.AgentDeviceEndpoint => ({
-      baseUrl: `http://127.0.0.1:${file.httpPort}`,
-      token: file.token,
-      entryPath: agentTool.entryPath,
-    });
-    if (existing._tag === "Some") {
-      const alive = yield* HttpClient.withScope(httpClient)
-        .get(`http://127.0.0.1:${existing.value.httpPort}/health`)
-        .pipe(
-          Effect.timeout(Duration.seconds(2)),
-          Effect.flatMap((response) =>
-            response.arrayBuffer.pipe(Effect.as(response.status === 200)),
-          ),
-          Effect.scoped,
-          Effect.orElseSucceed(() => false),
-        );
-      if (alive) return toEndpoint(existing.value);
-      yield* fs.remove(daemonFilePath(), { force: true }).pipe(Effect.ignore);
-    }
     // There is no `daemon start`; the first command in a state dir spawns the
     // daemon and blocks until it answers. `devices` is the cheapest one.
     yield* runner
@@ -663,7 +676,19 @@ export const make = Effect.fn("LocalDeviceHost.make")(function* () {
         DeviceHost.DeviceHostAgentReady
       > {
         const running = yield* ensureHubReady(onPhase);
-        if (running.agentDevice) return { ...toReady(running), agentDevice: running.agentDevice };
+        if (running.agentDevice) {
+          const live = yield* DeviceLifecycle.liveDaemonEndpoint(
+            config.stateDir,
+            running.agentDevice.entryPath,
+          ).pipe(
+            Effect.provideService(FileSystem.FileSystem, fs),
+            Effect.provideService(Path.Path, path),
+            Effect.provideService(HttpClient.HttpClient, httpClient),
+          );
+          const refreshed = { ...running, agentDevice: Option.getOrNull(live) };
+          yield* Ref.set(runningRef, refreshed);
+          if (Option.isSome(live)) return { ...toReady(refreshed), agentDevice: live.value };
+        }
         const installed = yield* isAgentDeviceInstalled(config.baseDir).pipe(
           Effect.provideService(FileSystem.FileSystem, fs),
           Effect.provideService(Path.Path, path),
