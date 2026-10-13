@@ -1,0 +1,14 @@
+{
+  "schema": "throughline.upstream-tax-approval.v1",
+  "requested_by": "worker-composer-053ab44e",
+  "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+  "request_reason": "One shared mobile feed entry mount delegates internal runtime-row visibility to a fork-owned filter; all mobile conversation consumers import this entry.",
+  "approval_reason": "Lead approved the Next-Gen ruling: A5 filter mount in lib/threadActivity.ts, plus one, expected ceiling182; preserve turn data and real conversation/tool rows.",
+  "source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Android-Findings-Mount-Approval-20261013.txt",
+  "baseline_fork": "6e32783ba692236cd2d2057d869af8e05a2fae40",
+  "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+  "baseline_count": 181,
+  "max_count": 182,
+  "paths": ["apps/mobile/src/lib/threadActivity.ts"],
+  "approved_at": "2026-10-13T15:22:00Z"
+}
