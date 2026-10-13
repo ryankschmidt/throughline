@@ -1,0 +1,11 @@
+{
+  "schema": "throughline.upstream-existing-mount-approval.v1",
+  "id": "android-native-dictation-config-2026-10-13",
+  "scope_paths": ["apps/mobile/app.config.ts"],
+  "requested_by": "worker-composer-053ab44e",
+  "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+  "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Native-Mount-Source-Order.txt",
+  "reason": "Already-edited native config delegates to fork-owned voice plugin options to declare microphone permission and offline speech-service queries required by approved real Android dictation.",
+  "new_upstream_filenames": 0,
+  "recorded_at": "2026-10-13T17:50:00.363Z"
+}
