@@ -1,0 +1,22 @@
+{
+  "schema": "throughline.upstream-tax-approval.v1",
+  "requested_by": "worker-composer-053ab44e",
+  "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+  "request_reason": "Measured stock Android session setup forces speaker routing after controller preparation and produces silent app recordings. One fork-owned recording-session factory supplies Android-only route-neutral setup/release and explicit mono capture; original iOS callbacks and settings remain unchanged.",
+  "approval_reason": "Exact lead1:18 written approval conveys Next-Gen one retained VoiceInputProvider.tsx mount, operator aggregate ceiling184, approval-only commit before edit, K11 fields and upstream offer expiring on adoption.",
+  "source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Written-Approval.txt",
+  "source_sha256": "550be440b4de989c20bd8a970c74579dcfaed7bb31f22880af7c4f33f2708ea8",
+  "source_database": "/Users/Admin/.t3/userdata/state.sqlite",
+  "source_message_id": "85d9e821-e654-43bc-89c3-a62cc703c93d",
+  "baseline_fork": "e77631beb74ef2deb3301fa37619ab9aef44e620",
+  "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+  "baseline_count": 181,
+  "max_count": 182,
+  "operator_authorized_ceiling": 184,
+  "physical_count_note": "Actual integrator parent measured181; only this VoiceInputProvider path receives one physical credit to182. Aggregate operator ceiling184 remains separate authority, not a measurement.",
+  "paths": ["apps/mobile/src/features/voice-input/VoiceInputProvider.tsx"],
+  "approved_at": "2026-10-13T20:18:37.779Z",
+  "expires_when": "upstream adopts Android recording audio-route fix",
+  "author_approval_commit": "cef06b19c9da7ee54539a4e614cf51f27b967e6e",
+  "actual_parent_measurement": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Root-Parent-Tax.json"
+}
