@@ -1,3 +1,4 @@
+import { prepareOfflineSpeechLocale } from "../throughline/phone-parity/offlineSpeechPreparation";
 import { requireOptionalNativeModule } from "expo";
 import { Platform } from "react-native";
 import {
@@ -38,21 +39,7 @@ export function getLocalVoiceTranscriber(): VoiceTranscriber | null {
             "preparation-failed",
             "Microphone permission was denied.",
           );
-        const supported = await speech.getSupportedLocales({
-          androidRecognitionServicePackage: "com.google.android.as",
-        });
-        throwIfVoiceTranscriptionAborted(signal);
-        const wanted = deviceLocale.replaceAll("_", "-").toLowerCase();
-        const locale =
-          supported.installedLocales.find((locale) => locale.toLowerCase() === wanted) ??
-          supported.installedLocales.find(
-            (locale) => locale.toLowerCase().split("-")[0] === wanted.split("-")[0],
-          );
-        if (!locale)
-          throw new VoiceTranscriptionError(
-            "unsupported-locale",
-            `Install an offline Android speech model for ${deviceLocale} before dictating.`,
-          );
+        const locale = await prepareOfflineSpeechLocale(speech, deviceLocale, signal);
         return {
           locale,
           transcribe: (uri, options) => transcribeRecording(speech, locale, uri, options),
