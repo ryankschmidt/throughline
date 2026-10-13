@@ -1694,6 +1694,14 @@
           "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
         },
         "restore_upstream_path": "apps/mobile/app.config.ts"
+      },
+      "approved_change_ids": ["android-native-dictation-config-2026-10-13"],
+      "current_android_dictation_slice": {
+        "source_commit": "e464c7c904867f59fca50d5c960d6e4bc653c167",
+        "approval_commit": "74c62b3f60db179ab31d6a571d626ce3ca5b7fef",
+        "scope": "one explicit.ts import and delegated export; Android manifest only",
+        "proof": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Native-Config-Independent-Review-R3.json",
+        "native_acceptance": false
       }
     },
     {
@@ -36671,6 +36679,27 @@
         "proof": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-A5-Independent-Cold-Review.json",
         "native_acceptance": false
       }
+    },
+    {
+      "schema": "throughline.upstream-existing-mount-approval.v1",
+      "id": "android-native-dictation-config-2026-10-13",
+      "scope_paths": ["apps/mobile/app.config.ts"],
+      "requested_by": "worker-composer-053ab44e",
+      "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Native-Config-Written-Lead-Approval-1130.txt",
+      "reason": "Android manifest-only permission/recognizer-query mod; no iOS or static plugin options change; preserves R9 reader.",
+      "new_upstream_filenames": 0,
+      "recorded_at": "2026-10-13T17:50:00.363Z",
+      "approval_file": "docs/throughline/tax-approvals/android-native-dictation-existing-mount-2026-10-13.json",
+      "seam_side": "upstream-mount",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Expo audio recording requires RECORD_AUDIO, and image-picker microphonePermission:false emits a global permission removal.",
+        "The app uses com.google.android.as for offline speech recognition and Android package visibility must declare that service."
+      ],
+      "before_fork": "c3ae20ea1a4e6a856988ea74df518ad6814239b2",
+      "approval_commit": "74c62b3f60db179ab31d6a571d626ce3ca5b7fef",
+      "integration_recorded_at": "2026-10-13T18:37:22.105Z"
     }
   ]
 }

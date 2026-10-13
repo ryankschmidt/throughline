@@ -44,6 +44,7 @@ const fixture = (kind: "valid" | "missing" | "malformed" | "development") =>
       });
     for (const file of [
       "apps/mobile/app.config.ts",
+      "apps/mobile/src/throughline/phone-parity/nativeDictationConfig.ts",
       "apps/web/vite.config.ts",
       "apps/web/vite/tailwind.ts",
       "scripts/lib/public-config.ts",
@@ -76,7 +77,7 @@ const fixture = (kind: "valid" | "missing" | "malformed" | "development") =>
       path.join(root, "packages/throughline-release/node_modules"),
       path.join(dir, "packages/throughline-release/node_modules"),
     );
-    for (const surface of ["apps/web", "scripts"]) {
+    for (const surface of ["apps/web", "apps/mobile", "scripts"]) {
       yield* fs.makeDirectory(path.join(dir, surface), { recursive: true });
       yield* fs.symlink(
         path.join(root, surface, "node_modules"),

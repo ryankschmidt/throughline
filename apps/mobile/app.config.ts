@@ -1,3 +1,4 @@
+import { withAndroidDictation } from "./src/throughline/phone-parity/nativeDictationConfig.ts";
 import * as NodeFS from "node:fs";
 import {
   readReleaseStamp,
@@ -609,4 +610,4 @@ const config: ExpoConfig = {
   owner: "pingdotgg",
 };
 
-export default config;
+export default withAndroidDictation(config);
