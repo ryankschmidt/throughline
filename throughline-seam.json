@@ -9,7 +9,7 @@
   },
   "merge_base": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
   "counts": {
-    "upstream_edit": 181,
+    "upstream_edit": 182,
     "upstream_removed": 0,
     "fork_added": 241,
     "fork_namespace": 147
@@ -5710,7 +5710,8 @@
           "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
         },
         "restore_upstream_path": "apps/mobile/src/features/voice-input/useVoiceInputController.ts"
-      }
+      },
+      "approved_change_ids": ["android-voice-lifecycle-2026-10-13"]
     },
     {
       "path": "apps/mobile/src/features/voice-input/voiceInputPresentation.test.ts",
@@ -29265,6 +29266,23 @@
       "contract_inspection": "Internal launch environment and ensureAgentReady cache inspected; use fork declaredDaemonEnvironment/liveDaemonEndpoint, leave public service contract and stock tests unchanged.",
       "decision": "keep",
       "approved_change_ids": ["device-lifecycle-mount-2026-10-13"]
+    },
+    {
+      "path": "apps/mobile/src/lib/threadActivity.ts",
+      "class": "upstream-edit",
+      "reason": "Filter internal runtime notifications and Claude ui_status notices before mobile feed grouping; preserve stored turn data and actual conversation/tool content.",
+      "reason_source": "authored",
+      "reason_author": "worker-composer-053ab44e",
+      "feature": "Mobile internal runtime-row presentation",
+      "seam_side": "upstream-mount",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Typed notification source.kind distinguishes background_task/monitor from actual command/subagent content.",
+        "Only system_notice rows with exact Claude ui_status identity are internal; user/assistant text is never matched."
+      ],
+      "contract_inspection": "Typed system_notice and notification fields inspected; fixture asserts internal rows omitted and data/real conversation preserved.",
+      "decision": "keep",
+      "approved_change_ids": ["mobile-runtime-row-filter-2026-10-13"]
     }
   ],
   "upstream_changes": [
@@ -33661,7 +33679,10 @@
     "baseline_count": 177,
     "baseline_fork": "e735392d5a4a9b91294f5ba0c4511621b7ae706f",
     "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
-    "approved_growth_files": ["docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json"],
+    "approved_growth_files": [
+      "docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json",
+      "docs/throughline/tax-approvals/mobile-runtime-rows-2026-10-13.json"
+    ],
     "count_history": [
       {
         "fork": "25158b1e0bed29ae73abb9d7875b053004f13788",
@@ -33694,6 +33715,12 @@
         "staged": true,
         "label": "Approved LocalDeviceHost lifecycle mount; separate approval parent 09eee5b49acdcb05e040526ac4ae6c03fed89e30",
         "approval_file": "docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json"
+      },
+      {
+        "fork": "3849708538f520dfdb140cbc8c4fb467a5f2fe86",
+        "count": 182,
+        "staged": true,
+        "label": "Approved zero-growth Android lifecycle and plus-one mobile stopped-internal-row filter"
       }
     ],
     "proposed_retained_mounts": [
@@ -36671,6 +36698,48 @@
       "source_parent": "684456d693ce4f8a0384eb0db4dbe449f275a905",
       "count_effect": 0,
       "compatibility_proof": "NOT_ESTABLISHED: version edits do not prove copied-current-state compatibility"
+    },
+    {
+      "schema": "throughline.upstream-existing-mount-approval.v1",
+      "id": "android-voice-lifecycle-2026-10-13",
+      "scope_paths": ["apps/mobile/src/features/voice-input/useVoiceInputController.ts"],
+      "requested_by": "worker-composer-053ab44e",
+      "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+      "approval_file": "docs/throughline/tax-approvals/android-dictation-existing-mount-2026-10-13.json",
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Android-Findings-Mount-Approval-20261013.txt",
+      "reason": "Delegate Android permission preparation background handling through the existing voice controller hook; keep real recording foreground-only and iOS behavior unchanged.",
+      "reason_source": "authored",
+      "seam_side": "upstream-mount",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Public VoiceInputController background method receives the native provider transition on the same session instance.",
+        "Android permission preparation may background the app; no recording starts until foreground and actual recording-background interruption remains active."
+      ],
+      "before_fork": "6e32783ba692236cd2d2057d869af8e05a2fae40",
+      "new_upstream_filenames": 0,
+      "recorded_at": "2026-10-13T15:40:34.625Z",
+      "state": "approved-before-implementation; red tests recorded; device acceptance pending"
+    },
+    {
+      "schema": "throughline.upstream-mount-approval.v1",
+      "id": "mobile-runtime-row-filter-2026-10-13",
+      "scope_paths": ["apps/mobile/src/lib/threadActivity.ts"],
+      "requested_by": "worker-composer-053ab44e",
+      "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+      "approval_file": "docs/throughline/tax-approvals/mobile-runtime-rows-2026-10-13.json",
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Android-Findings-Mount-Approval-20261013.txt",
+      "reason": "Filter internal runtime notifications and Claude ui_status notices before mobile feed grouping; preserve stored turn data and actual conversation/tool content.",
+      "reason_source": "authored",
+      "seam_side": "upstream-mount",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Typed notification source.kind distinguishes background_task/monitor from actual command/subagent content.",
+        "Only system_notice rows with exact Claude ui_status identity are internal; user/assistant text is never matched."
+      ],
+      "before_fork": "6e32783ba692236cd2d2057d869af8e05a2fae40",
+      "new_upstream_filenames": 1,
+      "recorded_at": "2026-10-13T15:40:34.626Z",
+      "state": "approved-before-implementation; red tests recorded; device acceptance pending"
     }
   ]
 }
