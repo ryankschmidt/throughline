@@ -1,6 +1,8 @@
+import type { useDesktopThreadMenu } from "../../throughline/thread-menu/useDesktopThreadMenu";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import { useMemo } from "react";
-import { Platform } from "react-native";
+import { Platform, View } from "react-native";
+import { AppText } from "../../components/AppText";
 import type { AppNativeStackNavigationOptions } from "../../native/StackHeader";
 import { useNativeWorkspaceColumnsSupported } from "../../native/NativeWorkspaceColumns";
 import { useAdaptiveWorkspaceLayout } from "../layout/AdaptiveWorkspaceLayout";
@@ -16,7 +18,7 @@ type NativeHeaderItems = ReadonlyArray<Record<string, unknown>>;
 
 export function useThreadHeaderOptions(props: {
   readonly title: string;
-  readonly onCopyThreadIdentity?: () => void;
+  readonly threadMenu?: ReturnType<typeof useDesktopThreadMenu>;
   readonly subtitle: string;
   readonly headerColor: string;
   readonly usesNativeHeaderGlass: boolean;
@@ -142,7 +144,7 @@ export function useThreadHeaderOptions(props: {
 
   const options: AppNativeStackNavigationOptions = {
     headerShown: true,
-    headerTitle: props.title,
+    headerTitle: !layout.usesSplitView && props.threadMenu ? "" : props.title,
     headerTitleStyle: props.usesNativeHeaderGlass
       ? {
           fontSize: 17,
@@ -156,9 +158,33 @@ export function useThreadHeaderOptions(props: {
     // Split view always uses its custom left items.
     unstable_headerLeftItems: layout.usesSplitView
       ? () => splitLeftHeaderItems
-      : canGoBack
-        ? undefined
-        : () => compactHomeHeaderItems,
+      : props.threadMenu
+        ? () => [
+            ...(!canGoBack ? compactHomeHeaderItems : []),
+            {
+              type: "custom" as const,
+              identifier: "thread-title",
+              hidesSharedBackground: true,
+              element: (
+                <View style={{ width: 72, height: 44, justifyContent: "center" }}>
+                  <AppText
+                    numberOfLines={1}
+                    className="text-[17px] font-extrabold accent-header-foreground"
+                  >
+                    {props.title}
+                  </AppText>
+                  {props.usesNativeHeaderGlass && props.subtitle ? (
+                    <AppText numberOfLines={1} className="text-[13px] accent-muted-foreground">
+                      {props.subtitle}
+                    </AppText>
+                  ) : null}
+                </View>
+              ),
+            },
+          ]
+        : canGoBack
+          ? undefined
+          : () => compactHomeHeaderItems,
     // Search lives in the persistent sidebar, so the split header keeps
     // the git controls on the RIGHT (no center items — center space is
     // reserved for future breadcrumbs/status).
@@ -167,16 +193,16 @@ export function useThreadHeaderOptions(props: {
         ? duoRightHeaderItems
         : layout.usesSplitView
           ? threadCenterHeaderItems
-          : compactRightHeaderItems),
-      ...(props.onCopyThreadIdentity
+          : compactRightHeaderItems.map((item) =>
+              item.type === "button" || item.type === "menu" ? { ...item, width: 44 } : item,
+            )),
+      ...(props.threadMenu
         ? [
-            withNativeGlassHeaderItem({
-              accessibilityLabel: "Copy thread IDs",
-              icon: { name: "doc.on.doc", type: "sfSymbol" as const },
-              identifier: "thread-copy-identity",
-              onPress: props.onCopyThreadIdentity,
-              type: "button" as const,
-            }),
+            {
+              type: "custom" as const,
+              identifier: "thread-actions",
+              element: <ThreadMenuButton menu={props.threadMenu} />,
+            },
           ]
         : []),
     ],
@@ -197,7 +223,9 @@ export function useThreadHeaderOptions(props: {
       compactRightHeaderItems,
       duoRightHeaderItems,
       usesDuoHeader,
-      props.onCopyThreadIdentity,
+      props.title,
+      props.subtitle,
+      props.threadMenu,
       environmentId,
       threadId,
       gitStatus?.isDefaultRef,
@@ -211,3 +239,4 @@ export function useThreadHeaderOptions(props: {
       ) : null,
   };
 }
+import { ThreadMenuButton } from "../../throughline/thread-menu/ThreadMenuButton";

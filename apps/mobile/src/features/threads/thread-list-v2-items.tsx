@@ -1,10 +1,11 @@
+import { useDesktopThreadMenu } from "../../throughline/thread-menu/useDesktopThreadMenu";
+import { ThreadMenuSheets } from "../../throughline/thread-menu/ThreadMenuSheets";
 import type { ThreadRowProviderInstance } from "./thread-provider-instance";
 import {
   THREAD_LIST_V2_MONO_FONT as MONO_FONT,
   THREAD_LIST_V2_ROW_CONTENT_CLASS_NAME,
   THREAD_LIST_V2_ROW_DIVIDERS,
   selectedThreadRowColors,
-  getThreadListV2NewBranchMenuTitle,
   getThreadListV2RowAppearance,
 } from "./thread-list-v2-row-appearance";
 import { RowPressable } from "../../components/RowPressable";
@@ -39,7 +40,6 @@ import type { PendingNewTask } from "../../state/use-pending-new-tasks";
 import { useThreadPr } from "../../state/use-thread-pr";
 import { useSwipeRowDormant } from "../home/swipe-row-activation";
 import { ThreadSwipeable } from "../home/thread-swipe-actions";
-import { buildThreadTitleRegenerationMenuItems } from "./thread-title-regeneration-menu";
 import {
   THREAD_LIST_V2_SETTLED_PAGE_COUNT,
   resolveThreadListV2SnoozeGateExpiryMs,
@@ -602,6 +602,7 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
     onSetThreadAutoSettle,
     onMoveThread,
   } = props;
+  const desktopMenu = useDesktopThreadMenu(thread, props.project, "list");
   const snoozedRow = props.snoozed === true;
   const pinnedRow = props.pinned === true;
   const dormant = useSwipeRowDormant(props.activationKey);
@@ -682,7 +683,6 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
 
   // Swipe: the v2 primary action is the lifecycle transition. Un-settling a
   // settled row keeps it active until new activity clears the user override.
-  const canUnsettle = variant === "slim";
   const [snoozeGateTick, bumpSnoozeGateTick] = useState(0);
   const snoozeGateExpiryMs = props.snoozeSupported
     ? resolveThreadListV2SnoozeGateExpiryMs(thread, { now: new Date().toISOString() })
@@ -714,140 +714,6 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
       { id: "snooze:custom", title: "Custom…" },
     ],
     [snoozePresets],
-  );
-  // Pinned cards keep the full lifecycle menu; only the pin item flips to
-  // Unpin. (Settling a pinned thread clears the pin server-side; snoozing
-  // hides the card until wake with the pin intact.)
-  const arrangementMenuItems = useMemo<MenuAction[]>(
-    () => [
-      ...(props.reorderSupported === true
-        ? [
-            { id: "arrange", title: "Arrange threads…", image: "line.3.horizontal" },
-            {
-              id: "move-up",
-              title: "Move up",
-              image: "arrow.up",
-              attributes: { disabled: props.canMoveUp !== true },
-            } satisfies MenuAction,
-            {
-              id: "move-down",
-              title: "Move down",
-              image: "arrow.down",
-              attributes: { disabled: props.canMoveDown !== true },
-            } satisfies MenuAction,
-          ]
-        : []),
-      ...(props.pinningSupported
-        ? [
-            thread.pinnedAt != null
-              ? { id: "unpin", title: "Unpin", image: "pin.slash" }
-              : { id: "pin", title: "Pin", image: "pin" },
-          ]
-        : []),
-    ],
-    [
-      props.canMoveDown,
-      props.canMoveUp,
-      props.reorderSupported,
-      props.pinningSupported,
-      thread.pinnedAt,
-      variant,
-    ],
-  );
-  // A submenu with the current option checked, matching web. This is a
-  // per-thread setting, not a lifecycle verb.
-  const autoSettleMenuItems = useMemo<MenuAction[]>(
-    () =>
-      props.autoSettleOptOutSupported
-        ? [
-            {
-              id: "auto-settle",
-              title: "Auto-settle behavior",
-              image: "timer",
-              subactions: [
-                {
-                  id: "auto-settle:enabled",
-                  title: "Enabled",
-                  state: thread.autoSettleDisabledAt == null ? "on" : "off",
-                },
-                {
-                  id: "auto-settle:disabled",
-                  title: "Disabled",
-                  state: thread.autoSettleDisabledAt == null ? "off" : "on",
-                },
-              ],
-            } satisfies MenuAction,
-          ]
-        : [],
-    [props.autoSettleOptOutSupported, thread.autoSettleDisabledAt],
-  );
-  const titleMenuItems = useMemo<MenuAction[]>(
-    () => [
-      { id: "rename", title: "Rename", image: "square.and.pencil" },
-      ...buildThreadTitleRegenerationMenuItems({
-        supported: props.titleRegenerationSupported,
-        isRegenerating: thread.titleRegeneration != null,
-      }),
-    ],
-    [props.titleRegenerationSupported, thread.titleRegeneration],
-  );
-  const snoozableCardMenuActions = useMemo<MenuAction[]>(
-    () => [
-      { id: "settle", title: "Settle", image: "checkmark" },
-      {
-        id: "snooze",
-        title: "Snooze",
-        image: "clock",
-        subactions: snoozePresetActions,
-      },
-      ...arrangementMenuItems,
-      ...titleMenuItems,
-      ...autoSettleMenuItems,
-      { id: "delete", title: "Delete", image: "trash", attributes: { destructive: true } },
-    ],
-    [arrangementMenuItems, autoSettleMenuItems, snoozePresetActions, titleMenuItems],
-  );
-  const cardMenuActions = useMemo<MenuAction[]>(
-    () => [
-      CARD_MENU_ACTIONS[0]!,
-      ...arrangementMenuItems,
-      ...titleMenuItems,
-      ...autoSettleMenuItems,
-      ...CARD_MENU_ACTIONS.slice(1),
-    ],
-    [arrangementMenuItems, autoSettleMenuItems, titleMenuItems],
-  );
-  // Settled and snoozed rows keep the setting too, matching web where every
-  // row shares one menu builder.
-  const slimMenuActions = useMemo<MenuAction[]>(
-    () => [
-      SLIM_MENU_ACTIONS[0]!,
-      ...arrangementMenuItems.filter(
-        (action) => action.id !== "move-up" && action.id !== "move-down",
-      ),
-      ...titleMenuItems,
-      ...autoSettleMenuItems,
-      SLIM_MENU_ACTIONS[1]!,
-    ],
-    [arrangementMenuItems, autoSettleMenuItems, titleMenuItems],
-  );
-  const snoozedMenuActions = useMemo<MenuAction[]>(
-    () => [
-      SNOOZED_MENU_ACTIONS[0]!,
-      ...titleMenuItems,
-      ...autoSettleMenuItems,
-      SNOOZED_MENU_ACTIONS[1]!,
-    ],
-    [autoSettleMenuItems, titleMenuItems],
-  );
-  const legacyMenuActions = useMemo<MenuAction[]>(
-    () => [
-      LEGACY_MENU_ACTIONS[0]!,
-      ...arrangementMenuItems,
-      ...titleMenuItems,
-      LEGACY_MENU_ACTIONS[1]!,
-    ],
-    [arrangementMenuItems, titleMenuItems],
   );
   const handleMenuAction = useCallback(
     ({ nativeEvent }: { readonly nativeEvent: { readonly event: string } }) => {
@@ -1301,10 +1167,23 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
       </RowPressable>
     );
 
-  if (!canOperateThread) return rowContent(() => {});
+  if (!canOperateThread)
+    return (
+      <>
+        <ThreadMenuSheets menu={desktopMenu} />
+        <ControlPillMenu
+          actions={desktopMenu.actions}
+          onPressAction={desktopMenu.onPressAction}
+          shouldOpenOnLongPress
+        >
+          {rowContent(() => {})}
+        </ControlPillMenu>
+      </>
+    );
 
   return (
     <View collapsable={false}>
+      <ThreadMenuSheets menu={desktopMenu} />
       {customSnoozeOpen && (
         <CustomSnoozeSheet onClose={() => setCustomSnoozeOpen(false)} onSnooze={handleSnooze} />
       )}
@@ -1330,28 +1209,8 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
       >
         {(close) => (
           <ControlPillMenu
-            actions={[
-              ...(thread.branch
-                ? [
-                    {
-                      id: "new-thread-on-branch",
-                      title: getThreadListV2NewBranchMenuTitle(thread.branch),
-                      image: "square.and.pencil",
-                    },
-                  ]
-                : []),
-              { id: "copy-thread-id", title: "Copy thread ID", image: "doc.on.doc" },
-              ...(snoozedRow
-                ? snoozedMenuActions
-                : !props.settlementSupported
-                  ? legacyMenuActions
-                  : canUnsettle
-                    ? slimMenuActions
-                    : swipeActions.secondary === "snooze"
-                      ? snoozableCardMenuActions
-                      : cardMenuActions),
-            ]}
-            onPressAction={handleMenuAction}
+            actions={desktopMenu.actions}
+            onPressAction={desktopMenu.onPressAction}
             shouldOpenOnLongPress
           >
             {rowContent(close)}

@@ -434,6 +434,10 @@
     "./review-guide-tour": {
       "types": "./src/reviewGuideTour.ts",
       "default": "./src/reviewGuideTour.ts"
+    },
+    "./throughline/threadActionMenu": {
+      "types": "./throughline/threadActionMenu.ts",
+      "default": "./throughline/threadActionMenu.ts"
     }
   },
   "scripts": {

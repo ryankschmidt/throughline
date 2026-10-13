@@ -1,3 +1,6 @@
+import { Platform } from "react-native";
+import { ThreadMenuButton } from "../../throughline/thread-menu/ThreadMenuButton";
+import type { useDesktopThreadMenu } from "../../throughline/thread-menu/useDesktopThreadMenu";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import { useMemo } from "react";
 import { ScreenHeader } from "../../components/ScreenHeader";
@@ -9,6 +12,7 @@ import { useThreadHeaderOptions } from "./useThreadHeaderOptions";
 
 export function ThreadHeader(
   props: Parameters<typeof useThreadHeaderOptions>[0] & {
+    readonly threadMenu?: ReturnType<typeof useDesktopThreadMenu>;
     readonly hasThreadCwd: boolean;
     readonly hasWorkspaceRoot: boolean;
     readonly fileInspectorSupported: boolean;
@@ -52,12 +56,6 @@ export function ThreadHeader(
       icon: "point.topleft.down.curvedto.point.bottomright.up",
       onPress: props.onOpenGitInspector,
     });
-    if (props.onCopyThreadIdentity)
-      actions.push({
-        accessibilityLabel: "Copy thread IDs",
-        icon: "doc.on.doc",
-        onPress: props.onCopyThreadIdentity,
-      });
     if (onMergeBack) {
       actions.push({
         accessibilityLabel: "Merge back to source",
@@ -76,7 +74,6 @@ export function ThreadHeader(
     toggleAuxiliaryPane,
     props.onReturnToThread,
     props.hasThreadCwd,
-    props.onCopyThreadIdentity,
     props.hasWorkspaceRoot,
     props.gitControls.canOpenTerminal,
   ]);
@@ -90,18 +87,32 @@ export function ThreadHeader(
         options={native.options}
         optionsVersion={native.optionsVersion}
         trailing={
-          props.fileInspectorSupported && props.hasThreadCwd ? (
-            <ScreenHeaderButton
-              accessibilityLabel={
-                props.inspectorMode !== null && panes.auxiliaryPaneVisible
-                  ? "Hide inspector"
-                  : "Show inspector"
-              }
-              icon="sidebar.right"
-              selected={props.inspectorMode !== null && panes.auxiliaryPaneVisible}
-              onPress={props.onToggleInspector}
-            />
-          ) : null
+          <>
+            {Platform.OS === "android" && props.threadMenu ? (
+              <ThreadMenuButton menu={props.threadMenu} />
+            ) : null}
+            {Platform.OS === "android"
+              ? androidHeaderActions.map((action) => (
+                  <ScreenHeaderButton
+                    key={action.accessibilityLabel}
+                    {...action}
+                    icon={typeof action.icon === "string" ? action.icon : action.icon.ios}
+                  />
+                ))
+              : null}
+            {props.fileInspectorSupported && props.hasThreadCwd ? (
+              <ScreenHeaderButton
+                accessibilityLabel={
+                  props.inspectorMode !== null && panes.auxiliaryPaneVisible
+                    ? "Hide inspector"
+                    : "Show inspector"
+                }
+                icon="sidebar.right"
+                selected={props.inspectorMode !== null && panes.auxiliaryPaneVisible}
+                onPress={props.onToggleInspector}
+              />
+            ) : null}
+          </>
         }
         onBack={
           layout.usesSplitView
@@ -113,7 +124,7 @@ export function ThreadHeader(
                 else navigation.dispatch(StackActions.replace("Home"));
               }
         }
-        actions={androidHeaderActions}
+        actions={Platform.OS === "android" ? [] : androidHeaderActions}
         hideBottomBorder
       />
       {native.fallback}

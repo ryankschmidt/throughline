@@ -5331,73 +5331,7 @@
         "restore_upstream_path": "apps/mobile/src/features/threads/use-composer-command-menu.ts"
       }
     },
-    {
-      "path": "apps/mobile/src/features/threads/useThreadHeaderOptions.android.ts",
-      "class": "upstream-edit",
-      "reason": "Add identity copying to native header menus and the Android fallback.",
-      "reason_source": "authored",
-      "imported_private_symbols": [
-        "type { useThreadHeaderOptions as useIosThreadHeaderOptions } from ./useThreadHeaderOptions",
-        "{ ThreadCopyButton } from ./copy/ThreadCopySheet"
-      ],
-      "schema_assumptions": [
-        "Relocation assumption for Thread identity copying: preserve existing exported input/output contracts, optional-field defaults and persisted IDs; validate at the feature slice, not by import compilation alone.",
-        "No schema declaration was found in the changed-line scan; this is not a claim of no runtime or transitive schema dependency."
-      ],
-      "contract_inspection": "Pinned Git diff and static-import scan; relative upstream-internal imports include type-only symbols. Dynamic imports, property access and transitive dependencies remain unmeasured.",
-      "conflict_rule": "review",
-      "conflict_rule_source": "review",
-      "conflict_rule_inferred": false,
-      "marker": false,
-      "commits": [
-        "e735392d5a4a9b91294f5ba0c4511621b7ae706f merge: land reconciled upstream with explicit release failures",
-        "7b93767ce3d6e486e20075e769c08fc740c9ff41 merge: retain current fork specification before upstream landing",
-        "5f5ae4ac728cc8c2bdc6130d4dfc33a48ec76365 merge: reconcile upstream 5cbe82a870 device stream repair",
-        "1cb8a115562582b1e1f51124eceec53efa57c0ff merge: reconcile upstream bed923986f on preserve-base",
-        "b459489f8055975a5361d01de1793a8b6cd791ae merge: reconcile upstream 5f7294d452 on 0.0.60 preserve-base",
-        "2a1cc95b1cce3e68a2bde3052938947855295db4 merge(release): retain accepted upgrade source above the installed release base",
-        "7f48b45618be71731d0a2e2e2296c5a70cd0286a feat(copy): preserve identity and add thread copy and rewind choices",
-        "40b2705664b6dcf059bd357bfe60dc327c0009a3 merge: record already-folded ComsNet preservation history",
-        "09a5a203de6066ead00991bac2a90d2895ae025d merge: fold ThroughLine 0.0.51 and retain local workspace and Meridian repairs",
-        "52b952cfab5620418b8fa1b28aa9c105fcaf2ece Merge pinned upstream 91e53e501c9e7eb03f0ea4a5b72221d08eff9c5c for ThroughLine 0.0.47"
-      ],
-      "legacy_rules": [],
-      "mount_lines": 3,
-      "mount_measurement": "Historical changed non-import lines, not a thin-mount admission pass.",
-      "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
-      "feature": "Thread identity copying",
-      "seam_side": "upstream-implementation",
-      "decision": "move-to-fork-side",
-      "evidence": {
-        "upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
-        "fork": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
-        "diff_sha256": "3f0172135bd856d2f1b4c4ab0317be9063a1f8c41886bba25ee046787b064d96",
-        "current_candidate_fork": "829e269cf895560e449ea484acf20d18b3075e75",
-        "current_blob_oid": "62f37993c32a2bd91f9041311a273d4b3fe87f28",
-        "current_diff_sha256": "86217d1e7043d36a2cb75380761e044b3bc2a65da163c4d8ccd2d43a1b171c35",
-        "diff_normalization": "SHA-256 of raw UTF-8 output from git diff --no-ext-diff --no-textconv --no-renames PIN CANDIDATE -- exact-path; binary diff text is not a pixel/content inspection. Git blob OID binds binary bytes."
-      },
-      "plan": {
-        "status": "open-original-160",
-        "destination": "apps/mobile/src/throughline/thread-identity-copying/useThreadHeaderOptions.android.ts",
-        "action": "Extract thread identity copying into apps/mobile/src/throughline/thread-identity-copying/useThreadHeaderOptions.android.ts; migrate all consumers through one retained mount or a public extension point, then restore this upstream file byte-for-byte.",
-        "depends_on": ["Pinned feature slice test", "Caller/import migration"],
-        "risk": "consumer-path-and-behavior-parity",
-        "size": {
-          "changed_lines": 6,
-          "static_private_imports": 2,
-          "basis": "Measured pinned Git diff; duration unknown until a representative slice is timed.",
-          "blob_bytes": 694,
-          "baseline_fork": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
-          "current_candidate_fork": "829e269cf895560e449ea484acf20d18b3075e75",
-          "current_added_lines": 5,
-          "current_deleted_lines": 1,
-          "binary": false,
-          "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
-        },
-        "restore_upstream_path": "apps/mobile/src/features/threads/useThreadHeaderOptions.android.ts"
-      }
-    },
+
     {
       "path": "apps/mobile/src/features/threads/useThreadHeaderOptions.tsx",
       "class": "upstream-edit",
@@ -29183,6 +29117,28 @@
       "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Written-Approval.txt",
       "native_revision_evidence": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Sole-Input-Route-Finding.json",
       "source_revision_review": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-R3-Independent-Review.json"
+    },
+    {
+      "path": "apps/mobile/src/features/threads/thread-list-v2-items.tsx",
+      "class": "upstream-edit",
+      "reason": "Use the unchanged desktop menu builder through the fork adapter for actual list rows; retain existing swipe and guarded lifecycle commands.",
+      "reason_source": "authored",
+      "reason_author": "worker-upmobile-17b173ec",
+      "feature": "Desktop-equivalent phone thread menus",
+      "seam_side": "upstream-mount",
+      "decision": "keep",
+      "contract_inspection": "One menu factory with delegated actions and sheets at existing row branches; Android header hook restored in the same candidate.",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Actual scoped row/project feed the items; native identities require matching strong references.",
+        "Explicit action IDs and disabled/destructive flags survive native adaptation; existing guarded commands own mutations."
+      ],
+      "conflict_rule": "Preserve stock row/swipe behavior and delegate only menu factory/actions/sheets.",
+      "conflict_rule_source": "/Users/Admin/.codex/sessions/2026/10/10/rollout-2026-10-10T16-25-33-01a12822-d44e-73f0-b44b-05cce27d740d.md",
+      "conflict_rule_inferred": false,
+      "approval_source": "/Users/Admin/.codex/sessions/2026/10/10/rollout-2026-10-10T16-25-33-01a12822-d44e-73f0-b44b-05cce27d740d.md",
+      "approval_statement_sha256": "b0cb04a831498cbc80513a9f436fd756902c17a1a8cfd01f5f312e01fe95c95c",
+      "mount_lines": 1
     }
   ],
   "upstream_changes": [
@@ -33579,6 +33535,7 @@
     "baseline_count": 177,
     "baseline_fork": "e735392d5a4a9b91294f5ba0c4511621b7ae706f",
     "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+    "approved_swap_files": ["docs/throughline/tax-approvals/mobile-menu-swap-2026-10-13.json"],
     "approved_growth_files": [
       "docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json",
       "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json",
@@ -33648,6 +33605,13 @@
         "staged": true,
         "label": "Approved Android-only recording provider paired with reviewed mono recognizer and cold-language preparation; actual approval-only parent",
         "approval_file": "docs/throughline/tax-approvals/android-recording-session-2026-10-13.json"
+      },
+      {
+        "fork": "34e34d558ce26e80b6ee1c4c66e0b67ae521f04f",
+        "upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+        "count": 182,
+        "staged": true,
+        "label": "Approved zero-growth menu swap: restore Android hook and mount list adapter together"
       }
     ],
     "proposed_retained_mounts": [

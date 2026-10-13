@@ -1,4 +1,3 @@
-import { ThreadCopySheet } from "./copy/ThreadCopySheet";
 import { useOpenPullRequest } from "../../native/useOpenPullRequest";
 import { makeTurnCommandMetadata } from "../../lib/commandMetadata";
 import { buildProjectThreadStartTurnInput } from "../../lib/projectThreadStartTurn";
@@ -87,7 +86,7 @@ import {
   type ThreadInspectorMode,
 } from "./thread-inspector-content-stack";
 import { threadRouteIsHydrating } from "./thread-route-hydration";
-import { ThreadHeader } from "./ThreadHeader";
+import { ThreadMenuHeader as ThreadHeader } from "../../throughline/thread-menu/ThreadMenuHeader";
 
 interface ThreadInspectorSelection {
   readonly routeThreadIdentity: string | null;
@@ -424,7 +423,6 @@ function ThreadRouteContent(
   const routeConnectionState =
     routeEnvironmentRuntime?.connectionState ?? (environmentId ? "available" : connectionState);
   const routeConnectionError = routeEnvironmentRuntime?.connectionError ?? null;
-  const [copyIdentityOpen, setCopyIdentityOpen] = useState(false);
   const selectedThreadWithDraftSettings = useMemo(
     () =>
       selectedThread
@@ -1098,16 +1096,10 @@ function ThreadRouteContent(
         onOpenGitInspector={handleOpenGitInspector}
         onOpenFilesInspector={handleOpenFilesInspector}
         onReturnToThread={props.onReturnToThread}
-        onCopyThreadIdentity={() => setCopyIdentityOpen(true)}
+        menuThread={selectedThread}
+        menuProject={selectedThreadProject ?? null}
       />
 
-      <ThreadCopySheet
-        key={`${environmentId}:${threadId}`}
-        environmentId={environmentId}
-        threadId={selectedThread.id}
-        open={copyIdentityOpen}
-        onClose={() => setCopyIdentityOpen(false)}
-      />
       {renderThreadRouteBody()}
     </>
   );
