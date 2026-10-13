@@ -33483,7 +33483,10 @@
     "baseline_count": 177,
     "baseline_fork": "e735392d5a4a9b91294f5ba0c4511621b7ae706f",
     "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
-    "approved_growth_files": ["docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json"],
+    "approved_growth_files": [
+      "docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json",
+      "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json"
+    ],
     "count_history": [
       {
         "fork": "25158b1e0bed29ae73abb9d7875b053004f13788",
@@ -36515,6 +36518,61 @@
       "source_parent": "684456d693ce4f8a0384eb0db4dbe449f275a905",
       "count_effect": 0,
       "compatibility_proof": "NOT_ESTABLISHED: version edits do not prove copied-current-state compatibility"
+    },
+    {
+      "id": "optimizer-settings-mount-2026-10-13",
+      "state": "approved-before-implementation",
+      "recorded_at": "2026-10-13T17:18:48.843Z",
+      "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Settings-Mount-Lead-Approval.txt",
+      "approval_source_sha256": "8450355fdd18cfb1842de7b3dd37599890a1052e036508dddabdaa5d19afb45a",
+      "approval_file": "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json",
+      "approval_commit": "bc319ddde36d76648899456923df8c3e468e5d9f",
+      "approval_sha256": "e9dd6b3984331a1f52b6538ada54fe76590e4bf3060f5228b61146f39c162e29",
+      "scope_paths": ["apps/web/src/routes/settings.general.tsx"],
+      "permitted_changes": [
+        "one import of fork-owned SettingsVoiceOptimizationSection",
+        "one fragment retaining GeneralSettingsPanel and mounting the fork section"
+      ],
+      "reason": "Lead10:12 conveys Next-Gen approval for ONLY settings.general.tsx: one import and one fragment mounting fork-owned SettingsVoiceOptimizationSection. Approval file must be committed before the edit; behavior stays fork-owned; K11 fields required.",
+      "reason_source": "authored-approved-lead10:12",
+      "reason_author": "worker-upweb-4d10040d",
+      "feature": "Desktop message optimizer setting",
+      "seam_side": "upstream-mount",
+      "decision": "keep",
+      "mount_lines": 1,
+      "contract_inspection": "One named import plus one fragment retaining GeneralSettingsPanel; behavior belongs entirely to fork-owned SettingsVoiceOptimizationSection. No source edit consumed yet.",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Public fork section mounted by Settings route; no stock preference/default or voice pipeline ownership transferred."
+      ],
+      "conflict_rule": "Preserve stock GeneralSettingsPanel and minimize to one delegated fork section mount.",
+      "conflict_rule_source": "lead10:12 ruling",
+      "conflict_rule_inferred": false,
+      "conditions": [
+        "approval file committed alone BEFORE route edit",
+        "behavior entirely fork-owned",
+        "K11 ledger fields present",
+        "no production install/restart"
+      ],
+      "operator_authorized_ceiling": 183,
+      "physical_approval_parent_count": 179,
+      "allowed_physical_credit": 1,
+      "excluded_scope": [
+        "any other new stock path",
+        "production installs/restarts",
+        "fork source implementation acceptance",
+        "native row closure"
+      ],
+      "per_path_dispositions": [
+        {
+          "path": "apps/web/src/routes/settings.general.tsx",
+          "disposition": "upstream-mount",
+          "mount": "one import plus one fragment",
+          "source_state": "not implemented",
+          "K11": "reason_author/feature/seam_side/decision/imported_private_symbols/schema_assumptions/conflict_rule/approval_source present; materialize entry when source lands"
+        }
+      ]
     }
   ]
 }
