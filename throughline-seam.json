@@ -36358,7 +36358,7 @@
   "approved_changes": [
     {
       "id": "native-review-tokenization-move-2026-10-12",
-      "state": "approved-before-implementation",
+      "state": "landed",
       "approved_by": "fable-seam-shepherd:44973766-bbeb-4c80-b506-a4b171273e33 session 03e03b3e per Fable-Shepherd-Rulings.json R10",
       "recorded_at": "2026-10-13T06:24:53.451Z",
       "approval_source": {
@@ -36419,7 +36419,9 @@
           "expires_when": "upstream adopts the stoppedEarly refusal",
           "source": "R10 generation4"
         }
-      ]
+      ],
+      "landing_commit": "3094671b25d28be5ff704c6d419e98ffcb283bf7",
+      "landed_at": "2026-10-13T02:29:44-07:00"
     },
     {
       "id": "settings-watcher-mount-2026-10-11",
