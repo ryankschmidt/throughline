@@ -1,89 +1,65 @@
-import React from "react";
+import { describe, expect } from "vite-plus/test";
+import { it } from "@effect/vitest";
+import * as NodeServices from "@effect/platform-node/NodeServices";
+import * as NodeURL from "node:url";
+import { Effect, FileSystem } from "effect";
 import {
-  act,
-  create,
-  type ReactTestRenderer,
-  type ReactTestRendererJSON,
-} from "react-test-renderer";
-import { describe, expect, it } from "vite-plus/test";
-import { resolveThreadAnsweringModel } from "../../modelSelection";
-import { ChatComposerAnsweringModelNotice, resolveChatComposerLocalMenu } from "./ChatComposer";
+  resolveChatComposerLocalMenu,
+  withLiveComposerPickerOption,
+  liveComposerPickerDisabledReason,
+} from "../../throughline/composer/ComposerCarry";
+import { ProviderDriverKind, ProviderInstanceId } from "@t3tools/contracts";
+import { resolveModelPickerSelectedModel } from "./ModelPickerContent";
 
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-function renderedText(
-  node: ReactTestRendererJSON | ReactTestRendererJSON[] | string | null,
-): string {
-  if (node === null) return "";
-  if (typeof node === "string") return node;
-  if (Array.isArray(node)) return node.map(renderedText).join("");
-  return node.children?.map(renderedText).join("") ?? "";
-}
-const thread = {
-  session: { activeTurnId: "turn-1" },
-  latestTurn: { turnId: "turn-1" },
-  modelSelection: { model: "claude-fable-5-1" },
-  activities: [
-    {
-      kind: "turn.model.observed",
-      turnId: "turn-1",
-      payload: {
-        source: "claude.assistant.message.model",
-        scope: "main-turn",
-        requestedModel: "claude-fable-5-1",
-        answeringModel: "claude-opus-5-5",
-      },
-    },
-  ],
-};
-async function notice(input: Parameters<typeof resolveThreadAnsweringModel>[0]) {
-  expect(typeof ChatComposerAnsweringModelNotice).toBe("function");
-  let renderer!: ReactTestRenderer;
-  await act(async () => {
-    renderer = create(
-      <ChatComposerAnsweringModelNotice observation={resolveThreadAnsweringModel(input)} />,
+describe("rejected Answered visual removal", () => {
+  it.effect("removes the adornment from the real web and mobile mounts", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const [web, mobile] = yield* Effect.all([
+        fs.readFileString(NodeURL.fileURLToPath(new URL("./ChatComposer.tsx", import.meta.url))),
+        fs.readFileString(
+          NodeURL.fileURLToPath(
+            new URL("../../../../mobile/src/features/threads/ThreadComposer.tsx", import.meta.url),
+          ),
+        ),
+      ]);
+      expect(web).not.toContain("ChatComposerAnsweringModelNotice");
+      expect(mobile).not.toContain("answeringModelLabel");
+      expect(web).toContain("resolveLiveComposerModel");
+    }).pipe(Effect.provide(NodeServices.layer)),
+  );
+});
+
+describe("live picker catalog presentation", () => {
+  const account = ProviderInstanceId.make("codex");
+  const options = new Map([[account, [{ slug: "default", name: "Default" }]]]);
+  it("supplies an off-catalog active identity instead of the first/default model without changing the selectable catalog", () => {
+    const selected = { instanceId: account, model: "actual-native-model" };
+    const adapted = withLiveComposerPickerOption(options, selected);
+    expect(
+      resolveModelPickerSelectedModel({
+        driverKind: ProviderDriverKind.make("codex"),
+        model: selected.model,
+        options: adapted.get(account) ?? [],
+      }),
+    ).toMatchObject({ slug: selected.model, name: selected.model, isUnavailable: true });
+    expect(options.get(account)).toHaveLength(1);
+    expect(
+      liveComposerPickerDisabledReason(options, selected, account, selected.model),
+    ).not.toBeNull();
+    expect(liveComposerPickerDisabledReason(options, selected, account, "default")).toBeNull();
+  });
+  it("does not change a known catalog entry or another account's options", () => {
+    expect(withLiveComposerPickerOption(options, { instanceId: account, model: "default" })).toBe(
+      options,
     );
-  });
-  const text = renderedText(renderer.toJSON());
-  await act(async () => renderer.unmount());
-  return text;
-}
-describe("composer's answering-model display", () => {
-  it("renders an attributed substitution after snapshot reload without changing next selection", async () => {
-    const next = JSON.parse(JSON.stringify(thread)) as typeof thread;
-    next.modelSelection.model = "claude-sonnet-5-5";
-    expect(await notice(next)).toContain("Answered: claude-opus-5-5");
-    expect(await notice(next)).toContain("Substitution: claude-fable-5-1 → claude-opus-5-5");
-    expect(next.modelSelection.model).toBe("claude-sonnet-5-5");
-  });
-  it("shows unknown despite a known selection when no response observation exists", async () => {
-    expect(await notice({ ...thread, activities: [] })).toBe("Answered: unknown");
-    expect(await notice({ ...thread, session: { activeTurnId: "new-turn" } })).toBe(
-      "Answered: unknown",
-    );
-    const subagent = {
-      ...thread,
-      activities: [
-        {
-          ...thread.activities[0]!,
-          payload: { ...thread.activities[0]!.payload, scope: "subagent" },
-        },
-      ],
-    };
-    expect(await notice(subagent)).toBe("Answered: unknown");
-  });
-  it("renders a matching answer without a substitution warning", async () => {
-    const matching = {
-      ...thread,
-      activities: [
-        {
-          ...thread.activities[0]!,
-          payload: { ...thread.activities[0]!.payload, answeringModel: "claude-fable-5-1" },
-        },
-      ],
-    };
-    expect(await notice(matching)).toBe("Answered: claude-fable-5-1");
+    const other = ProviderInstanceId.make("other");
+    expect(
+      withLiveComposerPickerOption(options, { instanceId: other, model: "actual" }).get(account),
+    ).toBe(options.get(account));
   });
 });
+
 describe("composer carried-menu preflight", () => {
   const base = {
     driver: "claudeAgent",

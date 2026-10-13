@@ -9,7 +9,7 @@
   },
   "merge_base": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
   "counts": {
-    "upstream_edit": 180,
+    "upstream_edit": 181,
     "upstream_removed": 0,
     "fork_added": 241,
     "fork_namespace": 147
@@ -29128,6 +29128,26 @@
         "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-A5-Independent-Cold-Review.json"
       ],
       "source_state": "source-only; native acceptance pending"
+    },
+    {
+      "path": "apps/web/src/routes/settings.general.tsx",
+      "class": "upstream-edit",
+      "reason": "Lead10:12 conveys Next-Gen approval for ONLY settings.general.tsx: one import and one fragment mounting fork-owned SettingsVoiceOptimizationSection. Approval file must be committed before the edit; behavior stays fork-owned; K11 fields required.",
+      "reason_source": "authored",
+      "reason_author": "worker-upweb-4d10040d",
+      "feature": "Desktop message optimizer setting",
+      "seam_side": "upstream-mount",
+      "decision": "keep",
+      "contract_inspection": "One named import and fragment preserve GeneralSettingsPanel; independently reviewed fork section owns preference behavior.",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Public fork section mounted by Settings route; no stock preference/default or voice pipeline ownership transferred."
+      ],
+      "conflict_rule": "Preserve stock GeneralSettingsPanel and minimize to one delegated fork section mount.",
+      "conflict_rule_source": "lead10:12 ruling",
+      "conflict_rule_inferred": false,
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Settings-Mount-Lead-Approval.txt",
+      "approval_file": "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json"
     }
   ],
   "upstream_changes": [
@@ -33576,6 +33596,14 @@
         "staged": true,
         "label": "A2 existing Android lifecycle mount plus A5 presentation filter; actual parent after R9 restoration",
         "approval_file": "docs/throughline/tax-approvals/mobile-runtime-rows-2026-10-13.json"
+      },
+      {
+        "fork": "0285eb7e0d348e11a4bb6a357ec7f416beb8a1d5",
+        "upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+        "count": 181,
+        "staged": true,
+        "label": "Reviewed live composer and optimizer Settings mount; actual parent after Android configuration; source only",
+        "approval_file": "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json"
       }
     ],
     "proposed_retained_mounts": [

@@ -3,6 +3,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./throughline/live-composer-model": {
+      "types": "./src/throughline/liveComposerModel.ts",
+      "default": "./src/throughline/liveComposerModel.ts"
+    },
     "./composerThreadItems": {
       "types": "./src/composerThreadItems.ts",
       "default": "./src/composerThreadItems.ts"

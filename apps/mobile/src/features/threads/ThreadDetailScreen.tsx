@@ -1,4 +1,10 @@
 import { useAtomValue } from "@effect/atom-react";
+import {
+  readLiveComposerObservation,
+  resolveLiveComposerModel,
+  type PendingComposerModel,
+} from "./composerCarriedBehavior";
+import { environmentThreadDetails } from "../../state/threads";
 import type { ContextWindowSnapshot } from "@t3tools/client-runtime/context-window";
 import { ContextWindowMeter } from "./ContextWindowMeter";
 import { useChildThreadInputs, useThreadReportedModelSelection } from "../../state/entities";
@@ -337,6 +343,39 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
     environmentId: props.environmentId,
     threadId: props.selectedThread.id,
   });
+  const liveProjection =
+    useAtomValue(
+      environmentThreadDetails.threadAtom({
+        environmentId: props.environmentId,
+        threadId: props.selectedThread.id,
+      }),
+    )?.projection ?? null;
+  const liveObservation = readLiveComposerObservation(liveProjection);
+  const liveModelScope = `${props.environmentId}:${props.selectedThread.id}`;
+  const [pendingLiveModel, setPendingLiveModel] = useState<PendingComposerModel | null>(null);
+  const liveModelSelection = resolveLiveComposerModel({
+    scope: liveModelScope,
+    configured: props.selectedThread.modelSelection,
+    pending: pendingLiveModel,
+    ...liveObservation,
+  });
+  const updateLiveModelSelection = useCallback(
+    (selection: ModelSelection) => {
+      setPendingLiveModel({
+        scope: liveModelScope,
+        selection,
+        observation: liveObservation.observation,
+        runId: liveObservation.runId,
+      });
+      props.onUpdateThreadModelSelection(selection);
+    },
+    [
+      liveModelScope,
+      liveObservation.observation,
+      liveObservation.runId,
+      props.onUpdateThreadModelSelection,
+    ],
+  );
   const deviceState = useEnvironmentQuery(
     deviceEnvironment.state({ environmentId: props.environmentId, input: {} }),
   );
@@ -1018,6 +1057,7 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
       const hasUserMessage = selectedThreadFeed.some(
         (entry) => entry.type === "message" && entry.message.role === "user",
       );
+      props.onUpdateThreadModelSelection(liveModelSelection);
       const messageId = await props.onSendMessage(followUp);
       if (messageId === null || selectedThreadKeyRef.current !== targetThreadKey) {
         return messageId;
@@ -1042,6 +1082,8 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
     [
       anchorMessageId,
       clearUsageLimitsFor,
+      liveModelSelection,
+      props.onUpdateThreadModelSelection,
       props.onSendMessage,
       props.selectedThread.latestRun,
       props.selectedThreadQueueCount,
@@ -1443,7 +1485,10 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
                         contentMaxWidth={contentMaxWidth}
                         connectionState={props.connectionStateLabel}
                         environmentLabel={props.environmentLabel}
-                        selectedThread={props.selectedThread}
+                        selectedThread={{
+                          ...props.selectedThread,
+                          modelSelection: liveModelSelection,
+                        }}
                         hasCompactableConversation={
                           hasCompactableConversation && !props.isCompacting
                         }
@@ -1485,7 +1530,7 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
                         onSendMessage={handleSendMessage}
                         onShowUsageLimits={showUsageLimits}
                         canSwitchProvider={props.canSwitchThreadProvider}
-                        onUpdateModelSelection={props.onUpdateThreadModelSelection}
+                        onUpdateModelSelection={updateLiveModelSelection}
                         onUpdateRuntimeMode={props.onUpdateThreadRuntimeMode}
                         onUpdateInteractionMode={props.onUpdateThreadInteractionMode}
                         onExpandedChange={setComposerExpanded}

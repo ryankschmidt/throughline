@@ -1,5 +1,10 @@
 import { parseClaudeComposerMenu } from "@t3tools/shared/claudeComposerMenus";
 import type { ModelObservationActivity } from "@t3tools/contracts";
+export {
+  readLiveComposerObservation,
+  resolveLiveComposerModel,
+  type PendingComposerModel,
+} from "@t3tools/client-runtime/throughline/live-composer-model";
 
 export type ComposerSubmissionSource = "send-arrow" | "keyboard-submit";
 
@@ -11,19 +16,6 @@ export function withThreadModelActivities<T extends { readonly id: string }>(
   } | null,
 ): T & { readonly activities: readonly ModelObservationActivity[] } {
   return { ...thread, activities: detail?.id === thread.id ? detail.activities : [] };
-}
-
-export function formatComposerAnswerObservation(observation: {
-  readonly requestedModel: string | null;
-  readonly answeringModel: string | null;
-  readonly verdict: "match" | "mismatch" | "unknown";
-}): string {
-  const answered = observation.answeringModel;
-  if (answered === null) return "Answered: unknown";
-  const label = `Answered: ${answered}`;
-  return observation.verdict === "mismatch" && observation.requestedModel !== null
-    ? `${label} · Substituted: ${observation.requestedModel} → ${answered}`
-    : label;
 }
 
 export function composerReturnBehavior(platform: string): "newline" | undefined {

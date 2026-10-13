@@ -1,10 +1,7 @@
 import * as React from "react";
 import { Button } from "../../components/ui/button";
-import {
-  ComposerOptimization,
-  type DraftSnapshot,
-  type OptimizationProvider,
-} from "./draftOptimization";
+import { ComposerOptimization, type DraftSnapshot } from "./draftOptimization";
+import { useOptimizerPreference } from "./useOptimizerPreference";
 
 type Props = {
   ownerKey: string;
@@ -15,7 +12,7 @@ type Props = {
 };
 
 export function ComposerOptimizeControl(props: Props) {
-  const [provider, setProvider] = React.useState<OptimizationProvider>("claude");
+  const provider = useOptimizerPreference();
   const [controller] = React.useState(
     () =>
       new ComposerOptimization({
@@ -52,19 +49,6 @@ export function ComposerOptimizeControl(props: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-1">
-      <select
-        aria-label="Optimization provider"
-        value={provider}
-        disabled={busy}
-        onChange={(event) => {
-          const value = event.target.value;
-          if (value === "claude" || value === "codex" || value === "off") setProvider(value);
-        }}
-      >
-        <option value="claude">Claude</option>
-        <option value="codex">Codex</option>
-        <option value="off">Off</option>
-      </select>
       <Button
         type="button"
         variant="ghost"

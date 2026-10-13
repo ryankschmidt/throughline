@@ -1,4 +1,9 @@
 import { ComposerOptimizeControl } from "../../throughline/composer-optimize/ComposerOptimizeControl";
+import {
+  bindPendingComposerRequest,
+  persistLiveComposerOptions,
+  withLiveTraitsPersistence,
+} from "../../throughline/composer/liveComposerActions";
 import { formatProviderSkillDisplayName } from "@t3tools/shared/inlineSkills";
 import { useComposerTypingGuard } from "./useComposerTypingGuard";
 import {
@@ -1109,7 +1114,6 @@ import {
   type AppModelOption,
   buildInstanceCatalogueParity,
   getAppModelOptionsForInstance,
-  resolveThreadAnsweringModel,
 } from "../../modelSelection";
 import type { UnifiedSettings } from "@t3tools/contracts/settings";
 import {
@@ -1529,8 +1533,6 @@ export interface ChatComposerHandle {
 // --------------------------------------------------------------------------
 
 export interface ChatComposerProps {
-  /** Namespace observation feed; absent until v2 publishes main-turn answer attribution. */
-  answeringModelObservation?: ReturnType<typeof resolveThreadAnsweringModel>;
   composerDraftTarget: ScopedThreadRef | DraftId;
   environmentId: EnvironmentId;
   canOperateThread: boolean;
@@ -1728,10 +1730,16 @@ export interface ChatComposerProps {
 
 // ThroughLine: namespace-owned presentation and command-menu policy.
 import {
-  ChatComposerAnsweringModelNotice,
+  readLiveComposerObservation,
+  resolveLiveComposerModel,
+  resolveChatComposerDispatchModel,
+  withLiveComposerPickerOption,
+  liveComposerPickerDisabledReason,
+  type PendingComposerModel,
   resolveChatComposerLocalMenu,
 } from "../../throughline/composer/ComposerCarry";
-export { ChatComposerAnsweringModelNotice, resolveChatComposerLocalMenu };
+export { resolveChatComposerLocalMenu };
+import { useThreadProjection } from "../../state/entities";
 
 export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps) {
   const {
@@ -2040,6 +2048,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           })
       : null);
   const setComposerDraftPrompt = useComposerDraftStore((store) => store.setPrompt);
+  const setComposerModelSelection = useComposerDraftStore((store) => store.setModelSelection);
+  const setComposerProviderOptions = useComposerDraftStore(
+    (store) => store.setProviderModelOptions,
+  );
   const addComposerDraftImages = useComposerDraftStore((store) => store.addImages);
   const removeComposerDraftImage = useComposerDraftStore((store) => store.removeImage);
   const addComposerDraftFiles = useComposerDraftStore((store) => store.addFiles);
@@ -2236,15 +2248,31 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     ? runtimeMode
     : (compatibleRuntimeModeOptions[0]?.mode ?? runtimeMode);
 
-  const { modelOptions: composerModelOptions, selectedModel } = useEffectiveComposerModelState({
-    threadRef: composerDraftTarget,
-    providers: providerStatuses,
-    selectedProvider,
-    selectedInstanceId,
-    threadModelSelection: activeThreadModelSelection,
-    projectModelSelection: activeProjectDefaultModelSelection,
-    settings,
+  const { modelOptions: composerModelOptions, selectedModel: storedSelectedModel } =
+    useEffectiveComposerModelState({
+      threadRef: composerDraftTarget,
+      providers: providerStatuses,
+      selectedProvider,
+      selectedInstanceId,
+      threadModelSelection: activeThreadModelSelection,
+      projectModelSelection: activeProjectDefaultModelSelection,
+      settings,
+    });
+  const liveProjection = useThreadProjection(routeThreadRef)?.projection ?? null;
+  const liveObservation = readLiveComposerObservation(liveProjection);
+  const [pendingLiveModel, setPendingLiveModel] = useState<PendingComposerModel | null>(null);
+  const liveModelScope = composerTargetKey(composerDraftTarget);
+  const liveModelSelection = resolveLiveComposerModel({
+    scope: liveModelScope,
+    configured: activeThreadModelSelection ?? {
+      instanceId: selectedInstanceId,
+      model: storedSelectedModel,
+    },
+    draft: composerDraft.modelSelectionByProvider[selectedInstanceId] ?? null,
+    pending: pendingLiveModel,
+    ...liveObservation,
   });
+  const selectedModel = liveModelSelection.model;
   const providerSendBlockReason = getAntigravitySendBlockReason(
     selectedProviderEntry?.snapshot,
     selectedModel,
@@ -2406,8 +2434,13 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     interactionMode: requestedInteractionMode,
   });
   const selectedModelSelection = useMemo<ModelSelection>(
-    () => createModelSelection(selectedInstanceId, selectedModel, selectedModelOptionsForDispatch),
-    [selectedInstanceId, selectedModel, selectedModelOptionsForDispatch],
+    () =>
+      resolveChatComposerDispatchModel(
+        liveModelSelection,
+        liveObservation.reported,
+        selectedModelOptionsForDispatch,
+      ),
+    [liveModelSelection, liveObservation.reported, selectedModelOptionsForDispatch],
   );
   const selectedModelForPicker = selectedModel;
   // Instance-keyed option list so the picker can show each configured
@@ -3054,19 +3087,59 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     ],
   );
 
-  const providerTraitsMenuContent = renderProviderTraitsMenuContent({
-    provider: selectedProvider,
-    instanceId: selectedInstanceId,
-    ...(routeKind === "server" ? { threadRef: routeThreadRef } : {}),
-    ...(routeKind === "draft" && draftId ? { draftId } : {}),
-    model: selectedModel,
-    models: selectedProviderModels,
-    modelOptions: composerModelOptions?.[selectedInstanceId],
-    reportedModelSelection,
-    prompt,
-    onPromptChange: setPromptFromTraits,
-    planModeEnabled: settings.planModeEnabled,
-  });
+  const changeLiveComposerOptions = useCallback(
+    (nextOptions: ModelSelection["options"]) => {
+      const selection = persistLiveComposerOptions(selectedModelSelection, nextOptions, {
+        seed: (current) =>
+          setComposerModelSelection(composerDraftTarget, current, {
+            explicit: true,
+            replaceOptions: true,
+          }),
+        applyOptions: (options) =>
+          setComposerProviderOptions(composerDraftTarget, selectedProvider, options, {
+            instanceId: selectedModelSelection.instanceId,
+            model: selectedModelSelection.model,
+            persistSticky: true,
+          }),
+        read: () =>
+          useComposerDraftStore.getState().draftsByThreadKey[composerDraftTargetKey]
+            ?.modelSelectionByProvider[selectedModelSelection.instanceId],
+      });
+      setPendingLiveModel({
+        scope: liveModelScope,
+        selection,
+        observation: liveObservation.observation,
+        runId: liveObservation.runId,
+      });
+    },
+    [
+      selectedModelSelection,
+      composerDraftTarget,
+      composerDraftTargetKey,
+      selectedProvider,
+      setComposerModelSelection,
+      setComposerProviderOptions,
+      liveModelScope,
+      liveObservation.observation,
+      liveObservation.runId,
+    ],
+  );
+  const providerTraitsMenuContent = withLiveTraitsPersistence(
+    renderProviderTraitsMenuContent({
+      provider: selectedProvider,
+      instanceId: selectedInstanceId,
+      ...(routeKind === "server" ? { threadRef: routeThreadRef } : {}),
+      ...(routeKind === "draft" && draftId ? { draftId } : {}),
+      model: selectedModel,
+      models: selectedProviderModels,
+      modelOptions: selectedModelSelection.options,
+      reportedModelSelection,
+      prompt,
+      onPromptChange: setPromptFromTraits,
+      planModeEnabled: settings.planModeEnabled,
+    }),
+    changeLiveComposerOptions,
+  );
   const providerTraitsPickerInput = {
     provider: selectedProvider,
     instanceId: selectedInstanceId,
@@ -3074,14 +3147,17 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     ...(routeKind === "draft" && draftId ? { draftId } : {}),
     model: selectedModel,
     models: selectedProviderModels,
-    modelOptions: composerModelOptions?.[selectedInstanceId],
+    modelOptions: selectedModelSelection.options,
     reportedModelSelection,
     prompt,
     onPromptChange: setPromptFromTraits,
     planModeEnabled: settings.planModeEnabled,
     isComposerOwned: true,
   } satisfies Parameters<typeof renderProviderTraitsPicker>[0];
-  const providerTraitsPicker = renderProviderTraitsPicker(providerTraitsPickerInput);
+  const providerTraitsPicker = withLiveTraitsPersistence(
+    renderProviderTraitsPicker(providerTraitsPickerInput),
+    changeLiveComposerOptions,
+  );
   const [inlineRestingControlsHost, setInlineRestingControlsHost] = useState<HTMLDivElement | null>(
     null,
   );
@@ -4389,6 +4465,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         submissionTarget: activePendingProgress ? "pending-user-input" : "provider-turn",
         event,
         onSend: (sendEvent) => {
+          setPendingLiveModel((pending) =>
+            bindPendingComposerRequest(pending, liveModelScope, selectedModelSelection),
+          );
           // ChatView reports its final composed-input preflight through the
           // composer handle before its first asynchronous send step.
           providerInputRejectedRef.current = false;
@@ -4428,6 +4507,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       isSendDisabled,
       noProviderAvailable,
       onSend,
+      liveModelScope,
+      selectedModelSelection,
       settings.followUpBehavior,
       phase,
       promptRef,
@@ -5575,11 +5656,14 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const iconOnlyBlockCount = composerControlsCollapsed
     ? restingControlsIconOnlyBlockCount
     : expandedControlsLayout.iconOnlyBlockCount;
-  const restingProviderTraitsPicker = renderProviderTraitsPicker({
-    ...providerTraitsPickerInput,
-    size: composerControlsCollapsed ? "xs" : "sm",
-    hidden: composerControlsHidden || restingHiddenBlockCount > 1,
-  });
+  const restingProviderTraitsPicker = withLiveTraitsPersistence(
+    renderProviderTraitsPicker({
+      ...providerTraitsPickerInput,
+      size: composerControlsCollapsed ? "xs" : "sm",
+      hidden: composerControlsHidden || restingHiddenBlockCount > 1,
+    }),
+    changeLiveComposerOptions,
+  );
   const restingBlockDefs = [
     ...(providerTraitsPicker
       ? [
@@ -5684,16 +5768,15 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             ? (activeThreadModelSelection?.instanceId ?? selectedInstanceId)
             : selectedInstanceId
         }
-        model={
-          providerCatalogPending
-            ? (activeThreadModelSelection?.model ?? selectedModelForPickerWithCustomFallback)
-            : selectedModelForPickerWithCustomFallback
-        }
+        model={selectedModelForPickerWithCustomFallback}
         lockedProvider={lockedProvider}
         lockedContinuationGroupKey={lockedContinuationGroupKey}
         instanceEntries={providerInstanceEntries}
         keybindings={keybindings}
-        modelOptionsByInstance={modelOptionsByInstance}
+        modelOptionsByInstance={withLiveComposerPickerOption(
+          modelOptionsByInstance,
+          liveModelSelection,
+        )}
         size={composerControlsCollapsed ? "xs" : "sm"}
         triggerClassName={
           composerControlsCollapsed
@@ -5721,15 +5804,25 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             }
           : {})}
         onOpenChange={setIsComposerModelPickerOpen}
-        getModelDisabledReason={getModelDisabledReason}
+        getModelDisabledReason={(instanceId, model) =>
+          liveComposerPickerDisabledReason(
+            modelOptionsByInstance,
+            liveModelSelection,
+            instanceId,
+            model,
+          ) ?? getModelDisabledReason(instanceId, model)
+        }
         onInstanceModelChange={(instanceId, model) => {
           setMultipleModelSelections(null);
+          setPendingLiveModel({
+            scope: liveModelScope,
+            selection: { instanceId, model },
+            observation: liveObservation.observation,
+            runId: liveObservation.runId,
+          });
           onProviderModelSelect(instanceId, model);
         }}
         onOpenProviderSetup={onOpenProviderSetup}
-      />
-      <ChatComposerAnsweringModelNotice
-        observation={props.answeringModelObservation ?? resolveThreadAnsweringModel(null)}
       />
 
       <>

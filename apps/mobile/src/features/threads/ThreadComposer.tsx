@@ -1,7 +1,6 @@
 import type { ComposerTextPaste } from "../../native/T3ComposerEditor.types";
 import {
   composerReturnBehavior,
-  formatComposerAnswerObservation,
   resolveCarriedComposerSubmission,
   type ComposerSubmissionSource,
 } from "./composerCarriedBehavior";
@@ -443,13 +442,6 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
   });
   const sendLabel = sendPresentation.label;
   const currentModelSelection = props.selectedThread.modelSelection;
-  const answeringModelLabel = formatComposerAnswerObservation({
-    requestedModel: currentModelSelection.model,
-    // ThroughLine: R2 requires a main-run observation, not an inferred model selection.
-    // Until the namespace observation feed lands, absence remains unknown.
-    answeringModel: null,
-    verdict: "unknown",
-  });
   const currentRuntimeMode = props.selectedThread.runtimeMode;
   const modelUnavailable =
     props.connectionState === "connected" &&
@@ -1230,13 +1222,6 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
                         maxWidth="100%"
                         onPress={openSettings}
                       />
-                      <Text
-                        accessibilityLabel={answeringModelLabel}
-                        numberOfLines={2}
-                        className="px-2 text-2xs text-foreground-secondary"
-                      >
-                        {answeringModelLabel}
-                      </Text>
                     </View>
                   </View>
                 )}
