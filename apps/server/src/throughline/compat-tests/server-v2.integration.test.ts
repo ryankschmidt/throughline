@@ -13,7 +13,7 @@ import {
   withActualServer,
   assertNoGitAncestor,
 } from "./server-v2.testkit.ts";
-import * as NodeFS from "node:fs/promises";
+import * as NodeFSP from "node:fs/promises";
 import * as NodePath from "node:path";
 import { helloFixtures } from "./hello-fixtures.ts";
 import {
@@ -26,10 +26,58 @@ import {
 } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import * as NodeHttp from "node:http";
-import * as Effect from "effect/Effect";
 import { countFixtureAuthLeaks, makeFixtureGitInventory } from "./server-v2.testkit.ts";
+import { OPERATOR_PROFILE, ServerSettings } from "@t3tools/contracts";
+import { applyOperatorProfile } from "../operatorProfile/applyOperatorProfile.ts";
+
+const decodeFixtureSettings = Schema.decodeUnknownSync(ServerSettings);
 
 describe("server V2 fixture pre-start safety (not integration acceptance)", () => {
+  test("fixture overrides preserve disabled peer providers through the canonical operator profile", async () => {
+    await withPreparedFixture(async (prepared) => {
+      const settings = decodeFixtureSettings(
+        JSON.parse(await NodeFSP.readFile(prepared.config.settingsPath, "utf8")),
+      );
+      const parsed: unknown = JSON.parse(
+        await NodeFSP.readFile(
+          NodePath.join(prepared.config.stateDir, "operator-profile-overrides.json"),
+          "utf8",
+        ),
+      );
+      const overrides = Schema.decodeUnknownSync(
+        Schema.Struct({
+          overrides: Schema.Array(Schema.Struct({ entry: Schema.String, reason: Schema.String })),
+        }),
+      )(parsed);
+      const profile = OPERATOR_PROFILE.filter((entry) => entry.key === "providerInstances");
+      const common = {
+        settings,
+        profile,
+        host: "mac" as const,
+        home: prepared.root,
+        launcherExists: () => true,
+      };
+      // Wrong ids must demonstrably leave the controlled settings exposed to replacement.
+      const wrong = applyOperatorProfile({
+        ...common,
+        overrides: new Map([["providerInstances.claude", "wrong historical fixture alias"]]),
+      });
+      expect(
+        wrong.settings.providerInstances[ProviderInstanceId.make("claudeAgent")]?.enabled,
+      ).toBe(true);
+      const actual = applyOperatorProfile({
+        ...common,
+        overrides: new Map(overrides.overrides.map(({ entry, reason }) => [entry, reason])),
+      });
+      expect(
+        actual.settings.providerInstances[ProviderInstanceId.make("claudeAgent")]?.enabled,
+      ).toBe(false);
+      expect(actual.settings.providerInstances[ProviderInstanceId.make("pi")]?.enabled).toBe(false);
+      expect(actual.settings.providerInstances[ProviderInstanceId.make("codex")]?.config).toEqual(
+        settings.providerInstances[ProviderInstanceId.make("codex")]?.config,
+      );
+    });
+  });
   test("fixture Git inventory permits only allocated owned repositories and cleans them", async () => {
     let created = "";
     await withPreparedFixture(async (prepared) => {
@@ -38,18 +86,18 @@ describe("server V2 fixture pre-start safety (not integration acceptance)", () =
       expect(git.repositories).toContain(created);
       await expect(git.assertOwned(created)).resolves.toBeUndefined();
       await expect(git.assertOwned("/Users/Admin/throughline")).rejects.toThrow();
-      const unregistered = await NodeFS.mkdtemp(NodePath.join(prepared.root, "not-owned-"));
-      await NodeFS.mkdir(NodePath.join(unregistered, ".git"));
+      const unregistered = await NodeFSP.mkdtemp(NodePath.join(prepared.root, "not-owned-"));
+      await NodeFSP.mkdir(NodePath.join(unregistered, ".git"));
       await expect(git.assertOwned(unregistered)).rejects.toThrow();
-      await NodeFS.mkdir(NodePath.join(created, "src"));
+      await NodeFSP.mkdir(NodePath.join(created, "src"));
       await git.assertOwned(NodePath.join(created, "src"));
       const redirected = NodePath.join(prepared.root, "repo-link");
-      await NodeFS.symlink(created, redirected);
+      await NodeFSP.symlink(created, redirected);
       await expect(git.assertOwned(redirected)).rejects.toThrow();
       expect(await git.run(created, ["rev-parse", "--is-inside-work-tree"])).toBe("true");
     });
     expect(
-      await NodeFS.lstat(created).then(
+      await NodeFSP.lstat(created).then(
         () => true,
         () => false,
       ),
@@ -73,25 +121,23 @@ describe("server V2 fixture pre-start safety (not integration acceptance)", () =
     await expect(
       assertNoGitAncestor("/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline"),
     ).rejects.toThrow("Git repository");
-    await expect(
-      assertNoGitAncestor(
-        "/Users/Admin/throughline-worktrees/upstream-reconcile-20261010/apps/server",
-      ),
-    ).rejects.toThrow("Git repository");
+    await expect(assertNoGitAncestor("/Users/Admin/throughline/apps/server")).rejects.toThrow(
+      "Git repository",
+    );
   });
 
   test("ancestor preflight follows physical symlink ancestry and rejects a live-repo target", async () => {
-    const probe = await NodeFS.mkdtemp("/Users/Admin/throughline-worktrees/git-guard-");
+    const probe = await NodeFSP.mkdtemp("/Users/Admin/throughline-worktrees/git-guard-");
     const link = NodePath.join(probe, "repo-link");
     try {
-      await NodeFS.symlink(
+      await NodeFSP.symlink(
         "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline",
         link,
       );
       await expect(assertNoGitAncestor(link)).rejects.toThrow("Git repository");
     } finally {
-      await NodeFS.unlink(link);
-      await NodeFS.rmdir(probe);
+      await NodeFSP.unlink(link);
+      await NodeFSP.rmdir(probe);
     }
   });
 
@@ -132,7 +178,7 @@ describe("server V2 fixture pre-start safety (not integration acceptance)", () =
     let created = "";
     await withPreparedFixture(async ({ root, config }) => {
       created = root;
-      expect(await NodeFS.realpath(root)).toBe(root);
+      expect(await NodeFSP.realpath(root)).toBe(root);
       expect(root.startsWith(`${fixtureBoundary}${NodePath.sep}`)).toBe(true);
       for (const path of [config.secretsDir, config.dbPath, config.settingsPath, config.logsDir])
         expect(NodePath.relative(root, path).startsWith("..")).toBe(false);
@@ -140,14 +186,14 @@ describe("server V2 fixture pre-start safety (not integration acceptance)", () =
       expect(config.host).toBe("127.0.0.1");
       expect(config.noBrowser).toBe(true);
       expect(config.shellEnvironmentPrepared).toBe(true);
-      const settings = JSON.parse(await NodeFS.readFile(config.settingsPath, "utf8"));
+      const settings = JSON.parse(await NodeFSP.readFile(config.settingsPath, "utf8"));
       expect(settings.providerInstances.codex.config.homePath.startsWith(root)).toBe(true);
       expect(settings.providerInstances.codex.config.customModels).toContain("gpt-5-codex");
       for (const [name, instance] of Object.entries(settings.providerInstances))
         if (name !== "codex") expect((instance as { enabled: boolean }).enabled).toBe(false);
     });
     expect(
-      await NodeFS.stat(created).then(
+      await NodeFSP.stat(created).then(
         () => true,
         () => false,
       ),
@@ -159,7 +205,6 @@ describe("actual isolated production graph (no store or admission mocks)", () =>
   test("native readiness uses the actual owned SDK and SQL queue inventory", async () => {
     await withActualServer(async (fixture) => {
       const inventory = await fixture.queueInventory();
-      await Effect.runPromise(Effect.logInfo("FIXTURE_QUEUE_INVENTORY", { inventory }));
       expect(inventory.databaseName).toMatch(/^tl_v2_fixture_[a-f0-9]{32}$/);
       expect(inventory.sdkQueues).toContain(inventory.queueName);
       expect(inventory.sqlQueues.split("\n")).toContain(inventory.queueName);

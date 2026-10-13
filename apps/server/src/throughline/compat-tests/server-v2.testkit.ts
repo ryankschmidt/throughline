@@ -4,10 +4,10 @@ import * as NodePath from "node:path";
 import * as NodeOS from "node:os";
 import * as NodeCrypto from "node:crypto";
 import * as NodeChildProcess from "node:child_process";
-import * as NodeFS from "node:fs/promises";
-import { DatabaseSync } from "node:sqlite";
+import * as NodeFSP from "node:fs/promises";
 import * as Effect from "effect/Effect";
 import * as Context from "effect/Context";
+import * as Clock from "effect/Clock";
 import * as Layer from "effect/Layer";
 import * as References from "effect/References";
 import { vi } from "vite-plus/test";
@@ -34,6 +34,8 @@ import {
   ORCHESTRATION_PROTOCOL_VERSION,
   WS_METHODS,
   ServerConfig as ClientServerConfig,
+  ServerSettings as PersistedServerSettings,
+  CodexSettings,
   ORCHESTRATION_V2_WS_METHODS,
   OrchestrationV2ThreadLaunchInput,
   OrchestrationV2ThreadLaunchResult,
@@ -50,6 +52,7 @@ import { PrimaryConnectionTarget } from "../../../../../packages/client-runtime/
 import { helloFixtures } from "./hello-fixtures.ts";
 import { defaultInstanceIdForDriver } from "@t3tools/contracts";
 import { BUILT_IN_DRIVERS } from "../../provider/builtInDrivers.ts";
+import { OPERATOR_PROFILE_OVERRIDES_FILE } from "../operatorProfile/OperatorProfile.ts";
 
 // Runtime fixture data, not source/deliverables. Outside every repository, so a
 // native Git probe cannot walk upward into Ryan's actual monorepo or fork.
@@ -76,10 +79,10 @@ export function countFixtureAuthLeaks(
 }
 
 export async function assertNoGitAncestor(directory: string): Promise<string> {
-  const physical = await NodeFS.realpath(directory);
+  const physical = await NodeFSP.realpath(directory);
   for (let current = physical; ; current = NodePath.dirname(current)) {
     if (
-      await NodeFS.lstat(NodePath.join(current, ".git")).then(
+      await NodeFSP.lstat(NodePath.join(current, ".git")).then(
         () => true,
         () => false,
       )
@@ -92,6 +95,111 @@ export async function assertNoGitAncestor(directory: string): Promise<string> {
 export interface PreparedFixture {
   readonly root: string;
   readonly config: ServerConfig.ServerConfig["Service"];
+  readonly providerContainment: {
+    readonly path: string;
+    readonly binary: string;
+    readonly binaryHash: string;
+    readonly peer: string;
+    readonly peerHash: string;
+  };
+}
+
+const privateFixtureNode =
+  "/Users/Admin/.local/state/throughline-upgrade-scratch/node-runtime-24.13.1/node-v24.13.1-darwin-arm64/bin/node";
+const privateFixtureNodeHash = "d36b3d980963d44bd2c5e844fac4cfeee26a167b744287a4e74a9575af9d0559";
+
+const fixtureFileHash = async (path: string) =>
+  NodeCrypto.createHash("sha256")
+    .update(await NodeFSP.readFile(path))
+    .digest("hex");
+
+/** Read only the fixture's public configuration/path metadata, never credentials. */
+export async function validateFixtureProviderSelection(
+  prepared: PreparedFixture,
+  rawSettings: unknown,
+  publicProviders?: typeof ClientServerConfig.Type.providers,
+) {
+  const settings = await Effect.runPromise(
+    Schema.decodeUnknownEffect(PersistedServerSettings)(rawSettings),
+  );
+  const entry = settings.providerInstances[ProviderInstanceId.make("codex")];
+  if (
+    entry === undefined ||
+    entry.driver !== "codex" ||
+    entry.enabled !== true ||
+    entry.config === undefined
+  )
+    throw new FixtureInvariantError({
+      message: "Fixture selected provider is missing or defaulted.",
+    });
+  const config = await Effect.runPromise(Schema.decodeUnknownEffect(CodexSettings)(entry.config));
+  const predicates = {
+    existingMode: config.setupMode === "existing",
+    configEnabled: config.enabled,
+    binaryExact: config.binaryPath === prepared.providerContainment.binary,
+  };
+  const predicatePath = process.env.TL_V2_DIAGNOSTIC_OUTPUT;
+  if (publicProviders !== undefined && predicatePath !== undefined) {
+    if (
+      predicatePath !==
+      "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Server-Native-Controlled-Phases.jsonl"
+    )
+      throw new FixtureInvariantError({
+        message: "Predicate receipt path differs from admitted output.",
+      });
+    await NodeFSP.appendFile(
+      predicatePath,
+      `${JSON.stringify({
+        stage: "selected-config-boolean-predicates",
+        ...predicates,
+      })}\n`,
+      { mode: 0o600 },
+    );
+  }
+  if (!predicates.existingMode || !predicates.configEnabled || !predicates.binaryExact)
+    throw new FixtureInvariantError({
+      message: "Fixture selected executable is missing, defaulted or foreign.",
+    });
+  for (const driver of BUILT_IN_DRIVERS) {
+    if (driver.metadata.hasDefaultInstance === false || driver.driverKind === "codex") continue;
+    if (
+      settings.providerInstances[defaultInstanceIdForDriver(driver.driverKind)]?.enabled !== false
+    )
+      throw new FixtureInvariantError({
+        message: "Fixture settings permit a non-controlled provider.",
+      });
+  }
+  for (const path of [config.homePath, config.shadowHomePath])
+    if (path !== "") validateFixtureDirectory(prepared.root, path);
+  const binary = await NodeFSP.realpath(config.binaryPath);
+  const peer = await NodeFSP.realpath(prepared.providerContainment.peer);
+  if (
+    binary !== prepared.providerContainment.binary ||
+    peer !== prepared.providerContainment.peer ||
+    (await fixtureFileHash(binary)) !== prepared.providerContainment.binaryHash ||
+    (await fixtureFileHash(peer)) !== prepared.providerContainment.peerHash
+  )
+    throw new FixtureInvariantError({ message: "Fixture executable or peer custody changed." });
+  if (publicProviders !== undefined) {
+    const selected = publicProviders.filter((provider) => provider.instanceId === "codex");
+    if (
+      selected.length !== 1 ||
+      selected[0]!.driver !== "codex" ||
+      !selected[0]!.enabled ||
+      !selected[0]!.installed
+    )
+      throw new FixtureInvariantError({
+        message: "Public actual selected provider does not match the fixture.",
+      });
+  }
+  return {
+    instanceId: "codex",
+    binary,
+    binaryHash: prepared.providerContainment.binaryHash,
+    peer,
+    peerHash: prepared.providerContainment.peerHash,
+    publicSelectionObserved: publicProviders !== undefined,
+  };
 }
 
 export interface FixtureGitInventory {
@@ -106,7 +214,7 @@ export async function makeFixtureGitInventory(
   prepared: PreparedFixture,
 ): Promise<FixtureGitInventory> {
   validateFixtureDirectory(fixtureBoundary, prepared.root);
-  if ((await NodeFS.realpath(prepared.root)) !== prepared.root)
+  if ((await NodeFSP.realpath(prepared.root)) !== prepared.root)
     throw new Error("Redirected fixture root.");
   await assertNoGitAncestor(prepared.root);
   const owned = new Map<
@@ -115,7 +223,7 @@ export async function makeFixtureGitInventory(
   >();
   const env = {
     HOME: prepared.root,
-    PATH: "/opt/homebrew/bin:/usr/bin:/bin",
+    PATH: prepared.providerContainment.path,
     GIT_CONFIG_GLOBAL: "/dev/null",
     GIT_CONFIG_SYSTEM: "/dev/null",
     GIT_CONFIG_NOSYSTEM: "1",
@@ -133,17 +241,17 @@ export async function makeFixtureGitInventory(
   };
   const physicalChild = async (directory: string) => {
     validateFixtureDirectory(prepared.root, directory);
-    if ((await NodeFS.realpath(directory)) !== NodePath.resolve(directory))
+    if ((await NodeFSP.realpath(directory)) !== NodePath.resolve(directory))
       throw new Error("Fixture Git path is redirected.");
   };
   const record = async (directory: string, marker: string) => {
     await physicalChild(directory);
-    const stat = await NodeFS.lstat(marker);
+    const stat = await NodeFSP.lstat(marker);
     if (stat.isSymbolicLink()) throw new Error("Fixture Git marker is redirected.");
     owned.set(directory, {
       marker,
       inode: stat.ino,
-      signature: stat.isFile() ? await NodeFS.readFile(marker, "utf8") : "directory",
+      signature: stat.isFile() ? await NodeFSP.readFile(marker, "utf8") : "directory",
     });
   };
   const assertOwned = async (directory: string) => {
@@ -152,18 +260,18 @@ export async function makeFixtureGitInventory(
     for (let current = directory; current !== prepared.root; current = NodePath.dirname(current)) {
       const candidate = owned.get(current);
       const marker = NodePath.join(current, ".git");
-      const hasMarker = await NodeFS.lstat(marker).then(
+      const hasMarker = await NodeFSP.lstat(marker).then(
         () => true,
         () => false,
       );
       if (hasMarker && candidate === undefined) throw new Error("Unregistered Git ancestor.");
       if (candidate !== undefined) {
-        const stat = await NodeFS.lstat(candidate.marker);
+        const stat = await NodeFSP.lstat(candidate.marker);
         if (
           stat.isSymbolicLink() ||
           stat.ino !== candidate.inode ||
           (stat.isFile() &&
-            (await NodeFS.readFile(candidate.marker, "utf8")) !== candidate.signature)
+            (await NodeFSP.readFile(candidate.marker, "utf8")) !== candidate.signature)
         )
           throw new Error("Owned Git marker changed identity.");
         admitted = true;
@@ -190,10 +298,10 @@ export async function makeFixtureGitInventory(
     },
     assertOwned,
     createRepository: async (options) => {
-      const directory = await NodeFS.mkdtemp(NodePath.join(prepared.root, "git-owned-"));
+      const directory = await NodeFSP.mkdtemp(NodePath.join(prepared.root, "git-owned-"));
       await physicalChild(directory);
       await assertNoGitAncestor(directory);
-      const emptyTemplate = await NodeFS.mkdtemp(NodePath.join(prepared.root, "git-template-"));
+      const emptyTemplate = await NodeFSP.mkdtemp(NodePath.join(prepared.root, "git-template-"));
       await execute(directory, [
         "init",
         "--initial-branch=main",
@@ -215,13 +323,13 @@ export async function makeFixtureGitInventory(
       await assertOwned(repository);
       await physicalChild(directory);
       const marker = NodePath.join(directory, ".git");
-      const stat = await NodeFS.lstat(marker);
+      const stat = await NodeFSP.lstat(marker);
       if (!stat.isFile() || stat.isSymbolicLink())
         throw new Error("Produced worktree must carry an actual Git file.");
-      const content = await NodeFS.readFile(marker, "utf8");
+      const content = await NodeFSP.readFile(marker, "utf8");
       const gitdir = /^gitdir: (.+)\n?$/.exec(content)?.[1];
       if (!gitdir) throw new Error("Produced worktree Git file invalid.");
-      const physicalGitdir = await NodeFS.realpath(NodePath.resolve(directory, gitdir));
+      const physicalGitdir = await NodeFSP.realpath(NodePath.resolve(directory, gitdir));
       validateFixtureDirectory(NodePath.join(repository, ".git", "worktrees"), physicalGitdir);
       await record(directory, marker);
     },
@@ -317,7 +425,7 @@ export async function withActualServer<A>(
               Layer.succeed(CurrentHeadroomStatusUrl, undefined),
               Layer.succeed(HostProcess.Environment, {
                 HOME: prepared.root,
-                PATH: "/opt/homebrew/bin:/usr/bin:/bin",
+                PATH: prepared.providerContainment.path,
                 XDG_CONFIG_HOME: NodePath.join(prepared.root, "xdg-config"),
                 CODEX_HOME: NodePath.join(prepared.root, "homes", "codex"),
                 SHELL: "/bin/zsh",
@@ -418,6 +526,71 @@ export async function withActualServer<A>(
                 Effect.runPromise(
                   Effect.scoped(makeRpc.pipe(Effect.flatMap(f), Effect.provide(protocol))),
                 );
+              // This is the same authenticated public config door used by clients,
+              // before any fixture launch. It does not expose adapter internals.
+              const selectedConfig = yield* Effect.promise(() =>
+                runRpc((client) => client[WS_METHODS.serverGetConfig]({})),
+              );
+              const encodedSelectedSettings = yield* Schema.encodeEffect(PersistedServerSettings)(
+                selectedConfig.settings,
+              );
+              const selectionWitness = yield* Effect.promise(() =>
+                validateFixtureProviderSelection(
+                  prepared,
+                  encodedSelectedSettings,
+                  selectedConfig.providers,
+                ),
+              );
+              const selectedProvider = selectedConfig.providers.find(
+                (provider) => provider.instanceId === selectionWitness.instanceId,
+              );
+              if (selectedProvider === undefined)
+                throw new FixtureInvariantError({
+                  message: "Validated fixture provider disappeared.",
+                });
+              const safeSelectionWitness = {
+                instanceId: selectionWitness.instanceId,
+                enabled: selectedProvider.enabled,
+                installed: selectedProvider.installed,
+                executableRealpath: selectionWitness.binary,
+                executableSha256: selectionWitness.binaryHash,
+                peerRealpath: selectionWitness.peer,
+                peerSha256: selectionWitness.peerHash,
+              };
+              const selectionPath = process.env.TL_V2_DIAGNOSTIC_OUTPUT;
+              if (selectionPath !== undefined) {
+                if (
+                  selectionPath !==
+                  "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Server-Native-Controlled-Phases.jsonl"
+                )
+                  throw new FixtureInvariantError({
+                    message: "Selection witness receipt path differs from its admitted output.",
+                  });
+                const selectionRecord = yield* Schema.encodeEffect(
+                  Schema.fromJsonString(
+                    Schema.Struct({
+                      stage: Schema.Literal("selected-provider-before-native"),
+                      selection: Schema.Struct({
+                        instanceId: Schema.String,
+                        enabled: Schema.Boolean,
+                        installed: Schema.Boolean,
+                        executableRealpath: Schema.String,
+                        executableSha256: Schema.String,
+                        peerRealpath: Schema.String,
+                        peerSha256: Schema.String,
+                      }),
+                    }),
+                  ),
+                )({ stage: "selected-provider-before-native", selection: safeSelectionWitness });
+                if (countFixtureAuthLeaks([selectionRecord], opaque) !== 0)
+                  throw new FixtureInvariantError({
+                    message: "Selection witness contains opaque authentication bytes.",
+                  });
+                yield* Effect.promise(() =>
+                  NodeFSP.appendFile(selectionPath, `${selectionRecord}\n`, { mode: 0o600 }),
+                );
+              }
+              yield* Effect.logInfo("FIXTURE_SELECTED_EXECUTABLE", selectionWitness);
               return yield* Effect.tryPromise({
                 try: () =>
                   use({
@@ -436,7 +609,7 @@ export async function withActualServer<A>(
                       const workspaceRoot = options?.workspaceRoot ?? prepared.root;
                       if (workspaceRoot !== prepared.root) {
                         validateFixtureDirectory(prepared.root, workspaceRoot);
-                        if ((await NodeFS.realpath(workspaceRoot)) !== workspaceRoot)
+                        if ((await NodeFSP.realpath(workspaceRoot)) !== workspaceRoot)
                           throw new Error("Project root redirected.");
                       }
                       return Effect.runPromiseWith(services)(
@@ -494,10 +667,98 @@ export async function withActualServer<A>(
                           timeoutMs: 10_000,
                         }),
                       );
+                      const diagnosticPath = process.env.TL_V2_DIAGNOSTIC_OUTPUT;
+                      if (diagnosticPath !== undefined) {
+                        const evidenceRoot =
+                          "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile";
+                        if (
+                          NodePath.dirname(diagnosticPath) !== evidenceRoot ||
+                          ![
+                            "Server-Native-Order-Phases.jsonl",
+                            "Server-Native-Controlled-Phases.jsonl",
+                          ].includes(NodePath.basename(diagnosticPath))
+                        )
+                          throw new FixtureInvariantError({
+                            message: "Fixture diagnostic output is outside its exact receipt path.",
+                          });
+                        const stored = await Effect.runPromise(
+                          eventReader
+                            .read({ threadId: ThreadId.make(threadId) })
+                            .pipe(Stream.runCollect),
+                        );
+                        const phaseText = await NodeFSP.readFile(
+                          NodePath.join(prepared.root, "native-diagnostic-phases.jsonl"),
+                          "utf8",
+                        ).catch((error: NodeJS.ErrnoException) => {
+                          if (error.code === "ENOENT") return "";
+                          throw error;
+                        });
+                        const allowedStages = new Set([
+                          "initialize-response",
+                          "thread-start-response",
+                          "turn-start-response",
+                          "turn-started-notification",
+                          "turn-completed-notification",
+                          "unsupported-method",
+                          "contract-refusal",
+                        ]);
+                        const phases = phaseText
+                          .trim()
+                          .split("\n")
+                          .filter(Boolean)
+                          .map((line) => {
+                            const value: unknown = JSON.parse(line);
+                            if (
+                              typeof value !== "object" ||
+                              value === null ||
+                              !("stage" in value) ||
+                              typeof value.stage !== "string" ||
+                              !allowedStages.has(value.stage) ||
+                              !("sequence" in value) ||
+                              typeof value.sequence !== "number" ||
+                              !("atMs" in value) ||
+                              typeof value.atMs !== "number"
+                            )
+                              throw new FixtureInvariantError({
+                                message: "Fixture diagnostic phase did not match its safe schema.",
+                              });
+                            return {
+                              sequence: value.sequence,
+                              atMs: value.atMs,
+                              stage: value.stage,
+                            };
+                          });
+                        const diagnostic = JSON.stringify({
+                          selection: safeSelectionWitness,
+                          threadId,
+                          observedAtMs: await Effect.runPromise(Clock.currentTimeMillis),
+                          status: result.run?.status ?? null,
+                          timedOut: result.timedOut,
+                          phases,
+                          events: stored.map((row) => {
+                            const payload = row.event.payload;
+                            return {
+                              sequence: row.sequence,
+                              type: row.event.type,
+                              status:
+                                "status" in payload && typeof payload.status === "string"
+                                  ? payload.status
+                                  : null,
+                            };
+                          }),
+                        });
+                        if (countFixtureAuthLeaks([diagnostic], opaque) !== 0)
+                          throw new FixtureInvariantError({
+                            message: "Fixture diagnostic contained opaque authentication bytes.",
+                          });
+                        await NodeFSP.appendFile(diagnosticPath, `${diagnostic}\n`, {
+                          mode: 0o600,
+                        });
+                      }
                       return { status: result.run?.status ?? null, timedOut: result.timedOut };
                     },
                     nativeMilestones: async () => {
-                      const text = await NodeFS.readFile(
+                      const text = await NodeFSP.readFile(
                         NodePath.join(prepared.root, "native-milestones.jsonl"),
                         "utf8",
                       );
@@ -589,7 +850,7 @@ export async function withActualServer<A>(
         if (brokerAttempts !== 0)
           throw new Error("Broker request attempted during fixture lifecycle.");
         // Inspect filenames only, never secret bytes.
-        for (const name of await NodeFS.readdir(prepared.config.secretsDir))
+        for (const name of await NodeFSP.readdir(prepared.config.secretsDir))
           validateFixtureDirectory(prepared.root, NodePath.join(prepared.config.secretsDir, name));
         return result;
       } finally {
@@ -625,13 +886,13 @@ export async function withPreparedFixture<A>(
   use: (fixture: PreparedFixture) => Promise<A>,
 ): Promise<A> {
   await assertNoGitAncestor(NodePath.dirname(fixtureBoundary));
-  await NodeFS.mkdir(fixtureBoundary, { recursive: true });
-  const physicalBoundary = await NodeFS.realpath(fixtureBoundary);
+  await NodeFSP.mkdir(fixtureBoundary, { recursive: true });
+  const physicalBoundary = await NodeFSP.realpath(fixtureBoundary);
   if (physicalBoundary !== fixtureBoundary)
     throw new Error("Fixture boundary is physically redirected.");
   for (let directory = physicalBoundary; ; directory = NodePath.dirname(directory)) {
     if (
-      await NodeFS.lstat(NodePath.join(directory, ".git")).then(
+      await NodeFSP.lstat(NodePath.join(directory, ".git")).then(
         () => true,
         () => false,
       )
@@ -639,9 +900,9 @@ export async function withPreparedFixture<A>(
       throw new Error("Fixture boundary inherits a real Git repository; no native work allowed.");
     if (NodePath.dirname(directory) === directory) break;
   }
-  const root = await NodeFS.mkdtemp(NodePath.join(physicalBoundary, "server-v2-"));
+  const root = await NodeFSP.mkdtemp(NodePath.join(physicalBoundary, "server-v2-"));
   try {
-    validateFixtureDirectory(physicalBoundary, await NodeFS.realpath(root));
+    validateFixtureDirectory(physicalBoundary, await NodeFSP.realpath(root));
     const services = await Effect.runPromise(
       Effect.scoped(
         Layer.build(ServerConfig.layerTest(root, root).pipe(Layer.provide(NodeServices.layer))),
@@ -663,7 +924,7 @@ export async function withPreparedFixture<A>(
     // The existing native client decodes these frames against its current
     // generated protocol. Only this external fixture executable is controlled;
     // admission, projections, SQL and the provider adapter remain the real graph.
-    await NodeFS.writeFile(
+    await NodeFSP.writeFile(
       peer,
       String.raw`
 import { DatabaseSync } from "node:sqlite";
@@ -676,6 +937,8 @@ let appThreadId = "";
 const write = (value: unknown) => process.stdout.write(JSON.stringify(value) + "\n");
 const respond = (id: unknown, result: unknown) => write({ id, result });
 const refuse = (id: unknown, message: string) => write({ id, error: { code: -32601, message } });
+let phaseSequence = 0;
+const phase = (stage: string) => appendFileSync(root + "/native-diagnostic-phases.jsonl", JSON.stringify({ sequence: ++phaseSequence, atMs: Date.now(), stage }) + "\n");
 const current = () => {
   const sql = new DatabaseSync(database, { readOnly: true });
   try {
@@ -690,14 +953,14 @@ createInterface({ input: process.stdin }).on("line", line => {
   const params = message.params ?? {};
   try {
     switch (message.method) {
-      case "initialize": respond(message.id, { userAgent: "fixture-codex-app-server", codexHome: root, platformFamily: "unix", platformOs: "macos" }); return;
+      case "initialize": respond(message.id, { userAgent: "fixture-codex-app-server", codexHome: root, platformFamily: "unix", platformOs: "macos" }); phase("initialize-response"); return;
       case "initialized": return;
       case "account/read": respond(message.id, { account: { type: "chatgpt", email: "fixture@example.invalid", planType: "plus" }, requiresOpenaiAuth: false }); return;
       case "skills/list": respond(message.id, { data: [{ cwd: root, errors: [], skills: [] }] }); return;
       case "thread/start": {
         const row = current(); appThreadId = row.thread_id; nativeId = "fixture-native-" + appThreadId;
         if (params.model !== "gpt-5-codex") throw new Error("Fixture refused changed native model.");
-        respond(message.id, { thread: { id: nativeId, sessionId: nativeId, projectId: null, forkedFromId: null, preview: "", ephemeral: false, modelProvider: "openai", createdAt: 1782622440, updatedAt: 1782622440, status: { type: "idle" }, path: root + "/fixture-native.jsonl", cwd: root, cliVersion: "0.144.0", source: "vscode", threadSource: null, agentNickname: null, agentRole: null, gitInfo: null, name: null, turns: [] }, model: "gpt-5-codex", modelProvider: "openai", serviceTier: null, cwd: root, instructionSources: [], approvalPolicy: "never", approvalsReviewer: "user", sandbox: { type: "dangerFullAccess" }, reasoningEffort: "medium" }); return;
+        respond(message.id, { thread: { id: nativeId, sessionId: nativeId, projectId: null, forkedFromId: null, preview: "", ephemeral: false, modelProvider: "openai", createdAt: 1782622440, updatedAt: 1782622440, status: { type: "idle" }, path: root + "/fixture-native.jsonl", cwd: root, cliVersion: "0.144.0", source: "vscode", threadSource: null, agentNickname: null, agentRole: null, gitInfo: null, name: null, turns: [] }, model: "gpt-5-codex", modelProvider: "openai", serviceTier: null, cwd: root, instructionSources: [], approvalPolicy: "never", approvalsReviewer: "user", sandbox: { type: "dangerFullAccess" }, reasoningEffort: "medium" }); phase("thread-start-response"); return;
       }
       case "turn/start": {
         const row = current();
@@ -708,19 +971,52 @@ createInterface({ input: process.stdin }).on("line", line => {
         // Actual committed state is checked BEFORE the native acknowledgement.
         appendFileSync(root + "/native-milestones.jsonl", JSON.stringify({ method: "turn/start", model: params.model, threadId: row.thread_id, messageId: row.message_id, runId: row.run_id, materializedBeforeAck: true }) + "\n");
         respond(message.id, { turn: turn("inProgress") });
+        phase("turn-start-response");
         write({ method: "turn/started", params: { threadId: nativeId, turn: turn("inProgress") } });
-        setImmediate(() => write({ method: "turn/completed", params: { threadId: nativeId, turn: turn("completed") } })); return;
+        phase("turn-started-notification");
+        setImmediate(() => { write({ method: "turn/completed", params: { threadId: nativeId, turn: turn("completed") } }); phase("turn-completed-notification"); }); return;
       }
-      default: if (message.id !== undefined) refuse(message.id, "Unsupported controlled fixture method.");
+      default: phase("unsupported-method"); if (message.id !== undefined) refuse(message.id, "Unsupported controlled fixture method.");
     }
-  } catch { refuse(message.id, "Fixture native contract or materialization check refused."); }
+  } catch { phase("contract-refusal"); refuse(message.id, "Fixture native contract or materialization check refused."); }
 });
 `,
     );
     const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
-    await NodeFS.writeFile(
+    await NodeFSP.writeFile(
       binary,
-      `#!/bin/sh\nif [ "$1" = "--version" ]; then printf 'codex-cli 0.999.0 (fixture)\\n'; exit 0; fi\nexec ${quote(process.execPath)} --experimental-strip-types ${quote(peer)} "$@"\n`,
+      `#!/bin/sh\nif [ "$1" = "--version" ]; then printf 'codex-cli 0.999.0 (fixture)\\n'; exit 0; fi\nexec ${quote(privateFixtureNode)} --experimental-strip-types ${quote(peer)} "$@"\n`,
+      { mode: 0o700 },
+    );
+    if (
+      (await NodeFSP.realpath(process.execPath)) !== privateFixtureNode ||
+      (await NodeFSP.realpath(privateFixtureNode)) !== privateFixtureNode ||
+      (await fixtureFileHash(privateFixtureNode)) !== privateFixtureNodeHash
+    )
+      throw new FixtureInvariantError({
+        message: "Fixture private Node identity differs from its verified runtime.",
+      });
+    const providerPath = NodePath.join(root, "fixture-bin");
+    await NodeFSP.mkdir(providerPath);
+    for (const [name, utility] of Object.entries({
+      node: privateFixtureNode,
+      git: "/opt/homebrew/bin/git",
+      sh: "/bin/sh",
+      env: "/usr/bin/env",
+      uname: "/usr/bin/uname",
+      dirname: "/usr/bin/dirname",
+    })) {
+      const target = await NodeFSP.realpath(utility);
+      if (!(await NodeFSP.stat(target)).isFile())
+        throw new FixtureInvariantError({
+          message: "Fixture utility is not a physical executable file.",
+        });
+      await NodeFSP.symlink(target, NodePath.join(providerPath, name));
+    }
+    // Default selection must fail, not silently reach an installed provider CLI.
+    await NodeFSP.writeFile(
+      NodePath.join(providerPath, "codex"),
+      "#!/bin/sh\nprintf 'FIXTURE_DEFAULT_PROVIDER_REFUSED\\n' >&2\nexit 78\n",
       { mode: 0o700 },
     );
     const disabled = Object.fromEntries(
@@ -756,27 +1052,170 @@ createInterface({ input: process.stdin }).on("line", line => {
       },
     };
     for (const instance of Object.values(instances))
-      await NodeFS.mkdir(instance.config.homePath, { recursive: true });
-    await NodeFS.writeFile(
-      config.settingsPath,
-      JSON.stringify({
-        providerInstances: instances,
-        cursorKeychainUsageEnabled: false,
-        enableProviderUpdateChecks: false,
-        autoResumeLimitedThreads: false,
-        usageLimitSources: {},
+      await NodeFSP.mkdir(instance.config.homePath, { recursive: true });
+    const encodedFixtureSettings = {
+      providerInstances: instances,
+      cursorKeychainUsageEnabled: false,
+      enableProviderUpdateChecks: false,
+      autoResumeLimitedThreads: false,
+      usageLimitSources: {},
+    };
+    await NodeFSP.writeFile(config.settingsPath, JSON.stringify(encodedFixtureSettings));
+    // Use the profile's documented per-machine exception contract only in
+    // this newly allocated fixture, before the actual settings layer loads.
+    const overrideSchema = Schema.Struct({
+      overrides: Schema.Array(
+        Schema.Struct({
+          entry: Schema.Literals([
+            "providerInstances.codex",
+            "providerInstances.claudeAgent",
+            "providerInstances.pi",
+          ]),
+          reason: Schema.String.check(Schema.isMinLength(1)),
+        }),
+      ),
+    });
+    const overrideFile = NodePath.join(config.stateDir, OPERATOR_PROFILE_OVERRIDES_FILE);
+    validateFixtureDirectory(root, overrideFile);
+    const overrideBytes = await Effect.runPromise(
+      Schema.encodeEffect(Schema.fromJsonString(overrideSchema))({
+        overrides: [
+          {
+            entry: "providerInstances.codex",
+            reason: "Isolated fixture must retain its owned Codex executable and homes.",
+          },
+          {
+            entry: "providerInstances.claudeAgent",
+            reason: "Isolated fixture keeps the uncontrolled Claude provider disabled.",
+          },
+          {
+            entry: "providerInstances.pi",
+            reason: "Isolated fixture keeps the uncontrolled Pi provider disabled.",
+          },
+        ],
       }),
     );
+    await NodeFSP.writeFile(overrideFile, `${overrideBytes}\n`, { flag: "wx", mode: 0o600 });
+    const readOverrides = await Effect.runPromise(
+      Schema.decodeUnknownEffect(Schema.fromJsonString(overrideSchema))(
+        await NodeFSP.readFile(overrideFile, "utf8"),
+      ),
+    );
+    if (
+      readOverrides.overrides.length !== 3 ||
+      new Set(readOverrides.overrides.map((item) => item.entry)).size !== 3 ||
+      (await NodeFSP.realpath(overrideFile)) !== overrideFile
+    )
+      throw new FixtureInvariantError({
+        message: "Fixture profile override preflight did not match exact three owned entries.",
+      });
     validateFixtureAddress({ host: config.host ?? "", port: config.port });
-    return await use({ root, config });
+    const prepared: PreparedFixture = {
+      root,
+      config,
+      providerContainment: {
+        path: providerPath,
+        binary,
+        binaryHash: await fixtureFileHash(binary),
+        peer,
+        peerHash: await fixtureFileHash(peer),
+      },
+    };
+    const rawSettings: unknown = JSON.parse(await NodeFSP.readFile(config.settingsPath, "utf8"));
+    await validateFixtureProviderSelection(prepared, rawSettings);
+    if (process.env.TL_V2_CONTAINMENT_CONTROLS === "1") {
+      const controls: { name: string; outcome: string }[] = [];
+      const positive = await validateFixtureProviderSelection(prepared, rawSettings);
+      controls.push({ name: "current-schema-owned-executable", outcome: "accepted" });
+      const settings = await Effect.runPromise(
+        Schema.decodeUnknownEffect(PersistedServerSettings)(rawSettings),
+      );
+      await validateFixtureProviderSelection(
+        prepared,
+        await Effect.runPromise(Schema.encodeEffect(PersistedServerSettings)(settings)),
+      );
+      controls.push({
+        name: "decoded-public-settings-encode-before-validation",
+        outcome: "accepted",
+      });
+      for (const [name, replacement] of [
+        ["default-executable", { ...instances.codex.config, binaryPath: "codex" }],
+        ["missing-executable", { ...instances.codex.config, binaryPath: undefined }],
+        [
+          "foreign-executable",
+          { ...instances.codex.config, binaryPath: "/opt/homebrew/bin/codex" },
+        ],
+      ] as const) {
+        let refused = false;
+        try {
+          await validateFixtureProviderSelection(prepared, {
+            ...encodedFixtureSettings,
+            providerInstances: {
+              ...encodedFixtureSettings.providerInstances,
+              codex: { ...instances.codex, config: replacement },
+            },
+          });
+        } catch (error) {
+          if (!Schema.is(FixtureInvariantError)(error)) throw error;
+          refused = true;
+        }
+        if (!refused)
+          throw new FixtureInvariantError({ message: "Containment negative did not refuse." });
+        controls.push({ name, outcome: "refused-before-spawn" });
+      }
+      await new Promise<void>((resolve, reject) =>
+        NodeChildProcess.execFile(
+          "codex",
+          ["--version"],
+          {
+            env: {
+              HOME: root,
+              PATH: providerPath,
+              CODEX_HOME: NodePath.join(root, "homes", "codex"),
+            },
+            timeout: 5000,
+          },
+          (error, _stdout, stderr) => {
+            if (
+              error &&
+              "code" in error &&
+              error.code === 78 &&
+              stderr.trim() === "FIXTURE_DEFAULT_PROVIDER_REFUSED"
+            )
+              resolve();
+            else
+              reject(
+                new FixtureInvariantError({
+                  message: "Fixture bare-provider sentinel did not refuse.",
+                }),
+              );
+          },
+        ),
+      );
+      controls.push({ name: "bare-codex-owned-sentinel", outcome: "exit78-no-provider" });
+      await NodeFSP.writeFile(
+        "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Server-Fixture-Containment-Controls.json",
+        JSON.stringify({
+          controls,
+          positive,
+          node: { path: privateFixtureNode, sha256: privateFixtureNodeHash },
+          providerPath,
+          actualGraphStarted: false,
+          actualPublicSelectionObserved: false,
+          realProviderInvocations: 0,
+        }) + "\n",
+        { flag: "wx", mode: 0o600 },
+      );
+    }
+    return await use(prepared);
   } finally {
     // Do not follow links, and delete only the newly allocated, physically owned tree.
     const remove = async (path: string): Promise<void> => {
       validateFixtureDirectory(physicalBoundary, path);
-      const stat = await NodeFS.lstat(path);
-      if (!stat.isDirectory() || stat.isSymbolicLink()) return NodeFS.unlink(path);
-      for (const name of await NodeFS.readdir(path)) await remove(NodePath.join(path, name));
-      await NodeFS.rmdir(path);
+      const stat = await NodeFSP.lstat(path);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) return NodeFSP.unlink(path);
+      for (const name of await NodeFSP.readdir(path)) await remove(NodePath.join(path, name));
+      await NodeFSP.rmdir(path);
     };
     await remove(root);
   }
