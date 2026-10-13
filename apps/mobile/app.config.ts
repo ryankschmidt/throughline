@@ -1,4 +1,4 @@
-import { withAndroidDictation } from "./src/throughline/phone-parity/nativeDictationConfig";
+import { withAndroidDictation } from "./src/throughline/phone-parity/nativeDictationConfig.ts";
 import * as NodeFS from "node:fs";
 import {
   readReleaseStamp,

@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import { describe, expect, it, vi } from "vite-plus/test";
 import {
   AndroidConfig,
@@ -126,5 +127,29 @@ describe("native dictation manifest", () => {
     expect(beforeBuilt._internal?.modResults?.ios?.infoPlist).toBeDefined();
     expect(afterBuilt._internal?.modResults?.ios).toEqual(beforeBuilt._internal?.modResults?.ios);
     expect(afterBuilt.ios).toEqual(beforeBuilt.ios);
+  });
+  it("loads the actual app config through Expo's Node evaluator, not only Vitest", () => {
+    const result = spawnSync(
+      process.execPath,
+      [
+        "-e",
+        "const {getConfig}=require('expo/config');const c=getConfig(process.cwd(),{skipPlugins:true});if(c.exp.android?.package!=='us.wccert.throughline.dev')process.exit(3);console.log('NATIVE_CONFIG_LOADED')",
+      ],
+      {
+        cwd: resolve(import.meta.dirname, "../../.."),
+        env: {
+          NODE_ENV: "test",
+          PATH: process.env.PATH,
+          HOME: process.env.HOME,
+          APP_VARIANT: "development",
+          EXPO_NO_DOTENV: "1",
+          EXPO_NO_GIT_STATUS: "1",
+        },
+        encoding: "utf8",
+      },
+    );
+    expect({ exit: result.status, loaded: result.stdout.includes("NATIVE_CONFIG_LOADED") }).toEqual(
+      { exit: 0, loaded: true },
+    );
   });
 });
