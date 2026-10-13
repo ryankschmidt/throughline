@@ -135,9 +135,13 @@ function transcribeRecording(
         interimResults: false,
         continuous: false,
         requiresOnDeviceRecognition: true,
-        // Expo Audio HIGH_QUALITY records stereo, 44.1kHz M4A. The native
-        // file decoder feeds PCM to the recognizer; no microphone/cloud fallback.
-        audioSource: { uri, audioChannels: 2, sampleRate: 44100 },
+        // Android dictation uses mono 44.1kHz M4A. The recorded PCM channel
+        // contract must match the file, not the common stereo preset.
+        audioSource: {
+          uri,
+          audioChannels: 1,
+          sampleRate: 44100,
+        },
       });
     } catch (cause) {
       failure =

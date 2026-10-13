@@ -150,3 +150,19 @@ describe("Android recorded-file voice adapter", () => {
     expect(mocks.listeners.size).toBe(0);
   });
 });
+
+// Actual Android fixture recording is mono, despite the shared preset requesting stereo.
+it("uses Android recorder format instead of declaring mono bytes as stereo", async () => {
+  const options = { signal: new AbortController().signal };
+  const prepared = await getLocalVoiceTranscriber()!.prepare(options);
+  const pending = prepared.transcribe("file:///harmless-native.m4a", options);
+  const source = mocks.native.start.mock.calls[0]?.[0].audioSource;
+  mocks.emit("result", { isFinal: true, results: [{ transcript: "native format control" }] });
+  mocks.emit("end");
+  await expect(pending).resolves.toBe("native format control");
+  expect(source).toEqual({
+    uri: "file:///harmless-native.m4a",
+    audioChannels: 1,
+    sampleRate: 44100,
+  });
+});
