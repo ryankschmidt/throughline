@@ -4525,7 +4525,7 @@
     {
       "path": "apps/mobile/src/features/threads/ThreadComposer.tsx",
       "class": "upstream-edit",
-      "reason": "Mount carried return-key submission, Claude rewind/config menus, optimization feedback and undo in the existing composer.",
+      "reason": "Mount carried return-key submission, Claude rewind/config menus, optimization feedback and undo in the existing composer. Mount approved desktop-parity microphone toggle through fork-owned nativeMicAction/NativeComposerMicrophoneAction; keep the outline microphone immediately before disabled Send through preparation/recording/transcription, without changing native recorder or optimizer.",
       "reason_source": "authored",
       "imported_private_symbols": [
         "type { ComposerTextPaste } from ../../native/T3ComposerEditor.types",
@@ -4575,7 +4575,8 @@
       ],
       "schema_assumptions": [
         "Relocation assumption for Composer and rewind: preserve existing exported input/output contracts, optional-field defaults and persisted IDs; validate at the feature slice, not by import compilation alone.",
-        "Changed shape evidence requiring compatibility coverage: type ComposerSubmissionSource,"
+        "Changed shape evidence requiring compatibility coverage: type ComposerSubmissionSource,",
+        "Microphone press decisions use existing VoiceInputState; recording finishes even when Send/external work is disabled. Preparation/transcription cannot open another capture. Existing native permission-settings recovery is retained."
       ],
       "contract_inspection": "Pinned Git diff and static-import scan; relative upstream-internal imports include type-only symbols. Dynamic imports, property access and transitive dependencies remain unmeasured.",
       "conflict_rule": "Capability rewind: rewind keeps the same Claude native session, like the CLI's /rewind; adopt upstream types around it. retain-fork-and-run-capability-tests.\nCapability rewind: rewind keeps the same Claude native session, like the CLI's /rewind; adopt upstream types around it. Preserve the fork behavior represented by this changed path, adapt upstream APIs, and minimize the retained patch. Review both versions before proposing a file-specific resolution. Preserve the 0.0.49 Claude /rewind and /config client menus, exact-message conversation-only rollback by resuming the same native session at the entry before the chosen message, resolving messages from before an older fork through recorded forkedFrom links, fail-closed older-host command, and zero-checkpoint retention tests. Never infer native boundaries from file checkpoints or restore files by default.",
@@ -4651,6 +4652,13 @@
           "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
         },
         "restore_upstream_path": "apps/mobile/src/features/threads/ThreadComposer.tsx"
+      },
+      "native_mic_parity_evidence": {
+        "source_review": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Mic-Parity-Independent-Source-Review.json",
+        "source_receipt": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Mic-Parity-Source-Receipt.json",
+        "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Lead-Voice-Mic-Grant-20261013-0418PDT.txt",
+        "source_commit": "105d02a1ece0f4e63b1799ad9b85931ae6aa9316",
+        "native_acceptance": false
       }
     },
     {
@@ -5331,7 +5339,6 @@
         "restore_upstream_path": "apps/mobile/src/features/threads/use-composer-command-menu.ts"
       }
     },
-
     {
       "path": "apps/mobile/src/features/threads/useThreadHeaderOptions.tsx",
       "class": "upstream-edit",
