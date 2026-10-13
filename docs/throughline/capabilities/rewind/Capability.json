@@ -91,12 +91,16 @@
         "startup readiness finishes after the actual pending-cut recovery"
       ],
       "population_pin": {
-        "state": "pending-measurement",
-        "head_commit": null,
-        "sha256": null,
-        "executed": null,
-        "excluded": null,
-        "measured_by": null
+        "state": "MEASUREMENT_PASS",
+        "head_commit": "dc2db35609cfd86a65db8cf32ac2c0b5d7887172",
+        "consumer_path": "apps/server/src/throughline/rewind/ExactMessageRewindRuntime.test.ts",
+        "sha256": "d3d5a74d976f9a0d1267b0bea332029ad2d78548c5b2c32a7ee9eac7ed1e6d6a",
+        "executed": 22,
+        "excluded": 0,
+        "failed": 0,
+        "measured_by": "01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+        "scope": "complete consumer file; source fixtures only",
+        "receipt": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Rewind-Population-Cold-2026-10-12-01a12d44-1791867733454.receipt.json"
       }
     },
     {
@@ -113,12 +117,16 @@
         "refuses a waiting user_input_request node"
       ],
       "population_pin": {
-        "state": "pending-measurement",
-        "head_commit": null,
-        "sha256": null,
-        "executed": null,
-        "excluded": null,
-        "measured_by": null
+        "state": "MEASUREMENT_PASS",
+        "head_commit": "dc2db35609cfd86a65db8cf32ac2c0b5d7887172",
+        "consumer_path": "apps/server/src/throughline/rewind/ExactMessageRewindV2.test.ts",
+        "sha256": "767bbf3f9e5d39c2b98b90b1f9033d70df4e44e11d68d2046a6fcad54f8b604a",
+        "executed": 8,
+        "excluded": 0,
+        "failed": 0,
+        "measured_by": "01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+        "scope": "complete consumer file; source fixtures only",
+        "receipt": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Rewind-Population-Cold-2026-10-12-01a12d44-1791867733454.receipt.json"
       }
     },
     {
@@ -192,12 +200,83 @@
         "checkpoint-contention V2: a genuinely new post-cut intake run captures normally"
       ],
       "population_pin": {
-        "state": "pending-measurement",
-        "head_commit": null,
-        "sha256": null,
-        "executed": null,
-        "excluded": null,
-        "measured_by": null
+        "state": "MEASUREMENT_PASS",
+        "head_commit": "dc2db35609cfd86a65db8cf32ac2c0b5d7887172",
+        "consumer_path": "apps/server/src/throughline/rewind/CheckpointContention.v2.test.ts",
+        "sha256": "7e35ecfbf7bebafca4545ce6f2ee90b19bc5296805d1c161397a8db92101c42b",
+        "executed": 16,
+        "excluded": 0,
+        "failed": 0,
+        "measured_by": "01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+        "scope": "complete consumer file; source fixtures only",
+        "receipt": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Rewind-Population-Cold-2026-10-12-01a12d44-1791867733454.receipt.json"
+      }
+    },
+    {
+      "file": "packages/provider-pi/src/server/adapter.test.ts",
+      "package": "packages/provider-pi",
+      "cases": [
+        "PiAdapterV2 > serializes rollback fork hooks with native wake ownership, wake=false",
+        "PiAdapterV2 > serializes rollback fork hooks with native wake ownership, wake=true",
+        "PiAdapterV2 > rejects rollback while native wake output is awaiting ownership",
+        "PiAdapterV2 > follows an extension rewind with summarize=false",
+        "PiAdapterV2 > follows an extension rewind with summarize=true",
+        "PiAdapterV2 > finishes a turn whose turn window has a parentId cycle",
+        "PiAdapterV2 > finishes a turn whose full tree has a parentId cycle",
+        "PiAdapterV2 > does not reconcile malformed session entries: missing parent",
+        "PiAdapterV2 > does not reconcile malformed session entries: invalid parent",
+        "PiAdapterV2 > does not reconcile malformed session entries: duplicate id",
+        "PiAdapterV2 > does not reconcile a replacement session tree as a native rewind",
+        "PiAdapterV2 > rolls back past turns that left nothing in the session tree"
+      ],
+      "population_pin": {
+        "state": "MEASUREMENT_PASS",
+        "head_commit": "dc2db35609cfd86a65db8cf32ac2c0b5d7887172",
+        "consumer_path": "packages/provider-pi/src/server/adapter.test.ts",
+        "sha256": "53ee1ed26d5c598e108123c8447beae0730cd75331113da330c1c3548e36b68e",
+        "executed": 91,
+        "excluded": 0,
+        "failed": 0,
+        "measured_by": "01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+        "scope": "complete consumer file; source fixtures only",
+        "receipt": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Rewind-Population-Cold-2026-10-12-01a12d44-1791867733454.receipt.json",
+        "rewind_subset": {
+          "executed": 12,
+          "excluded": 0,
+          "failed": 0,
+          "other_cases_executed": 79,
+          "classification": "Explicit rewind/rollback plus inspected cycle/malformed-tree retained-ID refusal controls; fake-provider fixtures only."
+        }
+      }
+    },
+    {
+      "file": "apps/server/src/throughline/compat-tests/piGauntlet.test.ts",
+      "package": "apps/server",
+      "cases": [
+        "Pi harness tool gauntlet (shapes 1-6, hermetic) > gauntlet 1: read-only file read maps lifecycle and lands final text",
+        "Pi harness tool gauntlet (shapes 1-6, hermetic) > gauntlet 2: scoped write to a test-only folder completes exactly once",
+        "Pi harness tool gauntlet (shapes 1-6, hermetic) > gauntlet 3: list/search over a fixture folder maps result content",
+        "Pi harness tool gauntlet (shapes 1-6, hermetic) > gauntlet 4: a long-running tool streams 25 ordered progress updates",
+        "Pi harness tool gauntlet (shapes 1-6, hermetic) > gauntlet 5: a failing tool renders a failed item and text still lands",
+        "Pi harness tool gauntlet (shapes 1-6, hermetic) > gauntlet 6: a destructive out-of-set tool is refused visibly, never silently",
+        "Pi harness tool gauntlet (shape 7, idempotent-write instrument) > gauntlet 7: duplicate idempotent-write invocations cause one durable effect",
+        "Pi harness tool gauntlet (shape 8, restart replay) > gauntlet 8: a fresh adapter re-emits a replayed end frame (per-process dedupe pinned)",
+        "Pi harness tool gauntlet (probe retry, wake-from-idle regression) > gauntlet 9: a first-attempt probe timeout recovers on the single retry",
+        "Pi harness tool gauntlet (probe retry, wake-from-idle regression) > gauntlet 10: both probe attempts failing still fails closed with the seam-naming error",
+        "Pi harness tool gauntlet (probe retry, wake-from-idle regression) > gauntlet 11: the probe budget outlasts Meridian's own auth-check ceiling",
+        "Pi harness tool gauntlet (probe retry, wake-from-idle regression) > gauntlet 12: a refused connection fails closed and the error names the refusal"
+      ],
+      "population_pin": {
+        "state": "MEASUREMENT_PASS",
+        "head_commit": "dc2db35609cfd86a65db8cf32ac2c0b5d7887172",
+        "consumer_path": "apps/server/src/throughline/compat-tests/piGauntlet.test.ts",
+        "sha256": "c7a240e8cf94cdaeb2d50259b5bf824cde88fdbe4aec2f4a1e830b79957f158c",
+        "executed": 12,
+        "excluded": 0,
+        "failed": 0,
+        "measured_by": "01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+        "scope": "complete consumer file; source fixtures only",
+        "receipt": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Rewind-Population-Cold-2026-10-12-01a12d44-1791867733454.receipt.json"
       }
     }
   ],
@@ -274,9 +353,9 @@
     "recovery": "monotonic source tip ordinal and event sequence; per-thread refusal without server startup failure; no clock ordering",
     "checkpoint_contention": "Seven original templates preserved against real V2 SQL/Git/capture/ingestion/intake, same typed semantics and original guard/retained variants; no live provider process or effect worker in source fixture. Original pair retained pending independent current-head feedback and retirement review.",
     "compiled_population_witness": {
-      "state": "v1 compiled population witness retired; v2 population pin pending measurement",
+      "state": "v1 compiled population witness retired; v2 source population measured",
       "ruling": "Fable-Delta-Upstream-V2-R3.json answer 10",
-      "accepted": false,
+      "accepted": true,
       "required_measurer": "non-builder on landed head with real runner",
       "required_fields": [
         "head_commit",
@@ -292,8 +371,50 @@
         "packages/provider-pi/src/server/adapter.test.ts",
         "apps/server/src/throughline/compat-tests/piGauntlet.test.ts"
       ],
-      "head_commit": null,
-      "measured_by": null
+      "head_commit": "dc2db35609cfd86a65db8cf32ac2c0b5d7887172",
+      "measured_by": "01a12d44-f8dc-7f73-b53d-f6ce77fed354",
+      "scope": "source population only; no native or installed behavior acceptance",
+      "executed_count": 149,
+      "excluded_count": 0,
+      "failed_count": 0,
+      "receipt": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Rewind-Population-Cold-2026-10-12-01a12d44-1791867733454.receipt.json",
+      "consumer_measurements": [
+        {
+          "consumer_path": "apps/server/src/throughline/rewind/ExactMessageRewindRuntime.test.ts",
+          "consumer_sha256": "d3d5a74d976f9a0d1267b0bea332029ad2d78548c5b2c32a7ee9eac7ed1e6d6a",
+          "executed_count": 22,
+          "excluded_count": 0,
+          "failed_count": 0
+        },
+        {
+          "consumer_path": "apps/server/src/throughline/rewind/ExactMessageRewindV2.test.ts",
+          "consumer_sha256": "767bbf3f9e5d39c2b98b90b1f9033d70df4e44e11d68d2046a6fcad54f8b604a",
+          "executed_count": 8,
+          "excluded_count": 0,
+          "failed_count": 0
+        },
+        {
+          "consumer_path": "apps/server/src/throughline/rewind/CheckpointContention.v2.test.ts",
+          "consumer_sha256": "7e35ecfbf7bebafca4545ce6f2ee90b19bc5296805d1c161397a8db92101c42b",
+          "executed_count": 16,
+          "excluded_count": 0,
+          "failed_count": 0
+        },
+        {
+          "consumer_path": "packages/provider-pi/src/server/adapter.test.ts",
+          "consumer_sha256": "53ee1ed26d5c598e108123c8447beae0730cd75331113da330c1c3548e36b68e",
+          "executed_count": 91,
+          "excluded_count": 0,
+          "failed_count": 0
+        },
+        {
+          "consumer_path": "apps/server/src/throughline/compat-tests/piGauntlet.test.ts",
+          "consumer_sha256": "c7a240e8cf94cdaeb2d50259b5bf824cde88fdbe4aec2f4a1e830b79957f158c",
+          "executed_count": 12,
+          "excluded_count": 0,
+          "failed_count": 0
+        }
+      ]
     }
   }
 }
