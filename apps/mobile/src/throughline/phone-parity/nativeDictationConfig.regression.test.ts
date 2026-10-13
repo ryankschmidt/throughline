@@ -9,10 +9,12 @@ import { resolve } from "node:path";
 vi.mock("../../../../../scripts/lib/public-config.ts", () => ({
   loadRepoEnv: () => ({ APP_VARIANT: "development" }),
 }));
-import appConfig from "../../../app.config";
+import { withAndroidDictation } from "./nativeDictationConfig";
 
 // Consume the actual configuration and the real Expo plugin chain, not copied permission logic.
 async function emittedManifest() {
+  vi.resetModules();
+  const { default: appConfig } = await import("../../../app.config");
   const voicePlugins: Array<string | StaticPlugin> = [];
   for (const plugin of appConfig.plugins ?? []) {
     const name = Array.isArray(plugin) ? plugin[0] : plugin;
@@ -28,6 +30,7 @@ async function emittedManifest() {
     AndroidConfig.Permissions.withBlockedPermissions(
       {
         _internal: { projectRoot },
+        ...appConfig,
         name: appConfig.name,
         slug: appConfig.slug,
         android: { ...appConfig.android },
@@ -87,5 +90,41 @@ describe("native dictation manifest", () => {
           p.$["tools:node"] !== "remove",
       ),
     ).not.toBe(true);
+  });
+  it("leaves the actual iOS voice, camera and image-picker consent output unchanged", async () => {
+    vi.resetModules();
+    const { default: actual } = await import("../../../app.config");
+    const plugins: Array<string | StaticPlugin> = [];
+    for (const plugin of actual.plugins ?? []) {
+      const name = Array.isArray(plugin) ? plugin[0] : plugin;
+      if (
+        typeof name === "string" &&
+        ["expo-audio", "expo-camera", "expo-image-picker"].includes(name)
+      )
+        plugins.push(Array.isArray(plugin) ? [name, plugin[1]] : name);
+    }
+    const projectRoot = resolve(import.meta.dirname, "../../..");
+    const input = () => ({
+      name: actual.name,
+      slug: actual.slug,
+      ios: structuredClone(actual.ios),
+      android: structuredClone(actual.android),
+      _internal: { projectRoot },
+    });
+    const before = withPlugins(input(), plugins);
+    const after = withPlugins(withAndroidDictation(input()), plugins);
+    const beforeBuilt = await compileModsAsync(before, {
+      projectRoot,
+      platforms: ["ios"],
+      introspect: true,
+    });
+    const afterBuilt = await compileModsAsync(after, {
+      projectRoot,
+      platforms: ["ios"],
+      introspect: true,
+    });
+    expect(beforeBuilt._internal?.modResults?.ios?.infoPlist).toBeDefined();
+    expect(afterBuilt._internal?.modResults?.ios).toEqual(beforeBuilt._internal?.modResults?.ios);
+    expect(afterBuilt.ios).toEqual(beforeBuilt.ios);
   });
 });

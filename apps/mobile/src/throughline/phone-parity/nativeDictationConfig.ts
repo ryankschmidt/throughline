@@ -1,36 +1,27 @@
-import type { ExpoConfig } from "expo/config";
+import { withAndroidManifest, type ConfigPlugin } from "expo/config-plugins";
 
-/** Android dictation needs the microphone and its on-device service, not background audio. */
-export function nativeDictationPlugins(
-  plugins: NonNullable<ExpoConfig["plugins"]>,
-): NonNullable<ExpoConfig["plugins"]> {
-  return [
-    ...plugins.map<NonNullable<ExpoConfig["plugins"]>[number]>((plugin) => {
-      if (!Array.isArray(plugin)) return plugin;
-      const [name, options] = plugin;
-      if (name === "expo-audio") return [name, { ...options, recordAudioAndroid: true }];
-      // The picker's false option adds a global manifest removal, also disabling voice input.
-      // Keep photo/camera settings; share the already-required microphone consent instead.
-      if (name === "expo-image-picker")
-        return [
-          name,
-          {
-            ...options,
-            microphonePermission: "Allow ThroughLine to use your microphone for voice input.",
-          },
-        ];
-      return plugin;
-    }),
-    [
-      "expo-speech-recognition",
-      {
-        microphonePermission: "Allow ThroughLine to use your microphone for voice input.",
-        speechRecognitionPermission: "Allow ThroughLine to transcribe your voice input.",
-        androidSpeechServicePackages: [
-          "com.google.android.as",
-          "com.google.android.googlequicksearchbox",
-        ],
-      },
-    ],
-  ];
-}
+/** Native dictation is Android-only here; never change iOS consent or other plugin options. */
+export const withAndroidDictation: ConfigPlugin = (config) =>
+  withAndroidManifest(config, (next) => {
+    const manifest = next.modResults.manifest;
+    // Register before the static plugins: Android mods run last-registered-first,
+    // so this finalizes voice's required permission after the picker's global removal.
+    manifest["uses-permission"] = [
+      ...(manifest["uses-permission"] ?? []).filter(
+        (permission) => permission.$["android:name"] !== "android.permission.RECORD_AUDIO",
+      ),
+      { $: { "android:name": "android.permission.RECORD_AUDIO" } },
+    ];
+    manifest.queries ??= [];
+    for (const name of ["com.google.android.as", "com.google.android.googlequicksearchbox"]) {
+      if (
+        !manifest.queries.some((query) => query.package?.some((p) => p.$["android:name"] === name))
+      ) {
+        manifest.queries.push({
+          package: [{ $: { "android:name": name } }],
+          intent: [{ action: [{ $: { "android:name": "android.speech.RecognitionService" } }] }],
+        });
+      }
+    }
+    return next;
+  });
