@@ -36789,6 +36789,39 @@
       "physical_parent_count": 181,
       "allowed_physical_credit": 1,
       "operator_authorized_ceiling": 184
+    },
+    {
+      "id": "desktop-local-voice-main-mount-2026-10-13",
+      "state": "approved-not-landed",
+      "approved_by": "lead orchestrator abf5e046-bb33-4f0e-97bc-d1ccbba31693; written10:39 ruling",
+      "approval_source": {
+        "path": "/Users/Admin/.codex/sessions/2026/10/10/rollout-2026-10-10T16-25-36-01a12822-dddf-7f63-9e4f-4306244fdbe7.md",
+        "line": 5977,
+        "quote": "From the lead orchestrator (thread abf5e046), Oct 13, 2026, 10:39 AM PDT. Ruling on Desktop-Voice-Seam-Proposal.json. APPROVED at zero growth: one fork layer in the already-edited apps/desktop main.ts and one build, usage-description and entitlement adapter in the already-edited artifact builder, each with its ledger entry. NOT YET APPROVED: the stock preload.ts (+1). First try the zero-growth route: from the fork layer in main.ts, register a fork-owned preload script for the session (Electron session.registerPreloadScript, or setPreloads on older Electron) that exposes the typed voice bridge under a fork namespace through contextBridge, leaving preload.ts stock. If the shipped Electron version or the window settings make that impossible, send me the measurement and I take the single file to the Next-Gen seat. Native recorder and transcriber stay fork-owned behind the TypeScript main process; no cloud, no browser SpeechRecognition; Linux microphone hidden. Never use the interactive question prompt; after answering any other seat, resume your own work."
+      },
+      "scope_paths": ["apps/desktop/src/main.ts", "scripts/build-desktop-artifact.ts"],
+      "permitted_changes": [
+        "One import and fork DesktopVoice layer in already-edited main.ts; no second voice construction",
+        "One fork-owned build/resource/usage-description/entitlement adapter in already-edited artifact builder"
+      ],
+      "excluded_scope": [
+        "apps/desktop/src/preload.ts",
+        "New upstream paths",
+        "Production app install/restart",
+        "Cloud/browser speech",
+        "Linux substitute"
+      ],
+      "reason": "Local Apple Speech capture/transcription behind TypeScript main with registered fork session preload; stock preload stays unchanged",
+      "reason_source": "authored-approved-lead-ruling",
+      "seam_side": "upstream-mount",
+      "count_effect": 0,
+      "conditions": {
+        "existing_upstream_paths_only": true,
+        "ledger_before_edit": true,
+        "non_builder_cold_required": true,
+        "native_speech_and_screenshots_required": true,
+        "no_source_self_acceptance": true
+      }
     }
   ]
 }
