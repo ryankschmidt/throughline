@@ -1,9 +1,5 @@
-import {
-  createHighlighterCore,
-  tokenizeWithTheme,
-  type GrammarState,
-  type HighlighterCore,
-} from "@shikijs/core";
+import { createHighlighterCore, type GrammarState, type HighlighterCore } from "@shikijs/core";
+import { withCompletionGuard } from "../../throughline/diffs/NativeReviewTokenization";
 import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
 import bashLanguage from "@shikijs/langs/bash";
 import diffLanguage from "@shikijs/langs/diff";
@@ -44,15 +40,6 @@ export class NativeReviewDiffHighlighterInitializationError extends Schema.Tagge
 ) {
   override get message(): string {
     return `Failed to initialize the ${this.attemptedEngine} review diff highlighter requested as ${this.requestedEngine}.`;
-  }
-}
-
-export class NativeReviewDiffTokenizationIncompleteError extends Schema.TaggedError<NativeReviewDiffTokenizationIncompleteError>()(
-  "NativeReviewDiffTokenizationIncompleteError",
-  { lang: Schema.String, lineLength: Schema.Number },
-) {
-  override get message(): string {
-    return "Review diff tokenization is incomplete; interrupted grammar tokens cannot be cached.";
   }
 }
 
@@ -229,28 +216,7 @@ function createHighlighterHandle(
   highlighter: HighlighterCore,
   engine: NativeReviewDiffHighlightEngine,
 ): NativeReviewDiffHighlighterHandle {
-  const watchedGrammars = new Map<
-    NativeReviewDiffLanguage,
-    ReturnType<HighlighterCore["getLanguage"]>
-  >();
-  const grammarFor = (lang: NativeReviewDiffLanguage) => {
-    const existing = watchedGrammars.get(lang);
-    if (existing) return existing;
-    const grammar = highlighter.getLanguage(lang);
-    const watchedGrammar: typeof grammar = Object.create(grammar);
-    watchedGrammar.tokenizeLine2 = (...args) => {
-      const result = grammar.tokenizeLine2(...args);
-      if (result.stoppedEarly) {
-        throw new NativeReviewDiffTokenizationIncompleteError({
-          lang,
-          lineLength: args[0].length,
-        });
-      }
-      return result;
-    };
-    watchedGrammars.set(lang, watchedGrammar);
-    return watchedGrammar;
-  };
+  highlighter = withCompletionGuard(highlighter);
   return {
     engine,
     async tokenize(code, { lang, theme, signal }) {
@@ -289,16 +255,11 @@ function createHighlighterHandle(
           end += 1;
         }
 
-        // Theme registration is shared by the highlighter: refresh it per chunk,
-        // as the original shell did, including after another request's frame yield.
-        const { theme: resolvedTheme, colorMap } = highlighter.setTheme(theme);
-        const tokens = tokenizeWithTheme(
-          lines.slice(start, end).join("\n"),
-          grammarFor(lang),
-          resolvedTheme,
-          colorMap,
-          { grammarState },
-        );
+        const tokens = highlighter.codeToTokensBase(lines.slice(start, end).join("\n"), {
+          lang,
+          theme,
+          grammarState,
+        });
         grammarState = highlighter.getLastGrammarState(tokens);
         highlighted.push(...normalizeTokens(tokens));
         start = end;

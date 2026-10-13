@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
-import type { HighlighterCore, ThemedToken } from "@shikijs/core";
 
 import type { NativeReviewDiffRow } from "./nativeReviewDiffSurface";
 import type { NativeReviewDiffFile } from "./nativeReviewDiffTypes";
@@ -8,42 +7,24 @@ import { highlightNativeReviewDiffVisibleRows } from "./nativeReviewDiffHighligh
 const tokenization = vi.hoisted(() => ({
   calls: [] as string[],
   afterCall: undefined as (() => void) | undefined,
-  highlighters: [] as HighlighterCore[],
-  compareLegacy: false,
-  comparisons: [] as Array<{ actual: ThemedToken[][]; legacy: ThemedToken[][] }>,
 }));
 
-vi.mock("@shikijs/core", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@shikijs/core")>();
+vi.mock("../../throughline/diffs/NativeReviewTokenization", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("../../throughline/diffs/NativeReviewTokenization")>();
   return {
     ...original,
-    createHighlighterCore: async (...args: Parameters<typeof original.createHighlighterCore>) => {
-      const highlighter = await original.createHighlighterCore(...args);
-      tokenization.highlighters.push(highlighter);
-      return highlighter;
-    },
-    tokenizeWithTheme: (...input: Parameters<typeof original.tokenizeWithTheme>) => {
-      tokenization.calls.push(input[0]);
-      const result = original.tokenizeWithTheme(...input);
-      if (tokenization.compareLegacy) {
-        const registryGrammar: (typeof input)[1] = Object.getPrototypeOf(input[1]);
-        const highlighter = tokenization.highlighters.find((candidate) =>
-          candidate
-            .getLoadedLanguages()
-            .some((language) => candidate.getLanguage(language) === registryGrammar),
-        );
-        if (!highlighter) throw new Error("Missing real highlighter for token parity control");
-        tokenization.comparisons.push({
-          actual: result,
-          legacy: highlighter.codeToTokensBase(input[0], {
-            ...input[4],
-            lang: registryGrammar.name,
-            theme: input[2].name,
-          }),
-        });
-      }
-      tokenization.afterCall?.();
-      return result;
+    withCompletionGuard: (...args: Parameters<typeof original.withCompletionGuard>) => {
+      const highlighter = original.withCompletionGuard(...args);
+      return {
+        ...highlighter,
+        codeToTokensBase: (...input: Parameters<typeof highlighter.codeToTokensBase>) => {
+          tokenization.calls.push(input[0]);
+          const result = highlighter.codeToTokensBase(...input);
+          tokenization.afterCall?.();
+          return result;
+        },
+      };
     },
   };
 });
@@ -57,8 +38,6 @@ vi.mock("react-native-shiki-engine", async () => {
 afterEach(() => {
   tokenization.calls = [];
   tokenization.afterCall = undefined;
-  tokenization.compareLegacy = false;
-  tokenization.comparisons = [];
 });
 
 const TYPESCRIPT_FILE: NativeReviewDiffFile = {
@@ -177,54 +156,6 @@ describe("highlightNativeReviewDiffVisibleRows", () => {
     ]);
 
     expect(withComment.tokensByRowId).toEqual(contiguous.tokensByRowId);
-  });
-
-  it("refuses incomplete grammar tokens when the unchanged tokenization budget expires", async () => {
-    const rows = [
-      makeLine({
-        id: "budget-open",
-        content: "const message = `open",
-        change: "add",
-        oldLineNumber: null,
-        newLineNumber: 1,
-      }),
-      makeLine({
-        id: "budget-close",
-        content: "closed`;",
-        change: "add",
-        oldLineNumber: null,
-        newLineNumber: 2,
-      }),
-    ];
-    // Finish engine/grammar initialization before controlling TextMate's clock.
-    await highlight(rows);
-    let elapsed = 0;
-    const clock = vi.spyOn(Date, "now").mockImplementation(() => (elapsed += 600));
-    try {
-      await expect(highlight(rows)).rejects.toThrow(/tokenization.*incomplete/i);
-    } finally {
-      clock.mockRestore();
-    }
-  });
-
-  it("preserves the original public token arrays and grammar threading across chunks", async () => {
-    const contents = ["const message = `open", ...Array(10).fill("x".repeat(900)), "closed`;"];
-    const rows = contents.map((content, index) =>
-      makeLine({
-        id: `parity-${index}`,
-        content,
-        change: "add",
-        oldLineNumber: null,
-        newLineNumber: index + 1,
-      }),
-    );
-    tokenization.compareLegacy = true;
-    const result = await highlight(rows);
-    expect(Object.keys(result.tokensByRowId)).toHaveLength(rows.length);
-    expect(tokenization.comparisons.length).toBeGreaterThan(1);
-    for (const comparison of tokenization.comparisons) {
-      expect(comparison.actual).toEqual(comparison.legacy);
-    }
   });
 
   it("does not join unhighlighted rows across cached gaps", async () => {
