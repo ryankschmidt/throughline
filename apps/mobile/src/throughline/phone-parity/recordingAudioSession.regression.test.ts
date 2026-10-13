@@ -105,3 +105,51 @@ describe("native full-input communication capture regression", () => {
     expect(audio.setIsAudioActiveAsync.mock.calls).toEqual([[false]]);
   });
 });
+
+describe("Android sole default input route regression", () => {
+  const builtIn = { uid: "8", name: "Built in", type: "MicrophoneBuiltIn" };
+  it("keeps the sole selected input on the OS route, while retaining preference bookkeeping", () => {
+    const { audio, original } = fixture(),
+      selectInput = vi.fn(() => builtIn);
+    const session = createAndroidRecordingSession("android", { ...original, selectInput }, audio);
+    expect(session.selectInput?.([builtIn])).toBeNull();
+    expect(selectInput).toHaveBeenCalledWith([builtIn]);
+  });
+  it("retains an explicit choice when more than one input is available", () => {
+    const { audio, original } = fixture(),
+      headset = { uid: "9", name: "Headset", type: "MicrophoneWired" };
+    const session = createAndroidRecordingSession(
+      "android",
+      { ...original, selectInput: () => headset },
+      audio,
+    );
+    expect(session.selectInput?.([builtIn, headset])).toBe(headset);
+  });
+  it("does not replace a caller's null or different input selection", () => {
+    const { audio, original } = fixture(),
+      other = { ...builtIn, uid: "other" };
+    expect(
+      createAndroidRecordingSession(
+        "android",
+        { ...original, selectInput: () => null },
+        audio,
+      ).selectInput?.([builtIn]),
+    ).toBeNull();
+    expect(
+      createAndroidRecordingSession(
+        "android",
+        { ...original, selectInput: () => other },
+        audio,
+      ).selectInput?.([builtIn]),
+    ).toBe(other);
+  });
+  it("leaves the exact iOS selector callback and result unchanged", () => {
+    const { audio, original } = fixture(),
+      selectInput = vi.fn(() => builtIn),
+      input = { ...original, selectInput };
+    const session = createAndroidRecordingSession("ios", input, audio);
+    expect(session).toBe(input);
+    expect(session.selectInput).toBe(selectInput);
+    expect(session.selectInput?.([builtIn])).toBe(builtIn);
+  });
+});
