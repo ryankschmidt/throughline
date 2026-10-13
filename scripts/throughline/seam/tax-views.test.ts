@@ -1,6 +1,77 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 const api = await import("./tax-views.ts").catch(() => null);
+function debtFacts() {
+  return {
+    counts: { upstream_edit: 180 },
+    fork: { sha: "landed-source" },
+    tax_policy: {
+      baseline_count: 177,
+      target_count: 17,
+      approved_growth_files: [],
+      acknowledged_debt: ["production.ts", "guard.test.ts", "fixture.test.ts"].map((path, i) => ({
+        path,
+        disposition: i ? "retain-minimized" : "move-to-fork-side",
+        expires_when: i ? "upstream adopts the test" : "path leaves the edited set",
+      })),
+      count_history: [
+        { label: "before", count: 180 },
+        { label: "after", count: 180 },
+      ],
+      plan_note: "Stored proposal; physical target not admitted.",
+    },
+    approved_changes: [
+      {
+        id: "native-review-tokenization-move-2026-10-12",
+        state: "approved-before-implementation",
+        scope_paths: ["production.ts", "guard.test.ts"],
+      },
+    ],
+    entries: Array.from({ length: 180 }, (_, i) => ({
+      path: i < 3 ? ["production.ts", "guard.test.ts", "fixture.test.ts"][i]! : `stock-${i}.ts`,
+      class: "upstream-edit",
+      reason: "Measured source choice",
+      decision: "keep",
+      plan: { status: i === 0 ? "first-move-landed-minimal-mount-retained" : "retained" },
+    })),
+  };
+}
+test("R12 ceiling shows ledger baseline plus acknowledged debt, not a false refusal", () => {
+  assert.ok(api);
+  const html = api.renderTaxViews(debtFacts(), "bound");
+  assert.match(
+    html,
+    /Policy baseline 177 \+ 3 acknowledged debts \+ 0 validated growth credit = effective ceiling 180/,
+  );
+  const hero = html.match(/<header[\s\S]*?<\/header>/)?.[0] ?? "";
+  assert.match(hero, /Effective ceiling[\s\S]*?<strong>180<\/strong>/);
+  assert.match(html, /Count admission passes: 180 measured/);
+  assert.ok(!html.includes("enforcement must refuse"));
+  for (const path of ["production.ts", "guard.test.ts", "fixture.test.ts"])
+    assert.ok(html.includes(`<code>${path}</code>`));
+  assert.ok(html.includes("path leaves the edited set"));
+  assert.ok(html.includes("upstream adopts the test"));
+});
+test("R12 seventeen is the stored spec proposal, never an admitted physical target", () => {
+  assert.ok(api);
+  const html = api.renderTaxViews(debtFacts(), "bound", true);
+  assert.match(html, /Stored proposal[\s\S]*?<strong>17<\/strong>/);
+  assert.match(html, /spec design population/);
+  assert.match(html, /No physical target is admitted/);
+  assert.ok(!html.includes("target physical paths"));
+  assert.ok(!html.includes("Proposed physical target"));
+  assert.ok(!html.includes("Stop at 17 only when 17 physical paths remain"));
+});
+test("R12 recorded move state and zero count delta do not invent landing custody", () => {
+  assert.ok(api);
+  const html = api.renderTaxViews(debtFacts(), "bound");
+  assert.ok(!html.includes("No feature moves were performed"));
+  assert.ok(html.includes("native-review-tokenization-move-2026-10-12"));
+  assert.ok(html.includes("approved-before-implementation"));
+  assert.match(html, /implementation location changed/);
+  assert.match(html, /180 → 180; count delta 0/);
+  assert.ok(html.includes("Landing commit not recorded"));
+});
 test("one facts file projects six views and every original move, with no authored HTML input", () => {
   assert.ok(api, "tax view projector is missing");
   const manifest = {
