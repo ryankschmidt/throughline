@@ -1,0 +1,35 @@
+{
+  "schema": "throughline.upstream-tax-approval.v1",
+  "requested_by": "worker-upweb-4d10040d",
+  "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+  "request_reason": "Desktop optimizer setting belongs in Settings. No owned retained upstream mount can be restored without dropping menu, submission, undo, usage, paste or public-export behavior.",
+  "approval_reason": "Lead10:12 conveys Next-Gen approval for ONLY settings.general.tsx: one import and one fragment mounting fork-owned SettingsVoiceOptimizationSection. Approval file must be committed before the edit; behavior stays fork-owned; K11 fields required.",
+  "source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Settings-Mount-Lead-Approval.txt",
+  "source_sha256": "8450355fdd18cfb1842de7b3dd37599890a1052e036508dddabdaa5d19afb45a",
+  "source_record": {
+    "transcript": "/Users/Admin/.codex/sessions/2026/10/10/rollout-2026-10-10T16-25-36-01a12822-dddf-7f63-9e4f-4306244fdbe7.jsonl",
+    "id": "msg_01a13640-6e23-7bf2-8bd0-d2d4e930cb45",
+    "timestamp": "2026-10-13T17:12:34.595Z",
+    "line": 9069,
+    "actor": "lead-orchestrator, not Ryan"
+  },
+  "baseline_fork": "6ccf9f37998d9965b79aec684b68b90d30a7e96c",
+  "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+  "baseline_count": 179,
+  "baseline_count_basis": "Measured rename-aware physical edited-path count at baseline_fork and actual approval parent; prior authorized ceiling182 is separate, not a measured baseline; lead ceiling183 remains operator_authorized_ceiling. Only this one path receives one credit.",
+  "max_count": 180,
+  "paths": ["apps/web/src/routes/settings.general.tsx"],
+  "permitted_changes": [
+    "one import of fork-owned SettingsVoiceOptimizationSection",
+    "one fragment retaining GeneralSettingsPanel and mounting the fork section"
+  ],
+  "conditions": [
+    "approval file committed alone BEFORE route edit",
+    "behavior entirely fork-owned",
+    "K11 ledger fields present",
+    "no production install/restart"
+  ],
+  "approved_at": "2026-10-13T17:12:34.595Z",
+  "prior_authorized_ceiling": 182,
+  "operator_authorized_ceiling": 183
+}
