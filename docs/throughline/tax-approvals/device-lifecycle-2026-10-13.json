@@ -1,0 +1,14 @@
+{
+  "schema": "throughline.upstream-tax-approval.v1",
+  "requested_by": "worker-composer-053ab44e",
+  "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+  "request_reason": "One retained internal mount delegates daemon spawn environment and cached/existing daemon endpoint reads to the fork-owned lifecycle adapter; those decisions live inside the stock closure.",
+  "approval_reason": "Lead approved the internal-mount alternative for LocalDeviceHost.ts only, stock tests unchanged, with advance approval committed alone and K11 ledger fields before the edit. Theme screen code and composer merge remain held.",
+  "source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/D10-Advance-Growth-Approval-20261013.txt",
+  "baseline_fork": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
+  "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+  "baseline_count": 180,
+  "max_count": 181,
+  "paths": ["apps/server/src/device/LocalDeviceHost.ts"],
+  "approved_at": "2026-10-13T09:21:00Z"
+}
