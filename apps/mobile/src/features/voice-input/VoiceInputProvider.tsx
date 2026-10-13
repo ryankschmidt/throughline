@@ -38,6 +38,7 @@ import {
   type VoiceInputState,
 } from "@t3tools/client-runtime/voice-input";
 import { createLazyVoiceRecorder, type LazyVoiceRecorder } from "./lazyVoiceRecorder";
+import { createAndroidRecordingSession } from "../../throughline/phone-parity/recordingAudioSession";
 import { normalizeVoiceInputDecibels, VOICE_WAVEFORM_SAMPLE_COUNT } from "./voiceInputMetering";
 import { VoiceInputSession } from "./voiceInputSession";
 
@@ -85,6 +86,16 @@ async function configureVoiceRecordingAudio(): Promise<void> {
   }
 }
 
+const recordingAudioSession = createAndroidRecordingSession(
+  Platform.OS,
+  {
+    options: VOICE_RECORDING_OPTIONS,
+    configure: configureVoiceRecordingAudio,
+    release: releaseVoiceRecordingAudio,
+  },
+  { setIsAudioActiveAsync },
+);
+
 const VoiceInputContext = createContext<ReturnType<typeof useVoiceInputRuntime> | null>(null);
 
 export function VoiceInputProvider({ children }: { readonly children: ReactNode }) {
@@ -129,7 +140,7 @@ function useVoiceInputRuntime() {
   if (!sessionRef.current || !recorderRef.current) {
     // The native recorder is created when dictation starts, not on app launch.
     const recorder = createLazyVoiceRecorder({
-      create: () => new AudioModule.AudioRecorder(VOICE_RECORDING_OPTIONS),
+      create: () => new AudioModule.AudioRecorder(recordingAudioSession.options),
       onStatus: (status: RecordingStatus) => {
         sessionRef.current?.controller.handleRecorderStatus({
           isFinished: status.isFinished,
@@ -162,8 +173,8 @@ function useVoiceInputRuntime() {
         const permission = await requestRecordingPermissionsAsync();
         return { granted: permission.granted, canAskAgain: permission.canAskAgain };
       },
-      configureRecording: configureVoiceRecordingAudio,
-      releaseRecording: releaseVoiceRecordingAudio,
+      configureRecording: recordingAudioSession.configure,
+      releaseRecording: recordingAudioSession.release,
       deleteRecording: (uri) => new File(uri).delete(),
       onStateChange: (nextState) =>
         setState({

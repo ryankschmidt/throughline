@@ -9,7 +9,7 @@
   },
   "merge_base": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
   "counts": {
-    "upstream_edit": 179,
+    "upstream_edit": 180,
     "upstream_removed": 0,
     "fork_added": 241,
     "fork_namespace": 147
@@ -29088,6 +29088,36 @@
       "contract_inspection": "Internal launch environment and ensureAgentReady cache inspected; use fork declaredDaemonEnvironment/liveDaemonEndpoint, leave public service contract and stock tests unchanged.",
       "decision": "keep",
       "approved_change_ids": ["device-lifecycle-mount-2026-10-13"]
+    },
+    {
+      "path": "apps/mobile/src/features/voice-input/VoiceInputProvider.tsx",
+      "class": "upstream-edit",
+      "reason": "Measured controller-first Android mode is overwritten by provider setup before native recording; delegate Android-only route-neutral setup/release and mono capture to the fork helper.",
+      "reason_source": "authored",
+      "reason_author": "worker-composer-053ab44e",
+      "feature": "Android native dictation recording session",
+      "seam_side": "upstream-mount",
+      "decision": "keep",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Provider owns configure/release closures and flattened ExpoAudio recording options.",
+        "Android guard returns original iOS options and callback identities unchanged."
+      ],
+      "contract_inspection": "One fork session factory call; original iOS callback bodies and options unchanged; delegated three references for options/configure/release.",
+      "conflict_rule": "Retain original iOS functions and minimize to one session factory call plus delegated constructor/dependency references.",
+      "conflict_rule_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Written-Approval.txt",
+      "conflict_rule_inferred": false,
+      "marker": false,
+      "mount_lines": 1,
+      "mount_measurement": "One createAndroidRecordingSession call; one import; three delegated existing references.",
+      "expires_when": "upstream adopts the Android forced-speaker recording fix",
+      "approval_file": "docs/throughline/tax-approvals/android-recording-session-2026-10-13.json",
+      "evidence": {
+        "before_fork": "cef06b19c9da7ee54539a4e614cf51f27b967e6e",
+        "native_reset": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Controller-First-Mode-Reset.json",
+        "upstream_offer": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Android-Recording-Upstream-Offer.patch"
+      },
+      "disposition": "retain-minimized"
     }
   ],
   "upstream_changes": [
@@ -33486,7 +33516,8 @@
     "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
     "approved_growth_files": [
       "docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json",
-      "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json"
+      "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json",
+      "docs/throughline/tax-approvals/android-recording-session-2026-10-13.json"
     ],
     "count_history": [
       {
@@ -33527,6 +33558,14 @@
         "count": 179,
         "staged": true,
         "label": "R9 reviewed development readers restore two manifests; actual approval parent; rename-aware count179"
+      },
+      {
+        "fork": "cef06b19c9da7ee54539a4e614cf51f27b967e6e",
+        "upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+        "count": 180,
+        "staged": true,
+        "label": "Approved one Android recording-session provider mount; own physical parent179; operator aggregate ceiling184 is separate",
+        "approval_file": "docs/throughline/tax-approvals/android-recording-session-2026-10-13.json"
       }
     ],
     "proposed_retained_mounts": [
@@ -36593,6 +36632,33 @@
         "The app uses com.google.android.as for offline speech recognition and Android package visibility must declare that service."
       ],
       "before_fork": "c3ae20ea1a4e6a856988ea74df518ad6814239b2"
+    },
+    {
+      "id": "android-recording-session-2026-10-13",
+      "state": "approved-before-implementation",
+      "recorded_at": "2026-10-13T20:24:35.147Z",
+      "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Written-Approval.txt",
+      "approval_file": "docs/throughline/tax-approvals/android-recording-session-2026-10-13.json",
+      "approval_commit": "cef06b19c9da7ee54539a4e614cf51f27b967e6e",
+      "scope_paths": ["apps/mobile/src/features/voice-input/VoiceInputProvider.tsx"],
+      "reason": "Measured controller-first Android mode is overwritten by provider setup before native recording; delegate Android-only route-neutral setup/release and mono capture to the fork helper.",
+      "reason_author": "worker-composer-053ab44e",
+      "feature": "Android native dictation recording session",
+      "seam_side": "upstream-mount",
+      "decision": "keep",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Provider owns configure/release closures and flattened ExpoAudio recording options.",
+        "Android guard returns original iOS options and callback identities unchanged."
+      ],
+      "conflict_rule": "Retain original iOS functions and minimize to one session factory call plus delegated constructor/dependency references.",
+      "expires_when": "upstream adopts the Android forced-speaker recording fix",
+      "operator_authorized_ceiling": 184,
+      "physical_author_parent_count": 179,
+      "own_credit": 1,
+      "upstream_offer": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Android-Recording-Upstream-Offer.patch",
+      "disposition": "retain-minimized"
     }
   ]
 }
