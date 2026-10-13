@@ -114,10 +114,12 @@ test("one facts file projects six views and every original move, with no authore
   assert.ok(html.includes("fork/two.ts"));
   assert.ok(html.includes("12 baseline changed lines"));
   assert.ok(html.includes("1234"));
+  const firstEntry = manifest.entries[0];
+  assert.ok(firstEntry);
   const escaped = api.renderTaxViews(
     {
       ...manifest,
-      entries: [{ ...manifest.entries[0], reason: "</script><script>alert(1)</script>" }],
+      entries: [{ ...firstEntry, reason: "</script><script>alert(1)</script>" }],
     },
     "a",
   );

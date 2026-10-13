@@ -1,8 +1,15 @@
 // Completes the same bounded source-measurement packet without rerunning W1/W2.
-import { readFileSync, writeFileSync } from "node:fs";
-import { createHash } from "node:crypto";
-import { join, posix } from "node:path";
-import { spawnSync } from "node:child_process";
+import {
+  capture,
+  hash,
+  join,
+  posix,
+  readBytes,
+  readText,
+  write,
+  now,
+  log,
+} from "./measurement-runtime.ts";
 import ts from "../../../node_modules/.pnpm-upmerge-main/typescript@6.0.3/node_modules/typescript/lib/typescript.js";
 import { git } from "./repo-binding.ts";
 import { nameStatuses } from "./classify.ts";
@@ -26,11 +33,10 @@ const root = "/Users/Admin/throughline",
   home =
     "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-tax-design";
 const output = join(home, "Worker-Seam-Return-01.json"),
-  j = JSON.parse(readFileSync(output, "utf8")) as Packet;
+  j = JSON.parse(await readText(output)) as Packet;
 const head = j.fork_head,
   pin = j.upstream_pin,
   source = (p: string, sha = head) => git(root, "show", `${sha}:${p}`);
-const hash = (b: string | Buffer) => createHash("sha256").update(b).digest("hex");
 const evidence = (path: string, start: number, end: number) => ({
   path: join(root, path),
   commit: head,
@@ -46,13 +52,13 @@ const follow = (path: string) =>
   git(root, "log", "--follow", "--format=%H %s", "-n", "4", pin, "--", path).trim();
 for (const c of j.W2.hook_cases)
   c.refusal =
-    readFileSync(c.stderr_path, "utf8")
+    (await readText(c.stderr_path))
       .split("\n")
       .find((line) => /^Error: UPSTREAM_TAX_REFUSED:/.test(line)) ?? c.refusal;
 j.W2.command_contract_evidence = {
   path: "/Users/Admin/core-root/src/tools/throughline-ship/dist/upstream-tax.js",
   sha256: hash(
-    readFileSync("/Users/Admin/core-root/src/tools/throughline-ship/dist/upstream-tax.js"),
+    await readBytes("/Users/Admin/core-root/src/tools/throughline-ship/dist/upstream-tax.js"),
   ),
   approval_path_gate_lines: [59, 60],
   baseline_history_gate_lines: [75, 76],
@@ -60,19 +66,13 @@ j.W2.command_contract_evidence = {
 };
 j.W2.ledger_write_state =
   "Written only to the working ledger; not staged or committed. Canonical index unchanged. This ordered JSON shape does not pass the currently installed policy and is not enforcement-ready.";
-j.W2.reason_copy_check = (
-  JSON.parse(readFileSync(join(root, "throughline-seam.json"), "utf8")) as {
-    tax_policy: { approved_growth_files: { path: string; reason: string }[] };
-    entries: { path: string; reason: string }[];
-  }
-).tax_policy.approved_growth_files.map((g) => ({
+const reasonLedger = JSON.parse(await readText(join(root, "throughline-seam.json"))) as {
+  tax_policy: { approved_growth_files: { path: string; reason: string }[] };
+  entries: { path: string; reason: string }[];
+};
+j.W2.reason_copy_check = reasonLedger.tax_policy.approved_growth_files.map((g) => ({
   path: g.path,
-  byte_exact_reason:
-    (
-      JSON.parse(readFileSync(join(root, "throughline-seam.json"), "utf8")) as {
-        entries: { path: string; reason: string }[];
-      }
-    ).entries.find((e) => e.path === g.path)?.reason === g.reason,
+  byte_exact_reason: reasonLedger.entries.find((e) => e.path === g.path)?.reason === g.reason,
 }));
 
 const successors: Record<
@@ -174,13 +174,11 @@ for (const row of j.W4.rows) {
     .filter((x) => x.startsWith("+") && !x.startsWith("+++"));
   row.changed_fork_lines_command = `/usr/bin/git diff --no-ext-diff --no-textconv --no-renames --unified=1 ${pin} ${head} -- ${path}`;
   const regex = "import[[:space:]]*\\(|[A-Za-z_$][A-Za-z0-9_$]*\\.[A-Za-z_$]";
-  const grep = spawnSync("grep", ["-nE", regex], {
+  const grep = await capture("grep", ["-nE", regex], {
     input: content,
-    encoding: "utf8",
-    maxBuffer: 67108864,
   });
   const grepPath = join(home, "Worker-Seam-Scan-" + path.replaceAll("/", "_") + "-01.txt");
-  writeFileSync(grepPath, grep.stdout ?? "");
+  await write(grepPath, grep.stdout ?? "");
   row.grep_scan = {
     command: `/usr/bin/git show ${head}:${path} | grep -nE '${regex}'`,
     exit_code: grep.status,
@@ -561,15 +559,15 @@ j.W7 = {
     "No HTTP/MCP-to-decorator integrated refusal run; no installed/native/provider acceptance. The planned generic admission decorator is not mounted by the source quote.",
   ],
 };
-j.completed_at = new Date().toISOString();
+j.completed_at = now();
 j.final_head = git(root, "rev-parse", "HEAD").trim();
-j.ledger_sha256 = hash(readFileSync(join(root, "throughline-seam.json")));
+j.ledger_sha256 = hash(await readBytes(join(root, "throughline-seam.json")));
 j.measurement_instruments = [
   {
     path: join(root, "scripts/throughline/seam/shepherd-measure.ts"),
-    sha256: hash(readFileSync(join(root, "scripts/throughline/seam/shepherd-measure.ts"))),
+    sha256: hash(await readBytes(join(root, "scripts/throughline/seam/shepherd-measure.ts"))),
   },
-  { path: import.meta.filename, sha256: hash(readFileSync(import.meta.filename)) },
+  { path: import.meta.filename, sha256: hash(await readBytes(import.meta.filename)) },
 ];
 j.typecheck = {
   command:
@@ -601,8 +599,8 @@ j.proactive_errors = [
   "TS7 root module exports version metadata, not the former AST API: first instrument typecheck failed. Reused the already-installed TS6 AST module; no dependencies installed. Historical diagnostics preserved.",
   "Initial hook refusal parser matched the printed throw-source line, not the Error line. Corrected from closed logs without any hook rerun.",
 ];
-writeFileSync(output, JSON.stringify(j, null, 2) + "\n");
-console.log(
+await write(output, JSON.stringify(j, null, 2) + "\n");
+await log(
   JSON.stringify(
     {
       output,

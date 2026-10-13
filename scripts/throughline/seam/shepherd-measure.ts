@@ -1,8 +1,15 @@
 // Evidence-only worker measurement. No product moves, hook edits or generated views.
-import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
-import { join, posix } from "node:path";
-import { execFileSync, spawnSync } from "node:child_process";
+import {
+  capture,
+  hash,
+  join,
+  posix,
+  readBytes,
+  readText,
+  write,
+  now,
+  log,
+} from "./measurement-runtime.ts";
 // Inspection uses the already-installed TS6 AST API; TS7's root exports version only.
 // No package install or global compiler/model change is performed.
 import ts from "../../../node_modules/.pnpm-upmerge-main/typescript@6.0.3/node_modules/typescript/lib/typescript.js";
@@ -38,10 +45,9 @@ const upstream = "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795";
 const baseline = "e735392d5a4a9b91294f5ba0c4511621b7ae706f";
 const command =
   "/Users/Admin/.nvm/versions/node/v24.13.1/bin/node scripts/throughline/seam/shepherd-measure.ts";
-const started = new Date().toISOString();
-const bytes = readFileSync(join(root, "throughline-seam.json"));
-const manifest = JSON.parse(bytes.toString()) as Manifest;
-const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
+const started = now();
+const bytes = await readBytes(join(root, "throughline-seam.json"));
+const manifest = JSON.parse(new TextDecoder().decode(bytes)) as Manifest;
 const source = (path: string, ref = head) => git(root, "show", `${ref}:${path}`);
 const exists = (path: string, ref = head) => {
   try {
@@ -86,7 +92,7 @@ const originalKeep = manifest.entries.filter(
 const added = tax.filter((x) => !previousTax.includes(x)),
   removed = previousTax.filter((x) => !tax.includes(x));
 if (manifest.upstream.sha !== upstream) throw Error("UPSTREAM_PIN_MISMATCH");
-writeFileSync(join(home, "Worker-Seam-Ledger-Before-01.json"), bytes, { flag: "wx" });
+await write(join(home, "Worker-Seam-Ledger-Before-01.json"), bytes, { flag: "wx" });
 const prior = new Map(manifest.entries.map((e) => [e.path, e]));
 manifest.entries = [...files]
   .sort(([a], [b]) => a.localeCompare(b))
@@ -152,7 +158,7 @@ manifest.tax_policy.baseline_fork = baseline;
 manifest.tax_policy.approved_growth_files = growth.map(
   ({ evidence_command: _e, ...entry }) => entry,
 );
-writeFileSync(join(root, "throughline-seam.json"), JSON.stringify(manifest, null, 2) + "\n");
+await write(join(root, "throughline-seam.json"), JSON.stringify(manifest, null, 2) + "\n");
 
 const node = "/Users/Admin/.nvm/versions/node/v24.13.1/bin/node";
 const indexes: {
@@ -178,24 +184,22 @@ for (const name of ["good", "bad-reason", "fourth-edit"]) {
     PATH: "/Users/Admin/.nvm/versions/node/v24.13.1/bin:" + process.env.PATH,
     GIT_INDEX_FILE: indexPath,
   };
-  const igit = (...args: string[]) =>
-    execFileSync("/usr/bin/git", ["-C", root, ...args], {
-      env,
-      encoding: "utf8",
-      maxBuffer: 67108864,
-    });
-  igit("read-tree", head);
+  const igit = async (...args: string[]) => {
+    const result = await capture("/usr/bin/git", ["-C", root, ...args], { env });
+    if (result.status !== 0) throw Error("git fixture command refused: " + result.stderr);
+    return result.stdout;
+  };
+  await igit("read-tree", head);
   const candidate = structuredClone(manifest);
   if (name === "bad-reason") candidate.entries.find((x) => x.path === growthPaths[0])!.reason = "";
   if (name === "fourth-edit") {
     const value =
       source(fourth) +
       "\n// synthetic unapproved fourth-edit fixture; never written to a stock file\n";
-    const oid = execFileSync("/usr/bin/git", ["-C", root, "hash-object", "-w", "--stdin"], {
-      input: value,
-      encoding: "utf8",
-    }).trim();
-    igit("update-index", "--add", "--cacheinfo", `100644,${oid},${fourth}`);
+    const oid = (
+      await capture("/usr/bin/git", ["-C", root, "hash-object", "-w", "--stdin"], { input: value })
+    ).stdout.trim();
+    await igit("update-index", "--add", "--cacheinfo", `100644,${oid},${fourth}`);
     const template = candidate.entries.find((x) => x.path === growthPaths[0])!;
     candidate.entries.push({
       ...structuredClone(template),
@@ -204,22 +208,21 @@ for (const name of ["good", "bad-reason", "fourth-edit"]) {
     });
     candidate.counts.upstream_edit++;
   }
-  const oid = execFileSync("/usr/bin/git", ["-C", root, "hash-object", "-w", "--stdin"], {
-    input: JSON.stringify(candidate, null, 2) + "\n",
-    encoding: "utf8",
-  }).trim();
-  igit("update-index", "--add", "--cacheinfo", `100644,${oid},throughline-seam.json`);
-  const run = spawnSync("/bin/sh", [".vite-hooks/pre-commit"], {
+  const oid = (
+    await capture("/usr/bin/git", ["-C", root, "hash-object", "-w", "--stdin"], {
+      input: JSON.stringify(candidate, null, 2) + "\n",
+    })
+  ).stdout.trim();
+  await igit("update-index", "--add", "--cacheinfo", `100644,${oid},throughline-seam.json`);
+  const run = await capture("/bin/sh", [".vite-hooks/pre-commit"], {
     cwd: root,
     env,
-    encoding: "utf8",
-    maxBuffer: 67108864,
     timeout: 60000,
   });
   const stdoutPath = join(home, `Worker-Seam-Hook-${name}-01.stdout.txt`),
     stderrPath = join(home, `Worker-Seam-Hook-${name}-01.stderr.txt`);
-  writeFileSync(stdoutPath, run.stdout ?? "");
-  writeFileSync(stderrPath, run.stderr ?? "");
+  await write(stdoutPath, run.stdout ?? "");
+  await write(stderrPath, run.stderr ?? "");
   const combined = (run.stdout ?? "") + (run.stderr ?? "");
   indexes.push({
     name,
@@ -421,7 +424,7 @@ const dependencyDiffs = metadataPaths.map((path) => {
 });
 const result = {
   schema: "throughline.worker-seam-return.v1",
-  produced_at: new Date().toISOString(),
+  produced_at: now(),
   started_at: started,
   fork_head: head,
   upstream_pin: upstream,
@@ -441,7 +444,7 @@ const result = {
     counts: manifest.counts,
     history_row: manifest.tax_policy.count_history.at(-1),
     original_ledger_sha256: hash(bytes),
-    refreshed_ledger_sha256: hash(readFileSync(join(root, "throughline-seam.json"))),
+    refreshed_ledger_sha256: hash(await readBytes(join(root, "throughline-seam.json"))),
     not_measured: ["No accepted feature reduction or rendered-view refresh."],
   },
   W2: {
@@ -506,8 +509,8 @@ const result = {
   unchanged_sources:
     "No stock file written except throughline-seam.json; alternate-index blobs only for synthetic source fixture. No hook edit, move, view regeneration, install, provider turn or app control.",
 };
-writeFileSync(output, JSON.stringify(result, null, 2) + "\n");
-console.log(
+await write(output, JSON.stringify(result, null, 2) + "\n");
+await log(
   JSON.stringify(
     {
       output,
