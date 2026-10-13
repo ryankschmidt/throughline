@@ -6,9 +6,9 @@ import * as NodeCrypto from "node:crypto";
 import * as NodeChildProcess from "node:child_process";
 import * as NodeSqlite from "node:sqlite";
 import { it, expect } from "vite-plus/test";
+import { start, reportEvidence, type Server } from "./AttachmentPreservationServer.testkit.ts";
 
 const repo = NodePath.resolve(import.meta.dirname, "../../../../..");
-const bundle = NodePath.join(repo, "apps/server/dist/bin.mjs");
 const image = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6eT8AAAAASUVORK5CYII=",
   "base64",
@@ -18,105 +18,6 @@ const providerId = "attachment-provider";
 const time = "2026-10-11T00:00:00.000Z";
 const modelSelection = { instanceId: "codex", model: "gpt-6.1-sol" };
 const sha = (bytes: Uint8Array) => NodeCrypto.createHash("sha256").update(bytes).digest("hex");
-
-interface Server {
-  request: (endpoint: string, body?: unknown) => Promise<Response>;
-  stop: () => Promise<void>;
-}
-
-async function start(root: string): Promise<Server> {
-  const token = NodeCrypto.randomBytes(32).toString("hex");
-  const cookie = `t3_dev_session_${sha(Buffer.from(token))}=${token}`;
-  // Port zero is not accepted by the CLI. Reserve a kernel-selected port first.
-  const net = await import("node:net");
-  const reservation = net.createServer();
-  await new Promise<void>((resolve) => reservation.listen(0, "127.0.0.1", resolve));
-  const address = reservation.address() as import("node:net").AddressInfo;
-  const port = address.port;
-  await new Promise<void>((resolve, reject) =>
-    reservation.close((error) => (error ? reject(error) : resolve())),
-  );
-  const origin = `http://127.0.0.1:${port}`;
-  const home = NodePath.join(root, "home");
-  NodeFS.mkdirSync(home, { recursive: true });
-  const child = NodeChildProcess.spawn(
-    process.execPath,
-    [
-      bundle,
-      "--mode",
-      "web",
-      "--host",
-      "127.0.0.1",
-      "--port",
-      String(port),
-      "--base-dir",
-      NodePath.join(root, "state"),
-      "--dev-url",
-      origin,
-      "--no-browser",
-      "--log-level",
-      "debug",
-      root,
-    ],
-    {
-      cwd: root,
-      env: { PATH: process.env.PATH, HOME: home, T3CODE_DEV_AUTH_TOKEN: token },
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
-  let logs = "";
-  const ready = new Promise<void>((resolve, reject) => {
-    const deadline = setTimeout(
-      () => reject(new Error("Scratch startup deadline exceeded")),
-      30_000,
-    );
-    const output = (data: Buffer) => {
-      const text = data
-        .toString()
-        .split(token)
-        .join("[scratch credential redacted]")
-        .replace(/(pairingUrl:\s*)\S+/g, "$1[redacted]");
-      logs += text;
-      if (logs.includes("startup phase: complete")) {
-        clearTimeout(deadline);
-        resolve();
-      }
-    };
-    child.stdout!.on("data", output);
-    child.stderr!.on("data", output);
-    child.once("error", (error) => {
-      clearTimeout(deadline);
-      reject(error);
-    });
-    child.once("exit", (code) => {
-      clearTimeout(deadline);
-      reject(new Error(`Scratch server exited ${code}: ${logs.slice(-2000)}`));
-    });
-  });
-  const stop = async () => {
-    if (child.exitCode === null && child.signalCode === null) {
-      const exited = new Promise<void>((resolve) => child.once("exit", () => resolve()));
-      child.kill("SIGTERM");
-      await exited;
-    }
-    NodeFS.writeFileSync(NodePath.join(root, `server-${child.pid}.log`), logs);
-  };
-  try {
-    await ready;
-  } catch (error) {
-    await stop();
-    throw error;
-  }
-  return {
-    stop,
-    request: (endpoint, body) =>
-      fetch(origin + endpoint, {
-        method: body === undefined ? "GET" : "POST",
-        headers: { cookie, "content-type": "application/json" },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      }),
-  };
-}
 
 function database(root: string) {
   const file = NodePath.join(root, "state/userdata/statev2.sqlite");
@@ -325,6 +226,9 @@ it("real scratch HTTP rewind and server restart keep image bytes, including unre
       const sequence = db
         .prepare("SELECT coalesce(max(sequence),0) AS sequence FROM orchestration_v2_events")
         .get()!.sequence;
+      if (typeof sequence !== "number" || !Number.isSafeInteger(sequence) || sequence < 0) {
+        throw new Error("Scratch event sequence must be a nonnegative safe integer");
+      }
       db.prepare(
         "INSERT INTO throughline_rewind_cut(thread_id,provider_thread_id,native_session_id,resume_at,target_message_id,target_run_ordinal,source_tip_run_ordinal,source_tip_sequence,recovery_state,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
       ).run(
@@ -393,6 +297,6 @@ it("real scratch HTTP rewind and server restart keep image bytes, including unre
         2,
       ),
     );
-    console.log(`Attachment preservation evidence: ${NodePath.join(root, "Observation.json")}`);
+    await reportEvidence(NodePath.join(root, "Observation.json"));
   }
 }, 120_000);
