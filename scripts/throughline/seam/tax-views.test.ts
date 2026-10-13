@@ -186,3 +186,50 @@ test("graph refuses cycles and stale lineage, and binary sizing is not zero", as
   assert.ok(html.includes("Copy agent context packet"));
   assert.ok(html.includes("current-state-operating-map"));
 });
+
+test("R13 hero requires derived admission values and labels seventeen only as a stored proposal", async () => {
+  const { wrapTaxMap } = await import("./tax-map.ts");
+  assert.throws(
+    () => wrapTaxMap("<html><body></body></html>", debtFacts(), "bound"),
+    /TAX_MAP_POLICY_HERO_REQUIRED/,
+  );
+  const html = api!.renderTaxViews(debtFacts(), "bound"),
+    hero = html.match(/<header class="hero">[\s\S]*?<\/header>/)?.[0] ?? "";
+  assert.match(hero, /Effective ceiling[\s\S]*?<strong>180<\/strong>/);
+  assert.match(hero, /baseline 177 \+ 3 acknowledged debts \+ 0 validated credit/);
+  assert.match(hero, /Stored proposal[\s\S]*?<strong>17<\/strong>/);
+  assert.match(hero, /no physical target admitted/);
+});
+test("R13 retain-minimized destinations stay on the stock path", () => {
+  const facts = debtFacts(),
+    manifest = {
+      ...facts,
+      entries: facts.entries.map((e) => ({
+        ...e,
+        plan: { ...e.plan, destination: "fork/" + e.path },
+      })),
+    };
+  const html = api!.renderTaxViews(manifest, "bound", true);
+  assert.match(html, /stays on the stock path, retained-minimized/);
+  const row = [...html.matchAll(/<tr>[\s\S]*?<\/tr>/g)]
+    .map((x) => x[0])
+    .find((x) => x.includes("guard.test.ts") && x.includes("baseline changed lines"));
+  assert.ok(row);
+  assert.ok(!row.includes("fork/guard.test.ts"));
+});
+test("R13 recorded moves table consumes landed state and landing commit without promoting other rows", () => {
+  const facts = debtFacts(),
+    commit = "3094671b25d28be5ff704c6d419e98ffcb283bf7";
+  const manifest = {
+    ...facts,
+    approved_changes: facts.approved_changes.map((row) => ({
+      ...row,
+      state: "landed",
+      landing_commit: commit,
+    })),
+  };
+  const html = api!.renderTaxViews(manifest, "bound", true);
+  const section = html.match(/<section[^>]*id="recorded-moves">[\s\S]*?<\/section>/)?.[0] ?? "";
+  assert.match(section, /<td>landed<\/td>/);
+  assert.ok(section.includes(commit));
+});

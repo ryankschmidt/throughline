@@ -49,6 +49,7 @@ type Facts = {
     state: string;
     scope_paths: string[];
     landing_commit?: string;
+    per_path_dispositions?: { path: string; disposition: string }[];
   }[];
 };
 const seamLabel = (s: string) =>
@@ -101,6 +102,17 @@ export function renderTaxViews(
   const original = tax.filter((e) => e.plan?.status === "open-original-160"),
     extra = tax.filter((e) => e.plan?.status === "open-post-merge-3");
   const moves = tax.filter((e) => e.decision !== "keep");
+  const dispositions = new Map([
+    ...(m.tax_policy.acknowledged_debt ?? []).map((row) => [row.path, row.disposition] as const),
+    ...(m.approved_changes ?? []).flatMap((row) =>
+      (row.per_path_dispositions ?? []).map((item) => [item.path, item.disposition] as const),
+    ),
+  ]);
+  const destination = (e: Entry) =>
+    dispositions.get(e.path) === "retain-minimized"
+      ? "stays on the stock path, retained-minimized"
+      : (e.plan?.destination ??
+        (e.class === "fork-namespace" ? e.path : "Relocation destination not assigned"));
   const count = tax.length,
     baseline = m.tax_policy.baseline_count,
     debt = m.tax_policy.acknowledged_debt ?? [],
@@ -174,7 +186,7 @@ export function renderTaxViews(
     m.entries.map((e) => [
       escape(e.feature),
       source(e),
-      `<code>${escape(e.plan?.destination ?? (e.class === "fork-namespace" ? e.path : "Relocation destination not assigned"))}</code><p>${escape(e.reason)}</p>`,
+      `<code>${escape(destination(e))}</code><p>${escape(e.reason)}</p>`,
     ]),
   );
   const max = Math.max(...m.tax_policy.count_history.map((x) => x.count), count, 1);
@@ -204,7 +216,7 @@ export function renderTaxViews(
           source(e),
           `<b>${escape(e.decision)}</b><p>${escape(e.plan?.action)}</p>${list(e.plan?.depends_on)}<p class="muted">Risk: ${escape(e.plan?.risk ?? "not assessed")} · ${escape(e.plan?.status)}</p>`,
           `${escape(current)}<p>${size?.binary ? "N/A text baseline" : `${n} baseline changed lines`} · ${size?.static_private_imports ?? 0} static private imports · ${size?.blob_bytes ?? "unmeasured"} recorded source bytes</p><p class="muted">Proxy only. ${escape(size?.basis)}</p>`,
-          `<code>${escape(e.plan?.destination)}</code>`,
+          `<code>${escape(destination(e))}</code>`,
         ];
       }),
     );
