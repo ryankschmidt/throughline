@@ -49,6 +49,7 @@ type Facts = {
     state: string;
     scope_paths: string[];
     landing_commit?: string;
+    revision?: { count_effect?: number };
     per_path_dispositions?: { path: string; disposition: string }[];
   }[];
 };
@@ -149,9 +150,11 @@ export function renderTaxViews(
           "first-move-landed-minimal-mount-retained",
       );
       const delta =
-        previousCount !== undefined && lastCount !== undefined
-          ? `${previousCount} → ${lastCount}; count delta ${lastCount - previousCount}`
-          : "Count delta not recorded";
+        row.revision?.count_effect !== undefined
+          ? `recorded count delta ${row.revision.count_effect}`
+          : previousCount !== undefined && lastCount !== undefined
+            ? `${previousCount} → ${lastCount}; count delta ${lastCount - previousCount}`
+            : "Count delta not recorded";
       return [
         escape(row.id),
         list(row.scope_paths),

@@ -233,3 +233,28 @@ test("R13 recorded moves table consumes landed state and landing commit without 
   assert.match(section, /<td>landed<\/td>/);
   assert.ok(section.includes(commit));
 });
+
+test("native move count custody does not borrow an unrelated later growth history row", () => {
+  const facts = debtFacts();
+  facts.entries[0]!.plan.status = "first-move-landed-minimal-mount-retained";
+  const manifest = {
+    ...facts,
+    tax_policy: {
+      ...facts.tax_policy,
+      count_history: [
+        ...facts.tax_policy.count_history,
+        { label: "later unrelated growth", count: 181 },
+      ],
+    },
+    approved_changes: facts.approved_changes.map((row) => ({
+      ...row,
+      state: "landed",
+      landing_commit: "3094671b25d28be5ff704c6d419e98ffcb283bf7",
+      revision: { count_effect: 0 },
+    })),
+  };
+  const html = api!.renderTaxViews(manifest, "bound", true),
+    section = html.match(/<section[^>]*id="recorded-moves">[\s\S]*?<\/section>/)?.[0] ?? "";
+  assert.ok(section.includes("count delta 0"));
+  assert.ok(!section.includes("count delta 1"));
+});
