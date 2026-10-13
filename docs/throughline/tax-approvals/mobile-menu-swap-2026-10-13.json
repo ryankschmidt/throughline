@@ -1,0 +1,14 @@
+{
+  "schema": "throughline.upstream-tax-swap-approval.v1",
+  "requested_by": "worker-upmobile-17b173ec",
+  "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+  "request_reason": "Replace phone list long-press menu with the fork-owned desktop action adapter while restoring the Android header hook slot.",
+  "approval_reason": "Lead9:29 approved exactly the paired zero-growth restore and list mount in one source+ledger commit; preserve excluded helpers and prove Android in-thread menu after restoration.",
+  "source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/lead-transfer/after-sixth-rewind/To-upmobile-Swap-Approved-Device-Args-20261013.txt",
+  "approved_at": "2026-10-13T16:29:00Z",
+  "baseline_fork": "b58bf4e62ba8ca8f87ddeff4736ec2e1ffad1af8",
+  "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+  "baseline_count": 182,
+  "restored_path": "apps/mobile/src/features/threads/useThreadHeaderOptions.android.ts",
+  "added_path": "apps/mobile/src/features/threads/thread-list-v2-items.tsx"
+}
