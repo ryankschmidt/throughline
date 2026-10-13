@@ -29092,7 +29092,7 @@
     {
       "path": "apps/mobile/src/features/voice-input/VoiceInputProvider.tsx",
       "class": "upstream-edit",
-      "reason": "Measured provider playback setup overwrites Android capture route; delegate Android communication capture, original normal-mode cleanup after stop, and explicit mono options to the fork helper.",
+      "reason": "Delegate Android communication capture, normal-mode cleanup, mono options and redundant sole-default microphone route protection to the fork recording-session helper; retain original iOS callbacks and explicit multi-input preference choice.",
       "reason_source": "authored",
       "reason_author": "worker-composer-053ab44e",
       "feature": "Android native dictation recording session",
@@ -29118,7 +29118,8 @@
         "upstream_offer": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Android-Recording-Upstream-Offer.patch"
       },
       "disposition": "retain-minimized",
-      "native_revision_evidence": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Native-F1.json"
+      "native_revision_evidence": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Native-F1.json",
+      "default_input_evidence": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Native-Selected-Input-Signal.json"
     }
   ],
   "upstream_changes": [
@@ -36643,7 +36644,7 @@
       "approval_file": "docs/throughline/tax-approvals/android-recording-session-2026-10-13.json",
       "approval_commit": "cef06b19c9da7ee54539a4e614cf51f27b967e6e",
       "scope_paths": ["apps/mobile/src/features/voice-input/VoiceInputProvider.tsx"],
-      "reason": "Measured provider playback setup overwrites Android capture route; delegate Android communication capture, original normal-mode cleanup after stop, and explicit mono options to the fork helper.",
+      "reason": "Delegate Android communication capture, normal-mode cleanup, mono options and redundant sole-default microphone route protection to the fork recording-session helper; retain original iOS callbacks and explicit multi-input preference choice.",
       "reason_author": "worker-composer-053ab44e",
       "feature": "Android native dictation recording session",
       "seam_side": "upstream-mount",
@@ -36660,7 +36661,8 @@
       "own_credit": 1,
       "upstream_offer": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Android-Recording-Upstream-Offer.patch",
       "disposition": "retain-minimized",
-      "native_revision_evidence": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Native-F1.json"
+      "native_revision_evidence": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Native-F1.json",
+      "default_input_evidence": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Native-Selected-Input-Signal.json"
     }
   ]
 }

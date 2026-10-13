@@ -1,7 +1,10 @@
+type RecordingInput = { readonly uid: string; readonly name: string; readonly type: string };
+
 type RecordingAudioSession<T> = {
   readonly options: T;
   readonly configure: () => Promise<void>;
   readonly release: () => Promise<void>;
+  readonly selectInput?: (inputs: ReadonlyArray<RecordingInput>) => RecordingInput | null;
 };
 
 /** Android communication capture clears the forced speaker route while recording. */
@@ -30,6 +33,14 @@ export function createAndroidRecordingSession<T extends { numberOfChannels: numb
   };
   return {
     options: { ...original.options, numberOfChannels: 1 },
+    selectInput: original.selectInput
+      ? (inputs) => {
+          const selected = original.selectInput!(inputs);
+          // Keep preference bookkeeping, but do not re-pin the sole default input.
+          // Actual Android capture went silent after that redundant native setInput.
+          return inputs.length === 1 && selected?.uid === inputs[0]?.uid ? null : selected;
+        }
+      : undefined,
     configure: async () => {
       try {
         // On Android this SDK flag sets communication mode and speakerphone OFF,

@@ -86,16 +86,6 @@ async function configureVoiceRecordingAudio(): Promise<void> {
   }
 }
 
-const recordingAudioSession = createAndroidRecordingSession(
-  Platform.OS,
-  {
-    options: VOICE_RECORDING_OPTIONS,
-    configure: configureVoiceRecordingAudio,
-    release: releaseVoiceRecordingAudio,
-  },
-  { setIsAudioActiveAsync, setAudioModeAsync },
-);
-
 const VoiceInputContext = createContext<ReturnType<typeof useVoiceInputRuntime> | null>(null);
 
 export function VoiceInputProvider({ children }: { readonly children: ReactNode }) {
@@ -138,6 +128,30 @@ function useVoiceInputRuntime() {
   const recorderRef = useRef<LazyVoiceRecorder<RecorderState> | null>(null);
 
   if (!sessionRef.current || !recorderRef.current) {
+    const recordingAudioSession = createAndroidRecordingSession(
+      Platform.OS,
+      {
+        options: VOICE_RECORDING_OPTIONS,
+        configure: configureVoiceRecordingAudio,
+        release: releaseVoiceRecordingAudio,
+        selectInput: (inputs) => {
+          const preferences = registry.get(mobilePreferencesAtom);
+          if (!AsyncResult.isSuccess(preferences)) return null;
+          const known = microphoneOrder(preferences.value.microphones);
+          const order = rememberMicrophones(known, inputs);
+          if (order !== known) {
+            registry.set(updateMobilePreferencesAtom, {
+              transform: (current) => ({
+                microphones: rememberMicrophones(microphoneOrder(current.microphones), inputs),
+              }),
+            });
+          }
+          return preferredMicrophoneInput(inputs, order);
+        },
+      },
+      { setIsAudioActiveAsync, setAudioModeAsync },
+    );
+
     // The native recorder is created when dictation starts, not on app launch.
     const recorder = createLazyVoiceRecorder({
       create: () => new AudioModule.AudioRecorder(recordingAudioSession.options),
@@ -150,20 +164,7 @@ function useVoiceInputRuntime() {
         });
       },
       // Read when recording starts so preference changes do not re-render every composer.
-      selectInput: (inputs) => {
-        const preferences = registry.get(mobilePreferencesAtom);
-        if (!AsyncResult.isSuccess(preferences)) return null;
-        const known = microphoneOrder(preferences.value.microphones);
-        const order = rememberMicrophones(known, inputs);
-        if (order !== known) {
-          registry.set(updateMobilePreferencesAtom, {
-            transform: (current) => ({
-              microphones: rememberMicrophones(microphoneOrder(current.microphones), inputs),
-            }),
-          });
-        }
-        return preferredMicrophoneInput(inputs, order);
-      },
+      selectInput: recordingAudioSession.selectInput,
     });
     recorderRef.current = recorder;
     sessionRef.current = new VoiceInputSession({
