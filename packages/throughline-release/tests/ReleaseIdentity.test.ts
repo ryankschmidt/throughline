@@ -8,9 +8,10 @@ import * as ChildProcess from "effect/process/ChildProcess";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
 const stamp = {
-  schema: "throughline.release-stamp.v1",
+  schema: "throughline.release-stamp.v2",
   version: "0.0.56",
   commit: "d18fc5d631ff64b5a121e614e409ea8356d0ab3b",
+  upstream_base_commit: "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
   cut_from: "main",
   stamped_at: "2026-10-13T11:00:00.000Z",
   stamped_by: "throughline-ship@0.4.26",
@@ -68,9 +69,13 @@ const fixture = (kind: "valid" | "missing" | "malformed" | "development") =>
           ? JSON.stringify({ ...stamp, stamped_by: "development:worker-upmerge-6716f643" })
           : kind === "valid"
             ? JSON.stringify(stamp)
-            : '{"schema":"throughline.release-stamp.v1","version":"0.0.0"}',
+            : '{"schema":"throughline.release-stamp.v2","version":"0.0.0"}',
       );
     yield* fs.symlink(path.join(root, "node_modules"), path.join(dir, "node_modules"));
+    yield* fs.symlink(
+      path.join(root, "packages/throughline-release/node_modules"),
+      path.join(dir, "packages/throughline-release/node_modules"),
+    );
     for (const surface of ["apps/web", "scripts"]) {
       yield* fs.makeDirectory(path.join(dir, surface), { recursive: true });
       yield* fs.symlink(

@@ -13,9 +13,10 @@ const Platform = Schema.Literals(platformNames);
 const Nonempty = Schema.String.check(Schema.isNonEmpty());
 const Version = Schema.String.check(Schema.isPattern(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/));
 const StampSchema = Schema.Struct({
-  schema: Schema.Literal("throughline.release-stamp.v1"),
+  schema: Schema.Literal("throughline.release-stamp.v2"),
   version: Version,
   commit: Schema.String.check(Schema.isPattern(/^[a-f0-9]{40}$/)),
+  upstream_base_commit: Schema.String.check(Schema.isPattern(/^(?!0{40}$)[a-f0-9]{40}$/)),
   cut_from: Schema.Literal("main"),
   stamped_at: Schema.String.check(
     Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/),

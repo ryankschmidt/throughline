@@ -7,6 +7,7 @@
     "schema",
     "version",
     "commit",
+    "upstream_base_commit",
     "cut_from",
     "stamped_at",
     "stamped_by",
@@ -15,7 +16,7 @@
   ],
   "properties": {
     "schema": {
-      "const": "throughline.release-stamp.v1"
+      "const": "throughline.release-stamp.v2"
     },
     "version": {
       "type": "string",
@@ -26,6 +27,11 @@
       "type": "string",
       "pattern": "^[a-f0-9]{40}$",
       "description": "Ship tool verifies main-line ancestry; reader validates format only."
+    },
+    "upstream_base_commit": {
+      "type": "string",
+      "pattern": "^(?!0{40}$)[a-f0-9]{40}$",
+      "description": "Required pinned upstream identity from tax_policy.pinned_upstream. The ship tool verifies merge-base agreement at cut and binds this value beside stamp_sha256 in the run ledger. The reader validates format only; it neither computes a merge-base nor decides readiness."
     },
     "cut_from": {
       "const": "main"

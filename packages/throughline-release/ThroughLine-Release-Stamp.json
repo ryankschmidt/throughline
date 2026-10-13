@@ -1,7 +1,8 @@
 {
-  "schema": "throughline.release-stamp.v1",
+  "schema": "throughline.release-stamp.v2",
   "version": "0.0.56",
   "commit": "d18fc5d631ff64b5a121e614e409ea8356d0ab3b",
+  "upstream_base_commit": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
   "cut_from": "main",
   "stamped_at": "2026-10-13T11:29:59.371Z",
   "stamped_by": "development:worker-upmerge-6716f643",
