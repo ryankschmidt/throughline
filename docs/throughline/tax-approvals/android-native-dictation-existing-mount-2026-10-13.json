@@ -1,0 +1,21 @@
+{
+  "schema": "throughline.upstream-existing-mount-approval.v1",
+  "id": "android-native-dictation-config-2026-10-13",
+  "scope_paths": ["apps/mobile/app.config.ts"],
+  "requested_by": "worker-composer-053ab44e",
+  "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+  "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Native-Config-Written-Lead-Approval-1130.txt",
+  "reason": "Lead11:30 approves only one explicit .ts import and withAndroidDictation(config) call, Android manifest/dictation permission only, zero growth; fork module owns behavior; iOS/plugins/R9 reader unchanged.",
+  "new_upstream_filenames": 0,
+  "recorded_at": "2026-10-13T18:30:30.917Z",
+  "author_candidate_recorded_at": "2026-10-13T17:50:00.363Z",
+  "approval_source_sha256": "a93a62405a65fd3a7de468122c17fcec851fec0d701df2ae8e4f4b8a6df6434f",
+  "approval_message_id": "82dc03ca-5e4a-48d1-b568-17ff7b13e527",
+  "approval_actor": "lead orchestrator, not Ryan",
+  "conditions": [
+    "approval saved alone before root app.config edit",
+    "root composed fixture graph validates before source landing",
+    "no new upstream path",
+    "no production install/restart or native acceptance"
+  ]
+}
