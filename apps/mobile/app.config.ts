@@ -1,3 +1,4 @@
+import { nativeDictationPlugins } from "./src/throughline/phone-parity/nativeDictationConfig";
 import * as NodeFS from "node:fs";
 import {
   readReleaseStamp,
@@ -418,7 +419,7 @@ const config: ExpoConfig = {
   web: {
     favicon: variant.assets.appIcon,
   },
-  plugins: [
+  plugins: nativeDictationPlugins([
     // ThroughLine fork: registered FIRST so its entitlements mod runs LAST (same-type mods run
     // last-registered-first) and strips push, Sign in with Apple, app groups, and associated
     // domains after every other plugin has added them. A free Personal Team cannot sign any of them.
@@ -571,7 +572,7 @@ const config: ExpoConfig = {
     "./plugins/withAndroidModernAlertDialog.cjs",
     "./plugins/withAndroidPredictiveBackCompat.cjs",
     "./plugins/withAndroidTabletOrientation.cjs",
-  ],
+  ]),
   extra: {
     appVariant: APP_VARIANT,
     // The ThroughLine version of this build — the same number the desktop and server report.
