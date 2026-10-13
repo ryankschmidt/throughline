@@ -1,0 +1,16 @@
+{
+  "schema": "throughline.release-stamp.v1",
+  "version": "0.0.56",
+  "commit": "d18fc5d631ff64b5a121e614e409ea8356d0ab3b",
+  "cut_from": "main",
+  "stamped_at": "2026-10-13T11:29:59.371Z",
+  "stamped_by": "development:worker-upmerge-6716f643",
+  "platforms": ["mac", "tower-desktop", "tower-headless", "iphone", "android"],
+  "deferred": [
+    {
+      "platform": "rpi",
+      "ruling": "Raspberry Pi paused, from Ryan: install nothing on the Raspberry Pi in this release.",
+      "source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/Ship-Pipeline-Tower-Builds.json#deferred.rpi.ruling"
+    }
+  ]
+}

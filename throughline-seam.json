@@ -9,7 +9,7 @@
   },
   "merge_base": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
   "counts": {
-    "upstream_edit": 181,
+    "upstream_edit": 179,
     "upstream_removed": 0,
     "fork_added": 241,
     "fork_namespace": 147
@@ -15696,92 +15696,6 @@
       }
     },
     {
-      "path": "apps/web/package.json",
-      "class": "upstream-edit",
-      "reason": "Keep this workspace on the same ThroughLine release as desktop, server and phone.",
-      "reason_source": "authored",
-      "imported_private_symbols": [],
-      "schema_assumptions": [
-        "Relocation assumption for Release identity: preserve existing exported input/output contracts, optional-field defaults and persisted IDs; validate at the feature slice, not by import compilation alone.",
-        "No schema declaration was found in the changed-line scan; this is not a claim of no runtime or transitive schema dependency."
-      ],
-      "contract_inspection": "Pinned Git diff and static-import scan; relative upstream-internal imports include type-only symbols. Dynamic imports, property access and transitive dependencies remain unmeasured.",
-      "conflict_rule": "Preserve the fork behavior represented by this changed path, adapt upstream APIs, and minimize the retained patch. Review both versions before proposing a file-specific resolution.",
-      "conflict_rule_source": "legacy",
-      "conflict_rule_inferred": true,
-      "marker": false,
-      "commits": [
-        "e735392d5a4a9b91294f5ba0c4511621b7ae706f merge: land reconciled upstream with explicit release failures",
-        "7b93767ce3d6e486e20075e769c08fc740c9ff41 merge: retain current fork specification before upstream landing",
-        "5f5ae4ac728cc8c2bdc6130d4dfc33a48ec76365 merge: reconcile upstream 5cbe82a870 device stream repair",
-        "1cb8a115562582b1e1f51124eceec53efa57c0ff merge: reconcile upstream bed923986f on preserve-base",
-        "b459489f8055975a5361d01de1793a8b6cd791ae merge: reconcile upstream 5f7294d452 on 0.0.60 preserve-base",
-        "a5429f8466f524910ae205b5f6dd4fb88ec42517 merge(release): inherit the verified installed-version source ancestry",
-        "ebedf4722dd9732b5afbace95f26d359c5a00c88 merge(release): include the independently checked sender and model repair batch",
-        "2a1cc95b1cce3e68a2bde3052938947855295db4 merge(release): retain accepted upgrade source above the installed release base",
-        "f030dbe5439fab3442b2b89078f2590a4995864d Stamp ThroughLine 0.0.56 across declared version surfaces",
-        "40b2705664b6dcf059bd357bfe60dc327c0009a3 merge: record already-folded ComsNet preservation history",
-        "09a5a203de6066ead00991bac2a90d2895ae025d merge: fold ThroughLine 0.0.51 and retain local workspace and Meridian repairs",
-        "09359517f651808b9f7b5f9cc91dea4b8a5b72c3 Stamp ThroughLine 0.0.51 across declared version surfaces",
-        "20b80ddf451272a739d2b99bf387ee99de07d971 Stamp ThroughLine 0.0.50 across declared version surfaces",
-        "1f767d508b019aeaa95c8f723b282f9e1a2f1af4 Merge pinned upstream d15210cd3da79f9a1a495a6309d912d76362a046 for ThroughLine 0.0.50",
-        "a08ad4388148846628c4ec8dce5b0989162fe7d4 Stamp ThroughLine 0.0.49 across declared version surfaces",
-        "ec2eb31a813c373895e17d3bee0e3d151ae2f639 Merge pinned upstream de251fc2971a884cb5b1305ba4daf309dc8cccb0 for ThroughLine 0.0.49",
-        "5319c0a3697dfdb7ea11ba52f47f23d715495a08 Stamp ThroughLine 0.0.48 across declared version surfaces",
-        "0d288f84eafd02bad96abe4855874f1d1e844376 Merge pinned upstream e5a46d6c5d00b89afba5274a94d42428c8d79763 for ThroughLine 0.0.48",
-        "ea5e78a13ad47fed1196bfc28751a559577526ab Stamp ThroughLine 0.0.47 across declared version surfaces",
-        "52b952cfab5620418b8fa1b28aa9c105fcaf2ece Merge pinned upstream 91e53e501c9e7eb03f0ea4a5b72221d08eff9c5c for ThroughLine 0.0.47",
-        "ca709a07d0ba25359c9bc8a24b0686c68e1a4a67 chore(release): ThroughLine 0.0.46 on every version surface",
-        "c790ffeea219529f1d481d23187d6f63f8cc192a merge: upstream T3 Code sync 2026-09-12 (1,218 commits) onto fork main; conflicts resolved keeping the turn-start door and queued-turn logic; hook skipped once per lead ruling, vendored ignored path",
-        "19be48864e2702773b27922f644311a88793b3de merge upstream/main (a92161a05, 1,218 commits) into the ThroughLine fork, 2026-09-12",
-        "2164902aaf5ce7d5ff7a223bc2222b08b5bd4c32 Merge remote-tracking branch 'upstream/main' into claude/t3-upstream-sync-2026-08-18"
-      ],
-      "legacy_rules": [
-        {
-          "pattern": "apps/web/package.json",
-          "rule": "Preserve the fork behavior represented by this changed path, adapt upstream APIs, and minimize the retained patch. Review both versions before proposing a file-specific resolution.",
-          "inferred": true,
-          "sources": [
-            "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/ThroughLine-Charter.md",
-            "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/fork-tax-projector/fork-tax.fact.json"
-          ]
-        }
-      ],
-      "mount_lines": 1,
-      "mount_measurement": "Historical changed non-import lines, not a thin-mount admission pass.",
-      "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
-      "feature": "Release identity",
-      "seam_side": "upstream-mount",
-      "decision": "keep",
-      "evidence": {
-        "upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
-        "fork": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
-        "diff_sha256": "c7118f44ef61b54437feb757bb23338a58bbcfcca41fd10db33089c77a0fbebe",
-        "current_candidate_fork": "829e269cf895560e449ea484acf20d18b3075e75",
-        "current_blob_oid": "b3975101cbfa1f5916b52e4916fcbdd05b7c06fb",
-        "current_diff_sha256": "02c1817ff5709147119aee5cdb1b98caf388ef2df8e7bf8207b39e05f177a02e",
-        "diff_normalization": "SHA-256 of raw UTF-8 output from git diff --no-ext-diff --no-textconv --no-renames PIN CANDIDATE -- exact-path; binary diff text is not a pixel/content inspection. Git blob OID binds binary bytes."
-      },
-      "plan": {
-        "status": "retained-target-mount",
-        "destination": "apps/web/package.json",
-        "action": "Retain only the composition/configuration boundary; extract implementation and prove its mount remains thin.",
-        "size": {
-          "changed_lines": 2,
-          "static_private_imports": 0,
-          "basis": "Measured pinned Git diff; duration unknown until a representative slice is timed.",
-          "blob_bytes": 3268,
-          "baseline_fork": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
-          "current_candidate_fork": "829e269cf895560e449ea484acf20d18b3075e75",
-          "current_added_lines": 1,
-          "current_deleted_lines": 1,
-          "binary": false,
-          "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
-        },
-        "restore_upstream_path": "apps/web/package.json"
-      }
-    },
-    {
       "path": "apps/web/src/branding.test.ts",
       "class": "upstream-edit",
       "reason": "Preserve the fork regression: Use the fork's pure-web fallback identity and stable/nightly product labels.",
@@ -23799,98 +23713,6 @@
       "legacy_rules": [],
       "relocation": "planned",
       "relocation_reason": "Namespace relocation requires consumer-path review."
-    },
-    {
-      "path": "packages/contracts/package.json",
-      "class": "upstream-edit",
-      "reason": "Keep this workspace on the same ThroughLine release as desktop, server and phone.",
-      "reason_source": "authored",
-      "imported_private_symbols": [],
-      "schema_assumptions": [
-        "Relocation assumption for Release identity: preserve existing exported input/output contracts, optional-field defaults and persisted IDs; validate at the feature slice, not by import compilation alone.",
-        "No schema declaration was found in the changed-line scan; this is not a claim of no runtime or transitive schema dependency."
-      ],
-      "contract_inspection": "Pinned Git diff and static-import scan; relative upstream-internal imports include type-only symbols. Dynamic imports, property access and transitive dependencies remain unmeasured.",
-      "conflict_rule": "Preserve the fork behavior represented by this changed path, adapt upstream APIs, and minimize the retained patch. Review both versions before proposing a file-specific resolution.",
-      "conflict_rule_source": "legacy",
-      "conflict_rule_inferred": true,
-      "marker": false,
-      "commits": [
-        "e735392d5a4a9b91294f5ba0c4511621b7ae706f merge: land reconciled upstream with explicit release failures",
-        "7b93767ce3d6e486e20075e769c08fc740c9ff41 merge: retain current fork specification before upstream landing",
-        "5f5ae4ac728cc8c2bdc6130d4dfc33a48ec76365 merge: reconcile upstream 5cbe82a870 device stream repair",
-        "1cb8a115562582b1e1f51124eceec53efa57c0ff merge: reconcile upstream bed923986f on preserve-base",
-        "b459489f8055975a5361d01de1793a8b6cd791ae merge: reconcile upstream 5f7294d452 on 0.0.60 preserve-base",
-        "a5429f8466f524910ae205b5f6dd4fb88ec42517 merge(release): inherit the verified installed-version source ancestry",
-        "ebedf4722dd9732b5afbace95f26d359c5a00c88 merge(release): include the independently checked sender and model repair batch",
-        "2a1cc95b1cce3e68a2bde3052938947855295db4 merge(release): retain accepted upgrade source above the installed release base",
-        "f030dbe5439fab3442b2b89078f2590a4995864d Stamp ThroughLine 0.0.56 across declared version surfaces",
-        "2c8173bb3736f9e24db11aebc3acc9b22f49d578 Merge branch 'main' into rewind-same-session",
-        "ce3328bc562081afe075eca41f6c92bad8b6daa5 fix(mobile): match TestFlight version to ThroughLine 0.0.52",
-        "40b2705664b6dcf059bd357bfe60dc327c0009a3 merge: record already-folded ComsNet preservation history",
-        "09a5a203de6066ead00991bac2a90d2895ae025d merge: fold ThroughLine 0.0.51 and retain local workspace and Meridian repairs",
-        "09359517f651808b9f7b5f9cc91dea4b8a5b72c3 Stamp ThroughLine 0.0.51 across declared version surfaces",
-        "20b80ddf451272a739d2b99bf387ee99de07d971 Stamp ThroughLine 0.0.50 across declared version surfaces",
-        "1f767d508b019aeaa95c8f723b282f9e1a2f1af4 Merge pinned upstream d15210cd3da79f9a1a495a6309d912d76362a046 for ThroughLine 0.0.50",
-        "a08ad4388148846628c4ec8dce5b0989162fe7d4 Stamp ThroughLine 0.0.49 across declared version surfaces",
-        "ec2eb31a813c373895e17d3bee0e3d151ae2f639 Merge pinned upstream de251fc2971a884cb5b1305ba4daf309dc8cccb0 for ThroughLine 0.0.49",
-        "5319c0a3697dfdb7ea11ba52f47f23d715495a08 Stamp ThroughLine 0.0.48 across declared version surfaces",
-        "0d288f84eafd02bad96abe4855874f1d1e844376 Merge pinned upstream e5a46d6c5d00b89afba5274a94d42428c8d79763 for ThroughLine 0.0.48",
-        "ea5e78a13ad47fed1196bfc28751a559577526ab Stamp ThroughLine 0.0.47 across declared version surfaces",
-        "52b952cfab5620418b8fa1b28aa9c105fcaf2ece Merge pinned upstream 91e53e501c9e7eb03f0ea4a5b72221d08eff9c5c for ThroughLine 0.0.47",
-        "ca709a07d0ba25359c9bc8a24b0686c68e1a4a67 chore(release): ThroughLine 0.0.46 on every version surface",
-        "fc53045a0a589b2de211216697468de2dba81a30 fix(server): tolerate the retired turn-start-refused event on replay; 0.0.44",
-        "039401234828ae37d50a66d934a26f3d389b03b6 merge: carry the company iOS signing lane, the product mark, and the one model catalogue into 0.0.43",
-        "c3ca290ab62a995a08f24b5f3761b09054aeb359 chore(desktop): unify 0.0.43 for the build with no agent-turn budget check",
-        "ecf678fcd4668000e750e806e1f21ec1a286c886 fix(desktop): unify 0.0.42 and require running-app install proof",
-        "c790ffeea219529f1d481d23187d6f63f8cc192a merge: upstream T3 Code sync 2026-09-12 (1,218 commits) onto fork main; conflicts resolved keeping the turn-start door and queued-turn logic; hook skipped once per lead ruling, vendored ignored path",
-        "19be48864e2702773b27922f644311a88793b3de merge upstream/main (a92161a05, 1,218 commits) into the ThroughLine fork, 2026-09-12",
-        "2164902aaf5ce7d5ff7a223bc2222b08b5bd4c32 Merge remote-tracking branch 'upstream/main' into claude/t3-upstream-sync-2026-08-18"
-      ],
-      "legacy_rules": [
-        {
-          "pattern": "packages/contracts/package.json",
-          "rule": "Preserve the fork behavior represented by this changed path, adapt upstream APIs, and minimize the retained patch. Review both versions before proposing a file-specific resolution.",
-          "inferred": true,
-          "sources": [
-            "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/ThroughLine-Charter.md",
-            "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/fork-tax-projector/fork-tax.fact.json"
-          ]
-        }
-      ],
-      "mount_lines": 1,
-      "mount_measurement": "Historical changed non-import lines, not a thin-mount admission pass.",
-      "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
-      "feature": "Release identity",
-      "seam_side": "upstream-mount",
-      "decision": "keep",
-      "evidence": {
-        "upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
-        "fork": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
-        "diff_sha256": "6852f3340e91540e6c328e2e6471d70359f951c4ce4cb26912ebc2d892de1417",
-        "current_candidate_fork": "829e269cf895560e449ea484acf20d18b3075e75",
-        "current_blob_oid": "f3dc6e0946a77aedd141dd7970d27f98c35c2c9e",
-        "current_diff_sha256": "f36816d616412983be4eeedd43df5afa3db7850cb48a77245e1dedd93d3fd668",
-        "diff_normalization": "SHA-256 of raw UTF-8 output from git diff --no-ext-diff --no-textconv --no-renames PIN CANDIDATE -- exact-path; binary diff text is not a pixel/content inspection. Git blob OID binds binary bytes."
-      },
-      "plan": {
-        "status": "retained-target-mount",
-        "destination": "packages/contracts/package.json",
-        "action": "Retain only the composition/configuration boundary; extract implementation and prove its mount remains thin.",
-        "size": {
-          "changed_lines": 2,
-          "static_private_imports": 0,
-          "basis": "Measured pinned Git diff; duration unknown until a representative slice is timed.",
-          "blob_bytes": 675,
-          "baseline_fork": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
-          "current_candidate_fork": "829e269cf895560e449ea484acf20d18b3075e75",
-          "current_added_lines": 1,
-          "current_deleted_lines": 1,
-          "binary": false,
-          "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
-        },
-        "restore_upstream_path": "packages/contracts/package.json"
-      }
     },
     {
       "path": "packages/contracts/src/durableRelay.ts",
@@ -33694,6 +33516,13 @@
         "staged": true,
         "label": "Approved LocalDeviceHost lifecycle mount; separate approval parent 09eee5b49acdcb05e040526ac4ae6c03fed89e30",
         "approval_file": "docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json"
+      },
+      {
+        "fork": "998003e81a468517a973a1b72f1c4cc4fa4b2245",
+        "upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+        "count": 179,
+        "staged": true,
+        "label": "R9 reviewed development readers restore two manifests; actual approval parent; rename-aware count179"
       }
     ],
     "proposed_retained_mounts": [
@@ -36606,7 +36435,7 @@
     },
     {
       "id": "release-identity-stamping-2026-10-13",
-      "state": "approved-before-implementation",
+      "state": "landed-source-only",
       "approved_by": "fable-seam-shepherd:44973766 session03e03b3e per Fable-Shepherd-Rulings.json R9 and amendments9ffaf4f9/341075cb",
       "recorded_at": "2026-10-13T11:23:55.819Z",
       "scope_paths": [
@@ -36623,13 +36452,28 @@
       ],
       "schema_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/android-linux-to-tower/P3-Readiness-From-Stamp-Contract.json",
       "conditions": [
-        "Branch only; no landing",
-        "Cold non-builder before landing",
-        "Installed0.4.24 policy before landing",
-        "No stock vite/build script edit",
-        "Keep baseline_count and acknowledged_debt untouched"
+        "Reader source may land only after independent passing proof under explicit lead continuation",
+        "Committed stamp is development, never release readiness",
+        "Only ship-tool stage-time stamp + raw digest in run ledger is release identity",
+        "No stock Vite/build-script edit",
+        "Keep baseline_count, target_count and acknowledged_debt untouched; append-only count history",
+        "No unapproved UI, production install or live restart"
       ],
-      "scope_secret": "Stamp validation and deterministic version/build-number derivation; never release cutting/readiness/installation"
+      "scope_secret": "Stamp validation and deterministic version/build-number derivation; never release cutting/readiness/installation",
+      "resumed_at": "2026-10-13T16:37:41.535Z",
+      "resume_source": {
+        "path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-tax-design/R9-Resumption-Lead-20261013.json",
+        "lead_reply": "613bb3f0 completed2026-10-13T15:27:51.383Z",
+        "additional_condition": "Lead Oct13 8:28AM: committed stamp development; only stage writer plus ledger hash counts"
+      },
+      "writer_owner": "worker-seam-9daf42f5 W-SEAM-06 throughline-ship0.4.26; no parallel tool edits",
+      "source_landing": {
+        "candidate": "458008e62d9aa2001b36e7539fac4e75565192a6",
+        "parent": "998003e81a468517a973a1b72f1c4cc4fa4b2245",
+        "independent_verdict": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-tax-design/R9-Development-Cold-Verdict-20261013.json",
+        "at": "2026-10-13T17:03:50.587Z",
+        "release_readiness": false
+      }
     },
     {
       "id": "release-060-source-carry-2026-10-13",

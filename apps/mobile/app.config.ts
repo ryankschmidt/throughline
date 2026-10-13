@@ -1,4 +1,8 @@
-import { readFileSync } from "node:fs";
+import * as NodeFS from "node:fs";
+import {
+  readReleaseStamp,
+  releaseBuildIdentity,
+} from "../../packages/throughline-release/src/index.ts";
 
 import type { ExpoConfig } from "expo/config";
 
@@ -34,21 +38,13 @@ const IOS_BUNDLE_IDENTIFIER_PATTERN = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
 
 const fromRepoRoot = (relativePath: string) => `../../${relativePath}`;
 
-// ThroughLine: the phone must report the SAME version the desktop and server report.
-//
-// `version` below is stamped with the exact ThroughLine release, with no major/minor offset.
-// Settings reads the same release from the contracts package. Older 1.1.x TestFlight builds
-// remain available until Ryan has installed and opened the replacement and voice proof exists.
-const throughlineVersion = (() => {
-  try {
-    const pkg = JSON.parse(
-      readFileSync(new URL("../../packages/contracts/package.json", import.meta.url), "utf8"),
-    ) as { version?: string };
-    return pkg.version ?? null;
-  } catch {
-    return null;
-  }
-})();
+const throughlineStamp = readReleaseStamp(
+  (file) => NodeFS.readFileSync(file, "utf8"),
+  undefined,
+  APP_VARIANT === "development" ? "development" : "release",
+);
+const throughlineBuild = releaseBuildIdentity(throughlineStamp);
+const throughlineVersion = throughlineStamp.version;
 // Android layers are rendered by scripts/export-android-icons.ts from the Icon Composer sources.
 // The wordmark sits inside the adaptive safe zone; the variant artwork is a full-bleed background.
 const androidAdaptiveForeground = "./assets/android-icon-foreground.png";
@@ -302,7 +298,7 @@ const config: ExpoConfig = {
   slug: "t3-code",
   platforms: ["ios", "android"],
   scheme: variant.scheme,
-  version: throughlineVersion ?? "0.0.60",
+  version: throughlineVersion,
   runtimeVersion: {
     // Development manifests resolve on every launch, so avoid fingerprint's
     // expensive native-project calculation there. Preview and production stay
@@ -322,6 +318,7 @@ const config: ExpoConfig = {
     fallbackToCacheTimeout: 0,
   },
   ios: {
+    buildNumber: throughlineBuild.iosBuildNumber,
     // ThroughLine fork: read the Icon Composer project the variant already names, which is
     // tracked in the repository. This line used to point at ./assets/throughline-icon.icon,
     // a path nothing in the repository creates and nothing else references — it existed only
@@ -397,6 +394,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
+    versionCode: throughlineBuild.androidVersionCode,
     icon: variant.assets.appIcon,
     package: variant.androidPackage,
     ...(repoEnv.T3CODE_ANDROID_GOOGLE_SERVICES_FILE
@@ -580,7 +578,7 @@ const config: ExpoConfig = {
     throughlineVersion,
     throughlineReleaseIdentity: {
       release: throughlineVersion,
-      fullCommit: process.env.APP_COMMIT?.trim() || null,
+      fullCommit: throughlineStamp.commit,
     },
     iosPersonalTeamBuild: isIosPersonalTeamBuild,
     relay: {

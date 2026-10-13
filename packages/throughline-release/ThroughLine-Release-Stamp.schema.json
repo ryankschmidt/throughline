@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ThroughLine Release Stamp",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "version",
+    "commit",
+    "cut_from",
+    "stamped_at",
+    "stamped_by",
+    "platforms",
+    "deferred"
+  ],
+  "properties": {
+    "schema": {
+      "const": "throughline.release-stamp.v1"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+      "description": "Stable release semver. Native build counter = major*1000000 + minor*1000 + patch; minor and patch0..999, counter1..2100000000. iOS buildNumber = decimal string(counter); Android versionCode = counter. Same release always produces the same counter; increasing stable releases are monotonic within these bounds."
+    },
+    "commit": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$",
+      "description": "Ship tool verifies main-line ancestry; reader validates format only."
+    },
+    "cut_from": {
+      "const": "main"
+    },
+    "stamped_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "stamped_by": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Committed source uses development:<identity> and cannot supply a release identity. Release consumers require throughline-ship@<semver>; this is label classification only, not proof of stage-time ledger custody or readiness."
+    },
+    "platforms": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": ["mac", "tower-desktop", "tower-headless", "iphone", "android", "rpi"]
+      }
+    },
+    "deferred": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["platform", "ruling", "source"],
+        "properties": {
+          "platform": {
+            "enum": ["mac", "tower-desktop", "tower-headless", "iphone", "android", "rpi"]
+          },
+          "ruling": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  },
+  "$comment": "Every platform occurs exactly once across platforms and deferred. Reader also enforces valid UTC calendar timestamp, nonzero commit/version, counter bounds and caller purpose. The source stamp is development-only. Throughline-ship writes the release stamp only in the staged tree and records its bytes in the run ledger. This schema does not decide readiness, installation, or authority."
+}
