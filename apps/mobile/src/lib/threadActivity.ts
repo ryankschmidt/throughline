@@ -1762,6 +1762,7 @@ export function buildThreadFeed(
   );
   for (const row of visibleTurnItems) {
     const item = row.item;
+    if (!mobileConversationItemVisible(item)) continue;
     if (turnItemIsWorkspacePreparation(item)) continue;
     if (item.type === "todo_list" || item.type === "checkpoint") continue;
     if (item.type === "user_message" && foldedAnswerMessageIds.has(item.messageId)) continue;
@@ -1898,3 +1899,4 @@ export function buildThreadFeed(
   }
   return groupAdjacentActivities(entries);
 }
+import { mobileConversationItemVisible } from "../throughline/android-findings/conversationRows";

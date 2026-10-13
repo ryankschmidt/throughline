@@ -1,10 +1,12 @@
 import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState, Platform } from "react-native";
 import { useAtomValue } from "@effect/atom-react";
 import { AsyncResult } from "effect/reactivity";
 import { mobilePreferencesAtom } from "../../state/preferences";
 import { getLocalVoiceTranscriber } from "../../native/voiceTranscription";
 import { OptimizationCapture } from "../../throughline/voice/optimizationCapture";
+import { withAndroidPreparationLifecycle } from "../../throughline/android-findings/androidVoiceLifecycle";
 import type { VoiceInputSession } from "./voiceInputSession";
 import {
   voiceInputBlocksSubmission,
@@ -70,7 +72,7 @@ export function useVoiceInputController(input: {
         const local = getLocalVoiceTranscriber();
         return local
           ? capture.wrap(
-              local,
+              withAndroidPreparationLifecycle(session.controller, local, Platform.OS, AppState),
               () => {
                 const current = preferenceRef.current;
                 return AsyncResult.isSuccess(current) && !current.waiting

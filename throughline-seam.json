@@ -9,7 +9,7 @@
   },
   "merge_base": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
   "counts": {
-    "upstream_edit": 179,
+    "upstream_edit": 180,
     "upstream_removed": 0,
     "fork_added": 241,
     "fork_namespace": 147
@@ -5710,6 +5710,15 @@
           "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
         },
         "restore_upstream_path": "apps/mobile/src/features/voice-input/useVoiceInputController.ts"
+      },
+      "approved_change_ids": ["android-voice-lifecycle-2026-10-13"],
+      "current_slice": {
+        "owner": "worker-composer-053ab44e",
+        "source_commit": "27d41ff0f42b8e71b3e57c95b0d755ea7e51e04d",
+        "approval_id": "android-voice-lifecycle-2026-10-13",
+        "scope": "Additional public Android preparation wrapper; existing optimization extraction debt unchanged",
+        "proof": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-A5-Independent-Cold-Review.json",
+        "native_acceptance": false
       }
     },
     {
@@ -29087,6 +29096,30 @@
       "contract_inspection": "Internal launch environment and ensureAgentReady cache inspected; use fork declaredDaemonEnvironment/liveDaemonEndpoint, leave public service contract and stock tests unchanged.",
       "decision": "keep",
       "approved_change_ids": ["device-lifecycle-mount-2026-10-13"]
+    },
+    {
+      "path": "apps/mobile/src/lib/threadActivity.ts",
+      "class": "upstream-edit",
+      "reason": "Filter internal runtime notifications and Claude ui_status notices before mobile feed grouping; preserve stored turn data and actual conversation/tool content.",
+      "reason_source": "authored",
+      "reason_author": "worker-composer-053ab44e",
+      "feature": "Mobile internal runtime-row presentation",
+      "seam_side": "upstream-mount",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Typed notification source.kind distinguishes background_task/monitor from actual command/subagent content.",
+        "Only system_notice rows with exact Claude ui_status identity are internal; user/assistant text is never matched."
+      ],
+      "contract_inspection": "Typed system_notice and notification fields inspected; fixture asserts internal rows omitted and data/real conversation preserved.",
+      "decision": "keep",
+      "approved_change_ids": ["mobile-runtime-row-filter-2026-10-13"],
+      "conflict_rule": "Preserve stored items and ordinary conversation/tool rows; delegate presentation filtering only.",
+      "conflict_rule_source": "lead8:22 A5 written grant",
+      "conflict_rule_inferred": false,
+      "proof_anchors": [
+        "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-A5-Independent-Cold-Review.json"
+      ],
+      "source_state": "source-only; native acceptance pending"
     }
   ],
   "upstream_changes": [
@@ -33485,7 +33518,8 @@
     "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
     "approved_growth_files": [
       "docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json",
-      "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json"
+      "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json",
+      "docs/throughline/tax-approvals/mobile-runtime-rows-2026-10-13.json"
     ],
     "count_history": [
       {
@@ -33526,6 +33560,14 @@
         "count": 179,
         "staged": true,
         "label": "R9 reviewed development readers restore two manifests; actual approval parent; rename-aware count179"
+      },
+      {
+        "fork": "b761fd73fe0a4cf636e88c647da1ccf4c3c392d1",
+        "upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+        "count": 180,
+        "staged": true,
+        "label": "A2 existing Android lifecycle mount plus A5 presentation filter; actual parent after R9 restoration",
+        "approval_file": "docs/throughline/tax-approvals/mobile-runtime-rows-2026-10-13.json"
       }
     ],
     "proposed_retained_mounts": [
@@ -36573,6 +36615,62 @@
           "K11": "reason_author/feature/seam_side/decision/imported_private_symbols/schema_assumptions/conflict_rule/approval_source present; materialize entry when source lands"
         }
       ]
+    },
+    {
+      "schema": "throughline.upstream-existing-mount-approval.v1",
+      "id": "android-voice-lifecycle-2026-10-13",
+      "scope_paths": ["apps/mobile/src/features/voice-input/useVoiceInputController.ts"],
+      "requested_by": "worker-composer-053ab44e",
+      "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+      "approval_file": "docs/throughline/tax-approvals/android-dictation-existing-mount-2026-10-13.json",
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Android-Findings-Mount-Approval-20261013.txt",
+      "reason": "Delegate Android permission preparation background handling through the existing voice controller hook; keep real recording foreground-only and iOS behavior unchanged.",
+      "reason_source": "authored",
+      "seam_side": "upstream-mount",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Public VoiceInputController background method receives the native provider transition on the same session instance.",
+        "Android permission preparation may background the app; no recording starts until foreground and actual recording-background interruption remains active."
+      ],
+      "before_fork": "6e32783ba692236cd2d2057d869af8e05a2fae40",
+      "new_upstream_filenames": 0,
+      "recorded_at": "2026-10-13T15:40:34.625Z",
+      "state": "approved-before-implementation; red tests recorded; device acceptance pending",
+      "integration_before_fork": "b761fd73fe0a4cf636e88c647da1ccf4c3c392d1",
+      "integration_recorded_at": "2026-10-13T18:01:33.223Z",
+      "integration_source": {
+        "source_commit": "27d41ff0f42b8e71b3e57c95b0d755ea7e51e04d",
+        "proof": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-A5-Independent-Cold-Review.json",
+        "native_acceptance": false
+      }
+    },
+    {
+      "schema": "throughline.upstream-mount-approval.v1",
+      "id": "mobile-runtime-row-filter-2026-10-13",
+      "scope_paths": ["apps/mobile/src/lib/threadActivity.ts"],
+      "requested_by": "worker-composer-053ab44e",
+      "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+      "approval_file": "docs/throughline/tax-approvals/mobile-runtime-rows-2026-10-13.json",
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Android-Findings-Mount-Approval-20261013.txt",
+      "reason": "Filter internal runtime notifications and Claude ui_status notices before mobile feed grouping; preserve stored turn data and actual conversation/tool content.",
+      "reason_source": "authored",
+      "seam_side": "upstream-mount",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Typed notification source.kind distinguishes background_task/monitor from actual command/subagent content.",
+        "Only system_notice rows with exact Claude ui_status identity are internal; user/assistant text is never matched."
+      ],
+      "before_fork": "6e32783ba692236cd2d2057d869af8e05a2fae40",
+      "new_upstream_filenames": 1,
+      "recorded_at": "2026-10-13T15:40:34.626Z",
+      "state": "approved-before-implementation; red tests recorded; device acceptance pending",
+      "integration_before_fork": "b761fd73fe0a4cf636e88c647da1ccf4c3c392d1",
+      "integration_recorded_at": "2026-10-13T18:01:33.235Z",
+      "integration_source": {
+        "source_commit": "27d41ff0f42b8e71b3e57c95b0d755ea7e51e04d",
+        "proof": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-A5-Independent-Cold-Review.json",
+        "native_acceptance": false
+      }
     }
   ]
 }
