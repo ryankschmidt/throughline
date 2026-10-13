@@ -36601,6 +36601,74 @@
       ],
       "root_recorded_at": "2026-10-13T11:06:57.387Z",
       "root_authoring_parent": "09eee5b49acdcb05e040526ac4ae6c03fed89e30"
+    },
+    {
+      "id": "release-identity-stamping-2026-10-13",
+      "state": "approved-before-implementation",
+      "approved_by": "fable-seam-shepherd:44973766 session03e03b3e per Fable-Shepherd-Rulings.json R9 and amendments9ffaf4f9/341075cb",
+      "recorded_at": "2026-10-13T11:23:55.819Z",
+      "scope_paths": [
+        "apps/web/package.json",
+        "packages/contracts/package.json",
+        "apps/mobile/app.config.ts"
+      ],
+      "reason": "Restore two stock manifests and derive web/phone build identity from one validated fork stamp, keeping installer/server derivation with the ship-tool owner.",
+      "seam_side": "upstream-mount",
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-tax-design/Shepherd-Order-08-Worker-Upmerge-20261013.txt",
+      "amendment_sources": [
+        "ComsNet9ffaf4f9-2912-44df-a5a6-fc7d751e0670",
+        "ComsNet341075cb-1a28-4aa7-a415-9f96b68bc125"
+      ],
+      "schema_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/android-linux-to-tower/P3-Readiness-From-Stamp-Contract.json",
+      "conditions": [
+        "Branch only; no landing",
+        "Cold non-builder before landing",
+        "Installed0.4.24 policy before landing",
+        "No stock vite/build script edit",
+        "Keep baseline_count and acknowledged_debt untouched"
+      ],
+      "scope_secret": "Stamp validation and deterministic version/build-number derivation; never release cutting/readiness/installation"
+    },
+    {
+      "id": "release-060-source-carry-2026-10-13",
+      "state": "approved-before-implementation",
+      "recorded_at": "2026-10-13T14:35:26.284Z",
+      "approved_by": {
+        "role": "lead-orchestrator",
+        "thread": "abf5e046-bb33-4f0e-97bc-d1ccbba31693"
+      },
+      "approval_source": {
+        "path": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/Release-060-Lead-Approval.txt",
+        "sha256": "e963191175809124b5b61f7909edd1149085b908f53ec94c5d9c96886f647250",
+        "transcript": "/Users/Admin/.codex/sessions/2026/10/10/rollout-2026-10-10T16-25-33-01a12822-d1b7-7620-9f71-597ade48e4fe.md",
+        "turn": 380
+      },
+      "scope_paths": [
+        "apps/desktop/package.json",
+        "apps/desktop/runtime-targets.json",
+        "apps/mobile/app.config.ts",
+        "apps/server/package.json",
+        "apps/web/package.json",
+        "packages/contracts/package.json"
+      ],
+      "reason": "Carry the installed release source identity onto the current main line without rolling back newer source. Exact release-minus-common-ancestor delta has only six version fields.",
+      "seam_side": "upstream-mount",
+      "permitted_changes": [
+        "Five JSON top-level version scalars 0.0.56 to 0.0.60",
+        "Mobile existing throughlineVersion expression fallback scalar only; retain newer expression and all configuration"
+      ],
+      "excluded_scope": [
+        "Database writes",
+        "App restart/install",
+        "R9 stopped branch",
+        "Whole-file replacement from release",
+        "tax_policy or views"
+      ],
+      "release": "935d10dcd95705021e89b64556b8dbeacb1696a2",
+      "common_ancestor": "cd2110db5526cff762d3e4028e5939d7e247e446",
+      "source_parent": "684456d693ce4f8a0384eb0db4dbe449f275a905",
+      "count_effect": 0,
+      "compatibility_proof": "NOT_ESTABLISHED: version edits do not prove copied-current-state compatibility"
     }
   ]
 }
