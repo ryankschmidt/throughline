@@ -9,7 +9,7 @@
   },
   "merge_base": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
   "counts": {
-    "upstream_edit": 181,
+    "upstream_edit": 182,
     "upstream_removed": 0,
     "fork_added": 241,
     "fork_namespace": 147
@@ -29148,6 +29148,39 @@
       "conflict_rule_inferred": false,
       "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Settings-Mount-Lead-Approval.txt",
       "approval_file": "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json"
+    },
+    {
+      "path": "apps/mobile/src/features/voice-input/VoiceInputProvider.tsx",
+      "class": "upstream-edit",
+      "reason": "Measured controller-first Android mode is overwritten by provider setup before native recording; delegate Android-only route-neutral setup/release and mono capture to the fork helper.",
+      "reason_source": "authored",
+      "reason_author": "worker-composer-053ab44e",
+      "feature": "Android native dictation recording session",
+      "seam_side": "upstream-mount",
+      "decision": "keep",
+      "imported_private_symbols": [],
+      "schema_assumptions": [
+        "Provider owns configure/release closures and flattened ExpoAudio recording options.",
+        "Android guard returns original iOS options and callback identities unchanged."
+      ],
+      "contract_inspection": "One fork session factory call; original iOS callback bodies and options unchanged; delegated three references for options/configure/release.",
+      "conflict_rule": "Retain original iOS functions and minimize to one session factory call plus delegated constructor/dependency references.",
+      "conflict_rule_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Written-Approval.txt",
+      "conflict_rule_inferred": false,
+      "marker": false,
+      "mount_lines": 1,
+      "mount_measurement": "One createAndroidRecordingSession call; one import; three delegated existing references.",
+      "expires_when": "upstream adopts the Android forced-speaker recording fix",
+      "approval_file": "docs/throughline/tax-approvals/android-recording-session-2026-10-13.json",
+      "evidence": {
+        "before_fork": "64aa3b237c886f61d7440f7f572bbef245ca56a5",
+        "native_reset": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Controller-First-Mode-Reset.json",
+        "upstream_offer": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Android-Recording-Upstream-Offer.patch",
+        "source_review": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Independent-Review.json",
+        "native_acceptance": false
+      },
+      "disposition": "retain-minimized",
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Written-Approval.txt"
     }
   ],
   "upstream_changes": [
@@ -33547,7 +33580,8 @@
     "approved_growth_files": [
       "docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json",
       "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json",
-      "docs/throughline/tax-approvals/mobile-runtime-rows-2026-10-13.json"
+      "docs/throughline/tax-approvals/mobile-runtime-rows-2026-10-13.json",
+      "docs/throughline/tax-approvals/android-recording-session-2026-10-13.json"
     ],
     "count_history": [
       {
@@ -33604,6 +33638,14 @@
         "staged": true,
         "label": "Reviewed live composer and optimizer Settings mount; actual parent after Android configuration; source only",
         "approval_file": "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json"
+      },
+      {
+        "fork": "64aa3b237c886f61d7440f7f572bbef245ca56a5",
+        "upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+        "count": 182,
+        "staged": true,
+        "label": "Approved Android-only recording provider paired with reviewed mono recognizer and cold-language preparation; actual approval-only parent",
+        "approval_file": "docs/throughline/tax-approvals/android-recording-session-2026-10-13.json"
       }
     ],
     "proposed_retained_mounts": [
@@ -36728,6 +36770,25 @@
       "before_fork": "c3ae20ea1a4e6a856988ea74df518ad6814239b2",
       "approval_commit": "74c62b3f60db179ab31d6a571d626ce3ca5b7fef",
       "integration_recorded_at": "2026-10-13T18:37:22.105Z"
+    },
+    {
+      "id": "android-recording-session-mount-2026-10-13",
+      "state": "approved-before-implementation",
+      "approval_commit": "64aa3b237c886f61d7440f7f572bbef245ca56a5",
+      "approval_file": "docs/throughline/tax-approvals/android-recording-session-2026-10-13.json",
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Written-Approval.txt",
+      "approval_source_sha256": "550be440b4de989c20bd8a970c74579dcfaed7bb31f22880af7c4f33f2708ea8",
+      "scope_paths": ["apps/mobile/src/features/voice-input/VoiceInputProvider.tsx"],
+      "reason": "Measured controller-first Android mode is overwritten by provider setup before native recording; delegate Android-only route-neutral setup/release and mono capture to the fork helper.",
+      "reason_author": "worker-composer-053ab44e",
+      "feature": "Android native dictation recording session",
+      "seam_side": "upstream-mount",
+      "decision": "keep",
+      "mount_lines": 1,
+      "expires_when": "upstream adopts the Android forced-speaker recording fix",
+      "physical_parent_count": 181,
+      "allowed_physical_credit": 1,
+      "operator_authorized_ceiling": 184
     }
   ]
 }

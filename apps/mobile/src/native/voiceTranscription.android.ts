@@ -1,3 +1,4 @@
+import { prepareOfflineSpeechLocale } from "../throughline/phone-parity/offlineSpeechPreparation";
 import { requireOptionalNativeModule } from "expo";
 import { Platform } from "react-native";
 import {
@@ -38,21 +39,7 @@ export function getLocalVoiceTranscriber(): VoiceTranscriber | null {
             "preparation-failed",
             "Microphone permission was denied.",
           );
-        const supported = await speech.getSupportedLocales({
-          androidRecognitionServicePackage: "com.google.android.as",
-        });
-        throwIfVoiceTranscriptionAborted(signal);
-        const wanted = deviceLocale.replaceAll("_", "-").toLowerCase();
-        const locale =
-          supported.installedLocales.find((locale) => locale.toLowerCase() === wanted) ??
-          supported.installedLocales.find(
-            (locale) => locale.toLowerCase().split("-")[0] === wanted.split("-")[0],
-          );
-        if (!locale)
-          throw new VoiceTranscriptionError(
-            "unsupported-locale",
-            `Install an offline Android speech model for ${deviceLocale} before dictating.`,
-          );
+        const locale = await prepareOfflineSpeechLocale(speech, deviceLocale, signal);
         return {
           locale,
           transcribe: (uri, options) => transcribeRecording(speech, locale, uri, options),
@@ -148,9 +135,13 @@ function transcribeRecording(
         interimResults: false,
         continuous: false,
         requiresOnDeviceRecognition: true,
-        // Expo Audio HIGH_QUALITY records stereo, 44.1kHz M4A. The native
-        // file decoder feeds PCM to the recognizer; no microphone/cloud fallback.
-        audioSource: { uri, audioChannels: 2, sampleRate: 44100 },
+        // Android dictation uses mono 44.1kHz M4A. The recorded PCM channel
+        // contract must match the file, not the common stereo preset.
+        audioSource: {
+          uri,
+          audioChannels: 1,
+          sampleRate: 44100,
+        },
       });
     } catch (cause) {
       failure =
