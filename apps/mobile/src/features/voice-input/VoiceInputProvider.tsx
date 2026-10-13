@@ -93,7 +93,7 @@ const recordingAudioSession = createAndroidRecordingSession(
     configure: configureVoiceRecordingAudio,
     release: releaseVoiceRecordingAudio,
   },
-  { setIsAudioActiveAsync },
+  { setIsAudioActiveAsync, setAudioModeAsync },
 );
 
 const VoiceInputContext = createContext<ReturnType<typeof useVoiceInputRuntime> | null>(null);

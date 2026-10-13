@@ -29152,7 +29152,7 @@
     {
       "path": "apps/mobile/src/features/voice-input/VoiceInputProvider.tsx",
       "class": "upstream-edit",
-      "reason": "Measured controller-first Android mode is overwritten by provider setup before native recording; delegate Android-only route-neutral setup/release and mono capture to the fork helper.",
+      "reason": "Measured provider playback setup overwrites Android capture route; delegate Android communication capture, original normal-mode cleanup after stop, and explicit mono options to the fork helper.",
       "reason_source": "authored",
       "reason_author": "worker-composer-053ab44e",
       "feature": "Android native dictation recording session",
@@ -29180,7 +29180,9 @@
         "native_acceptance": false
       },
       "disposition": "retain-minimized",
-      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Written-Approval.txt"
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Written-Approval.txt",
+      "native_revision_evidence": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-Native-F1.json",
+      "source_revision_review": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Recording-Session-R2-Independent-Review.json"
     }
   ],
   "upstream_changes": [
