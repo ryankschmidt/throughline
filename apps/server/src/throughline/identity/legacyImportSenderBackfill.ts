@@ -18,12 +18,21 @@ export const backfillLegacyImportSenders = Effect.fn("backfillLegacyImportSender
         readonly destination_id: string | null;
       }>`
       SELECT old.message_id, old.sender_public_id, old.sender_generation,
-        (SELECT current.message_id FROM orchestration_v2_projection_messages current
-          WHERE current.thread_id = old.thread_id AND current.role = old.role
-            AND (current.created_at = old.created_at OR julianday(current.created_at) = julianday(old.created_at))
-            AND json_extract(current.payload_json, '$.text') = old.text
-          ORDER BY CASE WHEN current.message_id = old.message_id THEN 0 ELSE 1 END, current.message_id
-          LIMIT 1) AS destination_id
+        -- Prefer the same message id, else the lowest matching id. SQLite 3.51 refuses an outer
+        -- column inside a correlated subquery's ORDER BY, so the preference is two lookups.
+        COALESCE(
+          (SELECT current.message_id FROM orchestration_v2_projection_messages current
+            WHERE current.message_id = old.message_id
+              AND current.thread_id = old.thread_id AND current.role = old.role
+              AND (current.created_at = old.created_at OR julianday(current.created_at) = julianday(old.created_at))
+              AND json_extract(current.payload_json, '$.text') = old.text),
+          (SELECT current.message_id FROM orchestration_v2_projection_messages current
+            WHERE current.thread_id = old.thread_id AND current.role = old.role
+              AND (current.created_at = old.created_at OR julianday(current.created_at) = julianday(old.created_at))
+              AND json_extract(current.payload_json, '$.text') = old.text
+            ORDER BY current.message_id
+            LIMIT 1)
+        ) AS destination_id
       FROM projection_thread_messages old
       WHERE old.sender_public_id IS NOT NULL AND old.sender_generation IS NOT NULL
         AND (${threadId ?? null} IS NULL OR old.thread_id = ${threadId ?? null})

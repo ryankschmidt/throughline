@@ -66,3 +66,31 @@ it.effect(
       );
     }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
 );
+
+it.effect(
+  "legacy sender carry prefers the same message id, else the lowest matching id, on SQLite 3.51",
+  () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* runMigrations();
+      // Two stamped 0.0.60 messages; one has a same-id V2 copy beside a lower-id duplicate.
+      yield* sql`INSERT INTO projection_thread_messages
+      (message_id,thread_id,role,text,is_streaming,created_at,updated_at,sender_public_id,sender_generation)
+      VALUES ('m1','thread','user','same',0,'2026-10-10','2026-10-10','public','generation'),
+        ('m2','thread','user','other',0,'2026-10-11','2026-10-11','public','generation')`;
+      yield* sql`INSERT INTO orchestration_v2_projection_messages
+      (message_id,thread_id,role,streaming,created_at,updated_at,payload_json)
+      VALUES ('a0','thread','user',0,'2026-10-10','2026-10-10','{"text":"same"}'),
+        ('m1','thread','user',0,'2026-10-10','2026-10-10','{"text":"same"}'),
+        ('z9','thread','user',0,'2026-10-11','2026-10-11','{"text":"other"}'),
+        ('b1','thread','user',0,'2026-10-11','2026-10-11','{"text":"other"}')`;
+      assert.deepStrictEqual(yield* SenderBackfill.backfillLegacyImportSenders(), {
+        stamped: 2,
+        unmatched: 0,
+      });
+      assert.deepStrictEqual(
+        yield* sql`SELECT message_id FROM throughline_message_sender ORDER BY message_id`,
+        [{ message_id: "b1" }, { message_id: "m1" }],
+      );
+    }).pipe(Effect.provide(NodeSqliteClient.layer({ filename: ":memory:" }))),
+);
