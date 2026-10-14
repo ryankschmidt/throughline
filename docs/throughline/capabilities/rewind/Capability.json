@@ -36,6 +36,7 @@
     "apps/server/src/provider/Layers/ClaudeAdapter.ts",
     "apps/server/src/provider/Layers/ProviderService.ts",
     "apps/server/src/provider/Services/ProviderService.ts",
+    "apps/server/src/throughline/compat-tests/piGauntlet.test.ts",
     "apps/server/src/throughline/http.test.ts",
     "apps/server/src/throughline/http.ts",
     "apps/server/src/throughline/rewind/CheckpointContention.v2.test.ts",
@@ -58,6 +59,7 @@
     "packages/client-runtime/src/operations/commands.ts",
     "packages/client-runtime/src/throughline/rewindHttp.test.ts",
     "packages/client-runtime/src/throughline/rewindHttp.ts",
+    "packages/provider-pi/src/server/adapter.test.ts",
     "packages/shared/package.json",
     "packages/shared/src/claudeComposerMenus.test.ts",
     "packages/shared/src/claudeComposerMenus.ts"
