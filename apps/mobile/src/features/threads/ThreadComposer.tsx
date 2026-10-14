@@ -83,12 +83,10 @@ import { VideoPreviewModal, type VideoPreviewSource } from "../../components/Vid
 import { QuietComposerBackdrop as GlassSurface } from "../../throughline/phone-parity/QuietComposerBackdrop";
 import { ComposerEditor, type ComposerEditorHandle } from "../../components/ComposerEditor";
 import { fileRoutePathSegments } from "../files/filePath";
-import {
-  ComposerActionButton,
-  ComposerInlineControl,
-  ComposerToolbarRow,
-} from "../../components/ComposerToolbar";
+import { ComposerActionButton, ComposerToolbarRow } from "../../components/ComposerToolbar";
 import { ProviderIcon } from "../../components/ProviderIcon";
+import { withLiveModelOption } from "../../throughline/phone-parity/liveModelOption";
+import { ComposerModelButton } from "../../throughline/phone-parity/ComposerModelButton";
 import {
   composerStripAttachments,
   type DraftComposerAttachment,
@@ -698,11 +696,16 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
     : currentModelSelection.instanceId;
   const modelOptions = useMemo(
     () =>
-      buildModelOptions(
-        props.serverConfig,
+      // ThroughLine: the live model stays visible, tagged unavailable, as on desktop.
+      withLiveModelOption(
+        buildModelOptions(
+          props.serverConfig,
+          currentModelSelection,
+          lockedProviderInstanceId,
+          props.selectedThread.projectId,
+        ),
         currentModelSelection,
-        lockedProviderInstanceId,
-        props.selectedThread.projectId,
+        props.serverConfig,
       ),
     [
       props.serverConfig,
@@ -1209,9 +1212,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
                       onPickFiles={props.onPickDraftFiles}
                     />
                     <View className="min-w-0 shrink">
-                      <ComposerInlineControl
-                        accessibilityLabel="Model and reasoning settings"
-                        emphasized
+                      <ComposerModelButton
                         renderIcon={(size) => (
                           <ProviderIcon
                             iconUrl={currentModelOption?.providerIconUrl}
@@ -1220,7 +1221,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
                           />
                         )}
                         label={currentModelOption?.label ?? currentModelSelection.model}
-                        maxWidth="100%"
+                        unavailable={currentModelOption?.isUnavailable === true}
                         onPress={openSettings}
                       />
                     </View>
