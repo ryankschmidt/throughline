@@ -2,6 +2,7 @@ import * as ProjectionObservation from "../throughline/observation/ProjectionObs
 import * as PiAdapterGuards from "../throughline/pi/PiAdapterGuards.ts";
 import * as EventSinkObservation from "../throughline/observation/EventSinkObservation.ts";
 import * as HeadroomAdmission from "../throughline/headroom/HeadroomAdmission.ts";
+import * as LegacyReasoningCarry from "../throughline/history-import/legacyReasoningCarry.ts";
 import * as UsageLimitRecoveryWorker from "./UsageLimitRecoveryWorker.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
 import * as Layer from "effect/Layer";
@@ -95,7 +96,8 @@ const layerEventSinkProvided = layerEventSink;
 const layerProjectionMaintenanceProvided = ProjectionMaintenance.layer.pipe(
   Layer.provide(layerStores),
 );
-const layerLegacyV1ThreadImporterProvided = LegacyV1ThreadImporter.layer.pipe(
+const layerLegacyV1ThreadImporterProvided = LegacyReasoningCarry.layer.pipe(
+  Layer.provide(LegacyV1ThreadImporter.layer),
   Layer.provide(layerEventSinkProvided),
 );
 
