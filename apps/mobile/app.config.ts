@@ -1,4 +1,5 @@
 import { withAndroidDictation } from "./src/throughline/phone-parity/nativeDictationConfig.ts";
+import { withDesktopPhoneBrand } from "./src/throughline/phone-parity/desktopBrand.ts";
 import * as NodeFS from "node:fs";
 import {
   readReleaseStamp,
@@ -610,4 +611,4 @@ const config: ExpoConfig = {
   owner: "pingdotgg",
 };
 
-export default withAndroidDictation(config);
+export default withDesktopPhoneBrand(withAndroidDictation(config));

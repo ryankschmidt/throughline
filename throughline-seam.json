@@ -1596,7 +1596,7 @@
     {
       "path": "apps/mobile/app.config.ts",
       "class": "upstream-edit",
-      "reason": "Apply fork bundle identity, shared product version, extension omission, personal-team entitlements and Android signing at Expo's configuration boundary.",
+      "reason": "Apply fork bundle identity, shared product version, extension omission, personal-team entitlements and Android signing at Expo's configuration boundary. Mount fork desktop artwork and passive iOS native tint through withDesktopPhoneBrand around the existing Android dictation wrapper; retain strict release identity and all permission/plugin inputs.",
       "reason_source": "authored",
       "imported_private_symbols": [
         "{ BRAND_ASSET_PATHS } from ../../scripts/lib/brand-assets.ts",
@@ -1701,6 +1701,13 @@
         "approval_commit": "74c62b3f60db179ab31d6a571d626ce3ca5b7fef",
         "scope": "one explicit.ts import and delegated export; Android manifest only",
         "proof": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/A2-Native-Config-Independent-Review-R3.json",
+        "native_acceptance": false
+      },
+      "phone_parity_source_evidence": {
+        "source_commit": "c1ac7558f6c0f1be1f08bd377e6f9a4bfc9d444d",
+        "source_review": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/phone-parity-0392cd3d/independent-review-fcbe70d7/Review-R3.json",
+        "ready_packet": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/phone-parity-0392cd3d/Final-Source-Ready-Packet.json",
+        "source_only": true,
         "native_acceptance": false
       }
     },
@@ -2850,7 +2857,7 @@
     {
       "path": "apps/mobile/src/features/settings/appearance/AppearancePreferencesProvider.tsx",
       "class": "upstream-edit",
-      "reason": "Render connected machines' published palettes from role colors instead of discarding non-bundled IDs.",
+      "reason": "Render connected machines' published palettes from role colors instead of discarding non-bundled IDs. Mount exact desktop-phone default palette and single-appearance resolution through fork helpers; retain explicit theme choices and controls.",
       "reason_source": "authored",
       "imported_private_symbols": [
         "{ resolveAppearance, resolveAppearancePreferences, type ResolvedAppearance, } from ../../../lib/appearancePreferences",
@@ -2936,6 +2943,13 @@
           "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
         },
         "restore_upstream_path": "apps/mobile/src/features/settings/appearance/AppearancePreferencesProvider.tsx"
+      },
+      "phone_parity_source_evidence": {
+        "source_commit": "c1ac7558f6c0f1be1f08bd377e6f9a4bfc9d444d",
+        "source_review": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/phone-parity-0392cd3d/independent-review-fcbe70d7/Review-R3.json",
+        "ready_packet": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/phone-parity-0392cd3d/Final-Source-Ready-Packet.json",
+        "source_only": true,
+        "native_acceptance": false
       }
     },
     {
@@ -4525,7 +4539,7 @@
     {
       "path": "apps/mobile/src/features/threads/ThreadComposer.tsx",
       "class": "upstream-edit",
-      "reason": "Mount carried return-key submission, Claude rewind/config menus, optimization feedback and undo in the existing composer. Mount approved desktop-parity microphone toggle through fork-owned nativeMicAction/NativeComposerMicrophoneAction; keep the outline microphone immediately before disabled Send through preparation/recording/transcription, without changing native recorder or optimizer.",
+      "reason": "Mount carried return-key submission, Claude rewind/config menus, optimization feedback and undo in the existing composer. Mount approved desktop-parity microphone toggle through fork-owned nativeMicAction/NativeComposerMicrophoneAction; keep the outline microphone immediately before disabled Send through preparation/recording/transcription, without changing native recorder or optimizer. Substitute only the GlassSurface import with fork QuietComposerBackdrop; retain current resize/model/menu/microphone/editor callbacks and geometry.",
       "reason_source": "authored",
       "imported_private_symbols": [
         "type { ComposerTextPaste } from ../../native/T3ComposerEditor.types",
@@ -4658,6 +4672,13 @@
         "source_receipt": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Mic-Parity-Source-Receipt.json",
         "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/Lead-Voice-Mic-Grant-20261013-0418PDT.txt",
         "source_commit": "105d02a1ece0f4e63b1799ad9b85931ae6aa9316",
+        "native_acceptance": false
+      },
+      "phone_parity_source_evidence": {
+        "source_commit": "c1ac7558f6c0f1be1f08bd377e6f9a4bfc9d444d",
+        "source_review": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/phone-parity-0392cd3d/independent-review-fcbe70d7/Review-R3.json",
+        "ready_packet": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/mobile-composer/phone-parity-0392cd3d/Final-Source-Ready-Packet.json",
+        "source_only": true,
         "native_acceptance": false
       }
     },

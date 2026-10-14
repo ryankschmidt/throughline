@@ -45,6 +45,8 @@ const fixture = (kind: "valid" | "missing" | "malformed" | "development") =>
     for (const file of [
       "apps/mobile/app.config.ts",
       "apps/mobile/src/throughline/phone-parity/nativeDictationConfig.ts",
+      "apps/mobile/src/throughline/phone-parity/desktopBrand.ts",
+      "apps/mobile/src/throughline/phone-parity/nativeTint.ts",
       "apps/web/vite.config.ts",
       "apps/web/vite/tailwind.ts",
       "scripts/lib/public-config.ts",

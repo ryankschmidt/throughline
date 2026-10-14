@@ -80,7 +80,7 @@ import {
   ComposerAttachmentThumbnail,
 } from "../../components/ComposerAttachmentStrip";
 import { VideoPreviewModal, type VideoPreviewSource } from "../../components/VideoPreviewModal";
-import { GlassSurface } from "../../components/GlassSurface";
+import { QuietComposerBackdrop as GlassSurface } from "../../throughline/phone-parity/QuietComposerBackdrop";
 import { ComposerEditor, type ComposerEditorHandle } from "../../components/ComposerEditor";
 import { fileRoutePathSegments } from "../files/filePath";
 import {
