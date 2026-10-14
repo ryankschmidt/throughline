@@ -1,10 +1,26 @@
 import React from "react";
 import { act, create, type ReactTestRenderer } from "react-test-renderer";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ComposerOptimizeControl } from "./ComposerOptimizeControl";
+import { saveOptimizerPreference } from "./useOptimizerPreference";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-afterEach(() => vi.restoreAllMocks());
+// The provider choice lives in Settings and persists in browser storage; the composer only reads it.
+beforeEach(() => {
+  const items = new Map<string, string>();
+  vi.stubGlobal("window", {
+    localStorage: {
+      getItem: (key: string) => items.get(key) ?? null,
+      setItem: (key: string, value: string) => void items.set(key, value),
+    },
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  });
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe("mounted composer optimization", () => {
   it("applies the selected range, displays original/status, and restores the draft on Undo", async () => {
@@ -40,7 +56,8 @@ describe("mounted composer optimization", () => {
     await act(async () => renderer.unmount());
   });
 
-  it("Off does not call the tower or change the draft", async () => {
+  it("Off chosen in Settings does not call the tower or change the draft", async () => {
+    expect(saveOptimizerPreference("off")).toBe(true);
     const fetcher = vi.spyOn(globalThis, "fetch");
     const draft = { owner: "mac:thread", text: "raw", revision: 1 };
     const writeDraft = vi.fn();
@@ -54,11 +71,6 @@ describe("mounted composer optimization", () => {
           writeDraft={writeDraft}
         />,
       );
-    });
-    await act(async () => {
-      renderer.root
-        .findByProps({ "aria-label": "Optimization provider" })
-        .props.onChange({ target: { value: "off" } });
     });
     await act(async () => {
       await renderer.root

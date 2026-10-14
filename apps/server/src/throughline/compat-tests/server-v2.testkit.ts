@@ -29,6 +29,7 @@ import * as Rpc from "effect/rpc/Rpc";
 import * as RpcGroup from "effect/rpc/RpcGroup";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
+import { VERIFIED_FIXTURE_NODE, VERIFIED_FIXTURE_NODE_SHA256 } from "./verifiedFixtureNode.ts";
 import {
   ORCHESTRATION_PROTOCOL_HEADER,
   ORCHESTRATION_PROTOCOL_VERSION,
@@ -104,9 +105,8 @@ export interface PreparedFixture {
   };
 }
 
-const privateFixtureNode =
-  "/Users/Admin/.local/state/throughline-upgrade-scratch/node-runtime-24.13.1/node-v24.13.1-darwin-arm64/bin/node";
-const privateFixtureNodeHash = "d36b3d980963d44bd2c5e844fac4cfeee26a167b744287a4e74a9575af9d0559";
+const privateFixtureNode = VERIFIED_FIXTURE_NODE;
+const privateFixtureNodeHash = VERIFIED_FIXTURE_NODE_SHA256;
 
 const fixtureFileHash = async (path: string) =>
   NodeCrypto.createHash("sha256")

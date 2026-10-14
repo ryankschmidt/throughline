@@ -1,4 +1,4 @@
-import { test } from "node:test";
+import { test } from "vite-plus/test";
 import assert from "node:assert/strict";
 const api = await import("./tax-views.ts").catch(() => null);
 function debtFacts() {

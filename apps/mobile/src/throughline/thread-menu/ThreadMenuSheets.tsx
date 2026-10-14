@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Modal, View, Pressable } from "react-native";
 import { NavigationContainer, NavigationIndependentTree } from "@react-navigation/native";
 import { createV5StackNavigator } from "../../native/createV5StackNavigator";
@@ -7,10 +7,16 @@ import {
   SettingsEnvironmentFilterProvider,
   useSettingsEnvironmentFilter,
 } from "../../features/settings/settings-environment-filter";
-import { SettingsProjectOverviewRouteScreen } from "../../features/settings/SettingsProjectOverviewRouteScreen";
 import { AppText } from "../../components/AppText";
 import { useMobileNavigationTheme } from "../../lib/useMobileNavigationTheme";
 import type { useDesktopThreadMenu } from "./useDesktopThreadMenu";
+
+// The thread list renders these sheets, and project settings reach back through the workspace
+// layout into that list; loading the screen on open keeps the import graph acyclic.
+const SettingsProjectOverviewRouteScreen = lazy(async () => ({
+  default: (await import("../../features/settings/SettingsProjectOverviewRouteScreen"))
+    .SettingsProjectOverviewRouteScreen,
+}));
 
 const ProjectStack = createV5StackNavigator<{ Project: undefined }>();
 type Menu = ReturnType<typeof useDesktopThreadMenu>;
@@ -31,7 +37,11 @@ function ScopedProjectSettings({ menu }: { menu: Menu }) {
         filter.toggleEnvironment(target.environmentId);
     }
   }, [group?.key, filter.selectProject, menu.projectRef.environmentId]);
-  return <SettingsProjectOverviewRouteScreen />;
+  return (
+    <Suspense fallback={null}>
+      <SettingsProjectOverviewRouteScreen />
+    </Suspense>
+  );
 }
 export function ThreadMenuSheets({ menu }: { menu: Menu }) {
   const theme = useMobileNavigationTheme();

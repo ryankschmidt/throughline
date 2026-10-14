@@ -38,7 +38,11 @@ vi.mock("@react-navigation/native", async () => {
   const React = await import("react");
   return { useFocusEffect: (callback: () => () => void) => React.useEffect(callback, [callback]) };
 });
-vi.mock("react-native", () => ({ AppState: { addEventListener: () => ({ remove: () => {} }) } }));
+// Android preparation has its own regression test; this contract runs the plain-platform path.
+vi.mock("react-native", () => ({
+  AppState: { addEventListener: () => ({ remove: () => {} }) },
+  Platform: { OS: "ios" },
+}));
 vi.mock("react-native-reanimated", async () => {
   const React = await import("react");
   return { useSharedValue: (value: unknown) => React.useRef({ value }).current };

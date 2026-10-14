@@ -5,5 +5,10 @@
     "types": ["node"],
     "lib": ["ESNext", "esnext.disposable"]
   },
-  "include": ["**/*.ts"]
+  "include": [
+    "**/*.ts",
+    "../apps/desktop/src/throughline/voice/VoiceBuildAdapter.ts",
+    "../apps/desktop/src/throughline/voice/VoiceBridgeContract.ts",
+    "../packages/throughline-release/src/index.ts"
+  ]
 }

@@ -127,7 +127,7 @@ describe("phone voice Message Optimizer", () => {
     ).resolves.toBe("  raw words\nunchanged  ");
   });
 
-  it("times out after 20 seconds even if fetch never settles, aborting the request", async () => {
+  it("waits 60 seconds for a long message, then keeps the raw words and aborts a fetch that never settles", async () => {
     vi.useFakeTimers();
     const h = harness();
     h.fetcher.mockImplementation(() => new Promise(() => {}));
@@ -135,7 +135,10 @@ describe("phone voice Message Optimizer", () => {
     const result = prepared.transcribe("file:///voice.m4a", {
       signal: new AbortController().signal,
     });
-    await vi.advanceTimersByTimeAsync(20_000);
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(h.outcomes).toEqual([]);
+    expect(h.fetcher.mock.calls[0]![1]!.signal!.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
     await expect(result).resolves.toBe(raw);
     expect(h.fetcher.mock.calls[0]![1]!.signal!.aborted).toBe(true);
     expect(h.outcomes).toEqual([{ text: raw, outcome: "original-kept", reason: "Timeout" }]);

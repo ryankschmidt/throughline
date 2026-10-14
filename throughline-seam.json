@@ -7537,7 +7537,7 @@
     {
       "path": "apps/server/package.json",
       "class": "upstream-edit",
-      "reason": "Declare release identity and relay, durable-runtime and bundler dependencies.",
+      "reason": "Declare release identity and relay, durable-runtime and bundler dependencies. Run the package tests through the fork launcher that selects the server fixture's verified private Node when this host carries it.",
       "reason_source": "authored",
       "imported_private_symbols": [],
       "schema_assumptions": [
@@ -15392,73 +15392,6 @@
           "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
         },
         "restore_upstream_path": "apps/server/src/ws.ts"
-      }
-    },
-    {
-      "path": "apps/server/tsconfig.json",
-      "class": "upstream-edit",
-      "reason": "Exclude a retired Codex supervision check from active server typechecking; remove the exclusion when the retired path is gone.",
-      "reason_source": "authored",
-      "imported_private_symbols": [],
-      "schema_assumptions": [
-        "Relocation assumption for Build compatibility: preserve existing exported input/output contracts, optional-field defaults and persisted IDs; validate at the feature slice, not by import compilation alone.",
-        "No schema declaration was found in the changed-line scan; this is not a claim of no runtime or transitive schema dependency."
-      ],
-      "contract_inspection": "Pinned Git diff and static-import scan; relative upstream-internal imports include type-only symbols. Dynamic imports, property access and transitive dependencies remain unmeasured.",
-      "conflict_rule": "Keep the exclude of src/provider/Layers/CodexSupervisedTask.check.ts until that check file is updated to the current task-workspaces interface (work item TQ-691); otherwise adopt upstream.",
-      "conflict_rule_source": "legacy",
-      "conflict_rule_inferred": false,
-      "marker": false,
-      "commits": [
-        "5f5ae4ac728cc8c2bdc6130d4dfc33a48ec76365 merge: reconcile upstream 5cbe82a870 device stream repair",
-        "1cb8a115562582b1e1f51124eceec53efa57c0ff merge: reconcile upstream bed923986f on preserve-base",
-        "b459489f8055975a5361d01de1793a8b6cd791ae merge: reconcile upstream 5f7294d452 on 0.0.60 preserve-base",
-        "bad95b43a4723e6943d851e7cd644043a066f350 build(server): type-check a fresh checkout; leave the stale supervised-task check file out"
-      ],
-      "legacy_rules": [
-        {
-          "pattern": "apps/server/tsconfig.json",
-          "rule": "Keep the exclude of src/provider/Layers/CodexSupervisedTask.check.ts until that check file is updated to the current task-workspaces interface (work item TQ-691); otherwise adopt upstream.",
-          "inferred": false,
-          "sources": [
-            "/Users/Admin/core-root/vault/01_Projects/workbench/infra/t3code/_meta/release-0.0.52-parity-2026-10-07/Update-Supervised-Task-Check-Create-Request.json"
-          ]
-        }
-      ],
-      "mount_lines": 2,
-      "mount_measurement": "Historical changed non-import lines, not a thin-mount admission pass.",
-      "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
-      "feature": "Build compatibility",
-      "seam_side": "upstream-implementation",
-      "decision": "drop",
-      "evidence": {
-        "upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
-        "fork": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
-        "diff_sha256": "f8aa32dc88579417263eeb7c7c42e92bd99fa1c674527dc3b2fe226a6eb15bba",
-        "current_candidate_fork": "829e269cf895560e449ea484acf20d18b3075e75",
-        "current_blob_oid": "8d5485d5b398f4895b8856beb99a9fea45fdf86f",
-        "current_diff_sha256": "7453075953ac2d1fbc9b06ced96be5c319160e9b21dea9b7bedb55fb5fe1d377",
-        "diff_normalization": "SHA-256 of raw UTF-8 output from git diff --no-ext-diff --no-textconv --no-renames PIN CANDIDATE -- exact-path; binary diff text is not a pixel/content inspection. Git blob OID binds binary bytes."
-      },
-      "plan": {
-        "status": "open-original-160",
-        "destination": "apps/server/src/throughline/build-compatibility/tsconfig.json",
-        "action": "Restore pinned upstream bytes after proving upstream-equivalent behavior; move fork regression coverage rather than deleting it.",
-        "depends_on": ["Pinned feature slice test", "Caller/import migration"],
-        "risk": "consumer-path-and-behavior-parity",
-        "size": {
-          "changed_lines": 3,
-          "static_private_imports": 0,
-          "basis": "Measured pinned Git diff; duration unknown until a representative slice is timed.",
-          "blob_bytes": 292,
-          "baseline_fork": "9d9b313cfe59d5d3f3c0b6c425c464c871733d28",
-          "current_candidate_fork": "829e269cf895560e449ea484acf20d18b3075e75",
-          "current_added_lines": 2,
-          "current_deleted_lines": 1,
-          "binary": false,
-          "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
-        },
-        "restore_upstream_path": "apps/server/tsconfig.json"
       }
     },
     {
@@ -29203,6 +29136,24 @@
       "approval_source": "/Users/Admin/.codex/sessions/2026/10/10/rollout-2026-10-10T16-25-33-01a12822-d44e-73f0-b44b-05cce27d740d.md",
       "approval_statement_sha256": "b0cb04a831498cbc80513a9f436fd756902c17a1a8cfd01f5f312e01fe95c95c",
       "mount_lines": 1
+    },
+    {
+      "path": "scripts/tsconfig.json",
+      "class": "upstream-edit",
+      "reason": "List the three fork TypeScript sources the composite scripts project already imports (desktop voice build adapter, its bridge contract, release stamp reader), the include pattern upstream uses in apps/desktop and apps/server.",
+      "reason_source": "authored",
+      "reason_author": "worker-forkfix-ed747fc0",
+      "feature": "Build compatibility",
+      "seam_side": "upstream-mount",
+      "decision": "keep",
+      "contract_inspection": "Project file list only; compiler options and the stock include pattern unchanged.",
+      "imported_private_symbols": [],
+      "schema_assumptions": ["No schema declaration; TypeScript project file list only."],
+      "conflict_rule": "Adopt upstream compiler options and include patterns; carry only the three listed fork source files.",
+      "conflict_rule_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/opus-0431/cut/forkfix/Lead-Ruling-Scripts-Tsconfig-Swap-20261013.txt",
+      "conflict_rule_inferred": false,
+      "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/opus-0431/cut/forkfix/Lead-Ruling-Scripts-Tsconfig-Swap-20261013.txt",
+      "mount_lines": 4
     }
   ],
   "upstream_changes": [
@@ -33599,7 +33550,10 @@
     "baseline_count": 177,
     "baseline_fork": "e735392d5a4a9b91294f5ba0c4511621b7ae706f",
     "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
-    "approved_swap_files": ["docs/throughline/tax-approvals/mobile-menu-swap-2026-10-13.json"],
+    "approved_swap_files": [
+      "docs/throughline/tax-approvals/mobile-menu-swap-2026-10-13.json",
+      "docs/throughline/tax-approvals/scripts-tsconfig-swap-2026-10-13.json"
+    ],
     "approved_growth_files": [
       "docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json",
       "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json",
@@ -33676,6 +33630,14 @@
         "count": 182,
         "staged": true,
         "label": "Approved zero-growth menu swap: restore Android hook and mount list adapter together"
+      },
+      {
+        "fork": "15d354c6a7fd88f55a84d493fc92078863303d2b",
+        "upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+        "count": 182,
+        "staged": true,
+        "label": "Approved zero-growth scripts tsconfig swap: restore server tsconfig and list the scripts cross-project sources together",
+        "approval_file": "docs/throughline/tax-approvals/scripts-tsconfig-swap-2026-10-13.json"
       }
     ],
     "proposed_retained_mounts": [

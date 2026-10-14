@@ -68,7 +68,7 @@ export async function optimizeTranscript(
     timeout = setTimeout(() => {
       resolve(originalKept(raw, "Timeout"));
       request.abort();
-    }, 20_000);
+    }, 60_000);
   });
   try {
     const optimized = (async () => {

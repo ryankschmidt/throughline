@@ -10,9 +10,9 @@ import {
   now,
   log,
 } from "./measurement-runtime.ts";
-// Inspection uses the already-installed TS6 AST API; TS7's root exports version only.
+// Inspection uses the TS6 AST API from the declared typescript-legacy dependency; TS7's root exports version only.
 // No package install or global compiler/model change is performed.
-import ts from "../../../node_modules/.pnpm-upmerge-main/typescript@6.0.3/node_modules/typescript/lib/typescript.js";
+import ts from "typescript-legacy";
 import { bindRepository, git } from "./repo-binding.ts";
 import { classifyFork, nameStatuses, type SeamClass } from "./classify.ts";
 import type { SeamEntry, SeamManifest } from "../check-seam.ts";

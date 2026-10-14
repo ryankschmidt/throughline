@@ -10,7 +10,7 @@ import {
   now,
   log,
 } from "./measurement-runtime.ts";
-import ts from "../../../node_modules/.pnpm-upmerge-main/typescript@6.0.3/node_modules/typescript/lib/typescript.js";
+import ts from "typescript-legacy";
 import { git } from "./repo-binding.ts";
 import { nameStatuses } from "./classify.ts";
 type Row = { path: string; [key: string]: unknown };
