@@ -38,6 +38,7 @@ import * as ApplicationEvents from "../../persistence/OrchestrationEventStore.ts
 import * as ApplicationReceipts from "../../persistence/OrchestrationCommandReceipts.ts";
 import * as Runtime from "../../persistence/ProviderSessionRuntime.ts";
 import * as LegacyImporter from "../../orchestration-v2/legacy/LegacyV1ThreadImporter.ts";
+import * as LegacyReasoningCarry from "./legacyReasoningCarry.ts";
 import * as ThreadExecutor from "../../orchestration-v2/ThreadCommandExecutor.ts";
 import { planThreadDeletion } from "../../orchestration-v2/ThreadDeletion.ts";
 import * as ProjectionObservation from "../observation/ProjectionObservation.ts";
@@ -157,7 +158,10 @@ const projectLayer = ProjectService.layer.pipe(
       observedProjection,
       sinkLayer,
       IdAllocator.layer,
-      LegacyImporter.layer.pipe(Layer.provide(sinkLayer)),
+      LegacyReasoningCarry.layer.pipe(
+        Layer.provide(LegacyImporter.layer),
+        Layer.provide(sinkLayer),
+      ),
       ThreadExecutor.layer,
       enrichmentLayer,
     ),

@@ -9650,7 +9650,7 @@
     {
       "path": "apps/server/src/orchestration-v2/runtimeLayer.ts",
       "class": "upstream-edit",
-      "reason": "Compose observation, headroom and Pi adapter guards through V2 service layers, leaving adapter implementations upstream.",
+      "reason": "Compose observation, headroom and Pi adapter guards through V2 service layers, leaving adapter implementations upstream. Decorate the stock legacy importer with the fork reasoning carry.",
       "reason_source": "authored",
       "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
       "feature": "Runtime decorators",
