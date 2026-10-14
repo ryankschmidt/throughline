@@ -18,6 +18,12 @@ import { useAtomSet, useAtomValue } from "@effect/atom-react";
 import { AsyncResult } from "effect/reactivity";
 
 import { ScopedTheme, ScopedVariables, Uniwind } from "uniwind";
+import {
+  DESKTOP_PHONE_THEME,
+  phoneThemeAppearance,
+  phoneThemeIds,
+  withDesktopPhoneTheme,
+} from "../../../throughline/phone-parity/desktopTheme";
 
 import {
   resolveAppearance,
@@ -96,20 +102,23 @@ export function AppearancePreferencesProvider(props: { readonly children: ReactN
     () => resolveAppearancePreferences(storedPreferences),
     [storedPreferences],
   );
-  const themeMode = normalizeMobileThemeMode(storedPreferences?.themeMode);
-  const themeAppearance = themeMode === "system" ? systemColorScheme : themeMode;
-  const resolvedThemeIds = resolveMobileThemeIds(storedPreferences ?? {});
+  const themeMode = normalizeMobileThemeMode(storedPreferences?.themeMode ?? "dark");
+  const requestedAppearance = themeMode === "system" ? systemColorScheme : themeMode;
+  const resolvedThemeIds = phoneThemeIds(storedPreferences);
   const themeIds = useMemo<MobileThemeIds>(
     () => ({ light: resolvedThemeIds.light, dark: resolvedThemeIds.dark }),
     [resolvedThemeIds.dark, resolvedThemeIds.light],
   );
-  const themeId = themeIds[themeAppearance];
+  const themeId = themeIds[requestedAppearance];
   const systemColorsActive = themeId === "material-you" && isSystemColorsAvailable;
   // ThroughLine: the palettes the connected machines publish, so a theme chosen
   // on the desktop can be chosen here too and renders from the same definition.
-  const publishedThemes: ReadonlyArray<EnvironmentTheme> = useAtomValue(
-    environmentPublishedThemesAtom,
+  const environmentThemes = useAtomValue(environmentPublishedThemesAtom);
+  const publishedThemes: ReadonlyArray<EnvironmentTheme> = useMemo(
+    () => withDesktopPhoneTheme(environmentThemes),
+    [environmentThemes],
   );
+  const themeAppearance = phoneThemeAppearance(themeId, requestedAppearance, publishedThemes);
   const [systemColorPalettes, setSystemColorPalettes] = useState(readSystemColorPalettes);
   useEffect(() => {
     if (!isSystemColorsAvailable) return;
@@ -146,13 +155,17 @@ export function AppearancePreferencesProvider(props: { readonly children: ReactN
       // published simply leaves the stock palette in place.
       if (!isBundledMobileThemeId(selectedId)) {
         const published = findEnvironmentTheme(publishedThemes, selectedId);
-        if (published !== null) return environmentThemeMobileVariables(published, appearance);
+        if (published !== null)
+          return environmentThemeMobileVariables(
+            published,
+            phoneThemeAppearance(selectedId, appearance, publishedThemes),
+          );
       }
       return base;
     };
     return { light: resolve("light"), dark: resolve("dark") };
   }, [themeIds, systemColorPalettes, publishedThemes]);
-  const themeVariables = themeVariablesByAppearance[themeAppearance];
+  const themeVariables = themeVariablesByAppearance[requestedAppearance];
   const activeThemeName = getMobileUniwindThemeName(themeId, themeAppearance);
   const { baseFontSize, codeFontSize, codeWordBreak, terminalFontSize } = preferences;
   const appearance = useMemo(
@@ -243,6 +256,13 @@ export function AppearancePreferencesProvider(props: { readonly children: ReactN
     (value: MobileThemeMode) => {
       const current = appliedRuntimeStateRef.current ?? runtimeState;
 
+      // A single-appearance desktop palette stays the same green in either OS
+      // mode. Retain the requested preference for a later explicit theme choice.
+      if (themeId === DESKTOP_PHONE_THEME.id) {
+        updateThemePreferences({ themeMode: value });
+        return;
+      }
+
       // Clear a forced native appearance before publishing System. The
       // resulting useColorScheme notification still sees the previous forced
       // preference, so React batches the actual system palette into the one
@@ -265,7 +285,7 @@ export function AppearancePreferencesProvider(props: { readonly children: ReactN
         syncThemeRuntime(next);
       }
     },
-    [runtimeState, syncThemeRuntime, updateThemePreferences],
+    [runtimeState, syncThemeRuntime, themeId, updateThemePreferences],
   );
 
   const setBaseFontSize = useCallback(

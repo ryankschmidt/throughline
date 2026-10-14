@@ -116,12 +116,13 @@ import { useComposerCommandMenu } from "./use-composer-command-menu";
 import {
   ComposerDictationCancelAction,
   ComposerDictationDraftContent,
-  ComposerDictationPrimaryAction,
   ComposerDictationStartAction,
   ComposerDictationStatus,
   ComposerDictationToolbar,
   VoiceOptimizationStatus,
 } from "../voice-input/ComposerDictationControl";
+import { NativeComposerMicrophoneAction } from "../../throughline/phone-parity/NativeComposerMicrophoneAction";
+import { nativeVoiceSendVisible } from "../../throughline/phone-parity/nativeMicAction";
 import { VoiceOptimizationUndoControl } from "../voice-input/VoiceOptimizationUndoControl";
 import { useVoiceInputController } from "../voice-input/useVoiceInputController";
 import { resolveVoiceComposerPresentation } from "../voice-input/voiceInputPresentation";
@@ -1240,7 +1241,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
                   </View>
                 )}
                 <View className="shrink-0 flex-row items-center">
-                  <ComposerDictationPrimaryAction
+                  <NativeComposerMicrophoneAction
                     state={voiceInput.state}
                     presentation={voicePresentation}
                     isAvailable={voiceInput.isAvailable}
@@ -1256,7 +1257,7 @@ export const ThreadComposer = memo(function ThreadComposer(props: ThreadComposer
                       disabled={!props.canOperateThread}
                       onPress={props.onStopThread}
                     />
-                  ) : voicePresentation.showsSend ? (
+                  ) : nativeVoiceSendVisible(voicePresentation.showsSend, voiceInput.state) ? (
                     <SendActionButton
                       accessibilityLabel={sendBlockedReason ?? sendLabel}
                       presentation={sendPresentation}
