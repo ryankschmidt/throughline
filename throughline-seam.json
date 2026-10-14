@@ -971,7 +971,7 @@
     {
       "path": "apps/desktop/src/main.ts",
       "class": "upstream-edit",
-      "reason": "Load the fork-owned legacy local-storage adapter at Electron initialization.",
+      "reason": "Load the fork-owned legacy local-storage adapter at Electron initialization. Mount the fork DesktopVoice layer and session-owned typed preload bridge; stock preload and window services unchanged.",
       "reason_source": "authored",
       "reason_author": "codex:01a12d44-f8dc-7f73-b53d-f6ce77fed354",
       "feature": "Desktop profile isolation",
@@ -1085,6 +1085,15 @@
           "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
         },
         "restore_upstream_path": "apps/desktop/src/main.ts"
+      },
+      "desktop_voice_evidence": {
+        "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Lead-Grant-1039PDT.txt",
+        "grant_custody": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Root-Grant-Authentication.json",
+        "source_review": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Independent-Source-Review-Freeze2.json",
+        "guard_execution": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Native-Guard-Candidate-20261013/Independent-Execution-Review.json",
+        "composed_freeze": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Composed-Guard-Freeze.json",
+        "controlled_result": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Controlled-Composed-Result.json",
+        "human_acceptance": false
       }
     },
     {
@@ -15861,7 +15870,7 @@
     {
       "path": "apps/web/src/components/chat/ChatComposer.tsx",
       "class": "upstream-edit",
-      "reason": "Mount optimizer, model observation/selection, Claude menus and Mac paste-as-text at the existing composer.",
+      "reason": "Mount optimizer, model observation/selection, Claude menus and Mac paste-as-text at the existing composer. Mount the fork desktop microphone/public phone controller adapter with protected draft timing, owner cleanup and editor/send guards; preserve existing model/settings/menu/optimizer flow.",
       "reason_source": "authored",
       "imported_private_symbols": [
         "{ useComposerTypingGuard } from ./useComposerTypingGuard",
@@ -16043,6 +16052,15 @@
           "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
         },
         "restore_upstream_path": "apps/web/src/components/chat/ChatComposer.tsx"
+      },
+      "desktop_voice_evidence": {
+        "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Lead-Grant-254PDT.txt",
+        "grant_custody": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Root-Grant-Authentication.json",
+        "source_review": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Independent-Source-Review-Freeze2.json",
+        "guard_execution": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Native-Guard-Candidate-20261013/Independent-Execution-Review.json",
+        "composed_freeze": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Composed-Guard-Freeze.json",
+        "controlled_result": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Controlled-Composed-Result.json",
+        "human_acceptance": false
       }
     },
     {
@@ -27999,7 +28017,7 @@
     {
       "path": "scripts/build-desktop-artifact.test.ts",
       "class": "upstream-edit",
-      "reason": "Preserve the fork regression: Build distinct fork bundle/product/artifact identities with the desktop version, isolated pnpm store and opt-in passkey signing.",
+      "reason": "Preserve the fork regression: Build distinct fork bundle/product/artifact identities with the desktop version, isolated pnpm store and opt-in passkey signing. Extend only the Mac exact resource-list assertion for the two fixed voice payloads; preserve Linux/Windows expectations and all original other assertions.",
       "reason_source": "authored",
       "imported_private_symbols": [
         "{ BundleNotSelfContainedError, BuildCommandFailedError, parseWslRuntimeArchiveMembers, DesktopDmgBackgroundSourceMissingError, createStageWorkspaceConfig, createStagePatchedDependencies, createBuildConfig, DESKTOP_ELECTRON_LANGUAGES, DESKTOP_FILE_EXCLUSIONS, DESKTOP_EXTRA_RESOURCES, LINUX_CAPTURE_EXTRA_RESOURCES, LINUX_BROWSER_SECRET_EXTRA_RESOURCES, LINUX_FILE_EXCLUSIONS, MAC_FILE_EXCLUSIONS, InvalidMacPasskeyRpDomainError, InvalidMacPasskeyPublishableKeyError, InvalidMockUpdateServerPortError, UnsupportedDesktopBuildArchitectureError, isMacPasskeySigningConfigurationError, LinuxIconResizeError, LinuxDesktopBuildPrerequisitesMissingError, MacDesktopBuildPrerequisitesMissingError, MacPasskeySigningConfigurationResolutionError, MissingMacPasskeyProvisioningProfileError, packWindowsServerAsar, preflightLinuxDesktopBuild, preflightMacDesktopBuild, preflightWindowsDesktopBuild, renderMacPasskeyEntitlements, resolveMacWebAuthnEntitlements, resolveClerkPasskeyNativeArtifacts, resolveMacPasskeySigningConfiguration, resolveDesktopRuntimeDependencies, resolveMergedStageDependencies, resolveFffNativeDependencies, resolveBuildOptions, resolveDesktopBuildIconAssets, resolveDesktopProductName, resolveDesktopUpdateChannel, resolveDesktopWebAssetBrand, resolveResourceMonitorRustTargets, resolveWindowsServerAsarIgnoreGlobs, resourceMonitorExecutableName, resolveGitHubPublishConfig, resolveMockUpdateServerPort, resolveMockUpdateServerUrl, resolvePackageManagerUserAgent, stageLinuxIconSize, stageDesktopDmgBackground, stageResourceMonitor, stageLinuxCaptureHelper, stageWslRuntimeArchive, bundlesWslRuntime, STAGE_INSTALL_ARGS, ancestorNodeModulesPaths, copyDirectoryPreservingSymlinks, LinuxBrowserSecretHostError, stageBrowserSecret, validateWindowsPackagedPayload, WindowsPrimaryNativeProbeError, WindowsDesktopBuildPrerequisitesMissingError, WindowsPackagedPayloadValidationError, WINDOWS_NATIVE_ASAR_UNPACK_GLOB, stageCursorSdkPlatformPackages, WINDOWS_PACKAGED_PAYLOAD_FILE_LIMIT, WINDOWS_SERVER_ASAR_IGNORE_GLOBS, WINDOWS_SERVER_EXTRA_RESOURCES, WINDOWS_SERVER_ASAR_RESOURCE, WINDOWS_SERVER_RESOURCE_SOURCE_DIR, WSL_RUNTIME_ARCHIVE_EXTRA_RESOURCE, WSL_RUNTIME_ARCHIVE_HASH_EXTRA_RESOURCE, WSL_RUNTIME_ARCHIVE_HASH_NAME, WSL_RUNTIME_ARCHIVE_NAME, WSL_RUNTIME_EXTRA_RESOURCES, WslRuntimeArchiveMissingError, wslRuntimeArchiveStem, } from ./build-desktop-artifact.ts",
@@ -28081,12 +28099,21 @@
           "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
         },
         "restore_upstream_path": "scripts/build-desktop-artifact.test.ts"
+      },
+      "desktop_voice_evidence": {
+        "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Lead-Grant-220PDT.txt",
+        "grant_custody": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Root-Grant-Authentication.json",
+        "source_review": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Independent-Source-Review-Freeze2.json",
+        "guard_execution": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Native-Guard-Candidate-20261013/Independent-Execution-Review.json",
+        "composed_freeze": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Composed-Guard-Freeze.json",
+        "controlled_result": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Controlled-Composed-Result.json",
+        "human_acceptance": false
       }
     },
     {
       "path": "scripts/build-desktop-artifact.ts",
       "class": "upstream-edit",
-      "reason": "Build distinct fork bundle/product/artifact identities with the desktop version, isolated pnpm store and opt-in passkey signing.",
+      "reason": "Build distinct fork bundle/product/artifact identities with the desktop version, isolated pnpm store and opt-in passkey signing. Stage fixed Mac voice native helper/preload resources, usage descriptions and audio entitlement through the fork build adapter; Linux/Windows and stock signer unchanged.",
       "reason_source": "authored",
       "imported_private_symbols": [
         "rootPackageJson from ../package.json",
@@ -28178,6 +28205,15 @@
           "text_measurement": "current candidate numstat; baseline changed_lines remains separately labeled"
         },
         "restore_upstream_path": "scripts/build-desktop-artifact.ts"
+      },
+      "desktop_voice_evidence": {
+        "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Lead-Grant-1039PDT.txt",
+        "grant_custody": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Root-Grant-Authentication.json",
+        "source_review": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Independent-Source-Review-Freeze2.json",
+        "guard_execution": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Native-Guard-Candidate-20261013/Independent-Execution-Review.json",
+        "composed_freeze": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Composed-Guard-Freeze.json",
+        "controlled_result": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/live-model-picker-20261013/Desktop-Voice-Controlled-Composed-Result.json",
+        "human_acceptance": false
       }
     },
     {

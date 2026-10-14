@@ -1,4 +1,6 @@
 import { ComposerOptimizeControl } from "../../throughline/composer-optimize/ComposerOptimizeControl";
+import { useDesktopVoiceInput } from "../../throughline/voice/useDesktopVoiceInput";
+import { DesktopVoiceControl } from "../../throughline/voice/DesktopVoiceControl";
 import {
   bindPendingComposerRequest,
   persistLiveComposerOptions,
@@ -3221,6 +3223,40 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     [composerDraftTarget, setComposerDraftPrompt],
   );
 
+  const desktopVoice = useDesktopVoiceInput({
+    ownerKey: optimizationOwner,
+    disabled:
+      isSendBusy ||
+      isConnecting ||
+      !canOperateThread ||
+      isComposerApprovalState ||
+      projectSelectionRequired ||
+      activePendingProgress !== null ||
+      collectInlineContextIds(prompt).length > 0,
+    readDraft: () => ({
+      ownerKey: optimizationOwner,
+      text: promptRef.current,
+      selection: composerEditorRef.current?.readSelectionRange() ?? {
+        start: promptRef.current.length,
+        end: promptRef.current.length,
+      },
+      revision: optimizationRevisionRef.current,
+    }),
+    commitDraft: (text, selection) => {
+      optimizationRevisionRef.current += 1;
+      optimizationObservedRef.current = { owner: optimizationOwner, text };
+      promptRef.current = text;
+      setPrompt(text);
+      const cursor = collapseExpandedComposerCursor(text, selection.end);
+      setComposerCursor(cursor);
+      setComposerTrigger(detectComposerTrigger(text, selection.end));
+      window.requestAnimationFrame(() => {
+        if (optimizationObservedRef.current.owner === optimizationOwner)
+          composerEditorRef.current?.focusAt(cursor);
+      });
+    },
+  });
+
   const addComposerImage = useCallback(
     (image: ComposerImageAttachment) => addComposerDraftImages(attachmentDraftTarget, [image]),
     [attachmentDraftTarget, addComposerDraftImages],
@@ -4410,6 +4446,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     ) => {
       if (
         noProviderAvailable ||
+        desktopVoice.blocksSubmission ||
         isSendDisabled ||
         !readEnvironmentScope(environmentId, AuthOrchestrationOperateScope)
       ) {
@@ -4504,6 +4541,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       onTypingGuardSend,
       blurMobileComposerAfterSend,
       environmentId,
+      desktopVoice,
       isSendDisabled,
       noProviderAvailable,
       onSend,
@@ -7796,6 +7834,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                                   : "Ask anything, @tag files/folders, $use skills, or / for commands"
                     }
                     disabled={
+                      desktopVoice.freezesEditor ||
                       isConnecting ||
                       isComposerApprovalState ||
                       projectSelectionRequired ||
@@ -7947,6 +7986,18 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       </Tooltip>
                     </>
                   ) : null}
+                  <DesktopVoiceControl
+                    voice={desktopVoice}
+                    disabled={
+                      isSendBusy ||
+                      isConnecting ||
+                      !canOperateThread ||
+                      isComposerApprovalState ||
+                      projectSelectionRequired ||
+                      activePendingProgress !== null ||
+                      collectInlineContextIds(prompt).length > 0
+                    }
+                  />
                   <ComposerFooterPrimaryActions
                     compact={isComposerResting || isComposerPrimaryActionsCompact}
                     canOperateThread={canOperateThread}
@@ -7974,8 +8025,12 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       pendingUserInputs.length === 0 && showPlanFollowUpPrompt
                     }
                     promptHasText={prompt.trim().length > 0}
-                    isSendBusy={isSendBusy}
-                    sendDisabledReason={sendDisabledReason}
+                    isSendBusy={isSendBusy || desktopVoice.blocksSubmission}
+                    sendDisabledReason={
+                      desktopVoice.blocksSubmission
+                        ? "Finish dictation before sending"
+                        : sendDisabledReason
+                    }
                     isConnecting={isConnecting}
                     isEnvironmentUnavailable={
                       environmentUnavailable !== null ||
