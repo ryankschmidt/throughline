@@ -1,0 +1,14 @@
+{
+  "schema": "throughline.upstream-tax-swap-approval.v1",
+  "requested_by": "worker-forkfix-ed747fc0",
+  "approved_by": "lead-orchestrator:abf5e046-bb33-4f0e-97bc-d1ccbba31693",
+  "request_reason": "List the three cross-project TypeScript sources the scripts typecheck already imports (desktop voice build adapter, its bridge contract, release stamp reader) in the composite scripts project, and return the server project file to stock now that its excluded retired check file is gone.",
+  "approval_reason": "Lead 9:08 PM PDT: \"the zero-growth swap is approved. (+1) scripts/tsconfig.json include gains exactly the three files (apps/desktop/src/throughline/voice/VoiceBuildAdapter.ts, its VoiceBridgeContract.ts, packages/throughline-release/src/index.ts), the pattern upstream uses in apps/desktop and apps/server; (-1) apps/server/tsconfig.json returns to stock, since its exclusion names a file that no longer exists and its own seam reason says to remove it then. Net upstream-edit count stays 182.\"",
+  "source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/opus-0431/cut/forkfix/Lead-Ruling-Scripts-Tsconfig-Swap-20261013.txt",
+  "approved_at": "2026-10-14T04:08:00Z",
+  "baseline_fork": "08c5e9a4ee17d47f8f7b2e1098d340e6498099d1",
+  "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+  "baseline_count": 182,
+  "restored_path": "apps/server/tsconfig.json",
+  "added_path": "scripts/tsconfig.json"
+}
