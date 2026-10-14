@@ -6,9 +6,9 @@ const MAX_TITLE_WIDTH = 260;
 
 /**
  * Width for the compact thread title beside the thread menu: the room the header buttons
- * leave, so the title reads as far as it can (desktop shows it whole) without pushing the
- * trailing buttons into UIKit's overflow "More" button. `leadingButtons` counts the back or
- * home button and the thread menu.
+ * leave, so the title reads as far as it can (desktop shows it whole). `leadingButtons` is
+ * the slots reserved before the title (the back or Home button); the thread menu after the
+ * title is reserved here.
  */
 export function compactThreadTitleWidth(input: {
   readonly windowWidth: number;
