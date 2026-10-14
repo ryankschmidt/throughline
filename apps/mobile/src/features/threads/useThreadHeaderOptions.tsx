@@ -1,8 +1,8 @@
 import type { useDesktopThreadMenu } from "../../throughline/thread-menu/useDesktopThreadMenu";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import { useMemo } from "react";
-import { Platform, View } from "react-native";
-import { AppText } from "../../components/AppText";
+import { Platform } from "react-native";
+import { ThreadCompactTitle } from "../../throughline/thread-menu/ThreadCompactTitle";
 import type { AppNativeStackNavigationOptions } from "../../native/StackHeader";
 import { useNativeWorkspaceColumnsSupported } from "../../native/NativeWorkspaceColumns";
 import { useAdaptiveWorkspaceLayout } from "../layout/AdaptiveWorkspaceLayout";
@@ -142,6 +142,12 @@ export function useThreadHeaderOptions(props: {
     [navigation, threadCenterHeaderItems, layout.usesSplitView, panes.primarySidebarVisible],
   );
 
+  const threadMenu = props.threadMenu;
+  // ThroughLine: as on desktop, the thread menu sits beside the title and the title takes
+  // the room the header buttons leave.
+  const compactTrailingButtons = (
+    usesDuoHeader ? duoRightHeaderItems : compactRightHeaderItems
+  ).filter((item) => item.type !== "spacing").length;
   const options: AppNativeStackNavigationOptions = {
     headerShown: true,
     headerTitle: !layout.usesSplitView && props.threadMenu ? "" : props.title,
@@ -158,7 +164,7 @@ export function useThreadHeaderOptions(props: {
     // Split view always uses its custom left items.
     unstable_headerLeftItems: layout.usesSplitView
       ? () => splitLeftHeaderItems
-      : props.threadMenu
+      : threadMenu
         ? () => [
             ...(!canGoBack ? compactHomeHeaderItems : []),
             {
@@ -166,20 +172,18 @@ export function useThreadHeaderOptions(props: {
               identifier: "thread-title",
               hidesSharedBackground: true,
               element: (
-                <View style={{ width: 72, height: 44, justifyContent: "center" }}>
-                  <AppText
-                    numberOfLines={1}
-                    className="text-[17px] font-extrabold accent-header-foreground"
-                  >
-                    {props.title}
-                  </AppText>
-                  {props.usesNativeHeaderGlass && props.subtitle ? (
-                    <AppText numberOfLines={1} className="text-[13px] accent-muted-foreground">
-                      {props.subtitle}
-                    </AppText>
-                  ) : null}
-                </View>
+                <ThreadCompactTitle
+                  title={props.title}
+                  subtitle={props.usesNativeHeaderGlass ? props.subtitle : ""}
+                  leadingButtons={canGoBack ? 1 : 2}
+                  trailingButtons={compactTrailingButtons}
+                />
               ),
+            },
+            {
+              type: "custom" as const,
+              identifier: "thread-actions",
+              element: <ThreadMenuButton menu={threadMenu} />,
             },
           ]
         : canGoBack
@@ -196,7 +200,7 @@ export function useThreadHeaderOptions(props: {
           : compactRightHeaderItems.map((item) =>
               item.type === "button" || item.type === "menu" ? { ...item, width: 44 } : item,
             )),
-      ...(props.threadMenu
+      ...(props.threadMenu && layout.usesSplitView
         ? [
             {
               type: "custom" as const,
