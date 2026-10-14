@@ -6,6 +6,7 @@ import {
   type OrchestrationV2DomainEvent,
   type OrchestrationV2TurnItem,
 } from "@t3tools/contracts";
+import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -181,44 +182,38 @@ export const layer = Layer.effect(
           WHERE item.turn_item_id = ${`${PREFIX}:turn-item:`} || message.message_id
         )
     `;
-    const carryPending = Effect.gen(function* () {
-      for (const row of yield* pendingThreads) {
-        const threadId = ThreadId.make(row.thread_id);
-        yield* carry(threadId).pipe(
-          Effect.catch((cause) =>
-            Effect.logWarning("Failed to carry legacy v1 reasoning", { threadId, cause }).pipe(
-              Effect.andThen(
-                sql`
-                  UPDATE orchestration_v2_legacy_imports SET last_error = ${carryError}
-                  WHERE thread_id = ${threadId}
-                `,
+    // Display-only: a failed carry never blocks the thread. It is logged with the thread id,
+    // recorded on the thread's import row, and retried on a later open or background pass.
+    const carryOrRecord = (threadId: ThreadId) =>
+      carry(threadId).pipe(
+        Effect.catchCause((cause) =>
+          Cause.hasInterruptsOnly(cause)
+            ? Effect.interrupt
+            : Effect.logWarning("Failed to carry legacy v1 reasoning; retrying on a later open", {
+                threadId,
+                cause,
+              }).pipe(
+                Effect.andThen(
+                  sql`
+                    UPDATE orchestration_v2_legacy_imports SET last_error = ${carryError}
+                    WHERE thread_id = ${threadId}
+                  `,
+                ),
+                Effect.ignore,
               ),
-            ),
-          ),
-        );
-      }
+        ),
+      );
+    const carryPending = Effect.gen(function* () {
+      for (const row of yield* pendingThreads) yield* carryOrRecord(ThreadId.make(row.thread_id));
     }).pipe(
       Effect.catch((cause) => Effect.logWarning("Failed to list legacy v1 reasoning", { cause })),
     );
     return LegacyImporter.LegacyV1ThreadImporter.of({
       ...importer,
       ensureTranscript: (threadId) =>
-        importer.ensureTranscript(threadId).pipe(
-          Effect.tap(() =>
-            carried.has(threadId)
-              ? Effect.void
-              : carry(threadId).pipe(
-                  Effect.mapError(
-                    (cause) =>
-                      new LegacyImporter.LegacyV1ThreadImportError({
-                        operation: "carry reasoning for",
-                        threadId,
-                        cause,
-                      }),
-                  ),
-                ),
-          ),
-        ),
+        importer
+          .ensureTranscript(threadId)
+          .pipe(Effect.tap(() => (carried.has(threadId) ? Effect.void : carryOrRecord(threadId)))),
       importPendingTranscripts: importer.importPendingTranscripts.pipe(
         Effect.tap(() => carryPending),
       ),
