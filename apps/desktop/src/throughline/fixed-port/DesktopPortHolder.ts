@@ -1,6 +1,7 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Stream from "effect/Stream";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
 export interface PortHolder {
   readonly pid: number;
@@ -23,18 +24,32 @@ export function parsePortHolders(output: string): PortHolder[] {
   return [...holders.values()];
 }
 
-const run = promisify(execFile);
-
 /** Discovery is read-only. Failure must never become permission to kill a guessed owner. */
 export const findPortHolders = (port: number) =>
-  Effect.tryPromise(async () => {
-    const { stdout } = await run(
-      process.platform === "darwin" ? "/usr/sbin/lsof" : "lsof",
-      ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-Fpc"],
-      { timeout: 3000, maxBuffer: 64 * 1024 },
-    );
-    return parsePortHolders(stdout);
-  }).pipe(Effect.orElseSucceed((): PortHolder[] => []));
+  Effect.scoped(
+    Effect.gen(function* () {
+      const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+      const handle = yield* spawner.spawn(
+        ChildProcess.make(
+          process.platform === "darwin" ? "/usr/sbin/lsof" : "lsof",
+          ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-Fpc"],
+          { stdin: "ignore", stdout: "pipe", stderr: "pipe" },
+        ),
+      );
+      const [stdout, , code] = yield* Effect.all(
+        [
+          handle.stdout.pipe(Stream.decodeText(), Stream.mkString),
+          handle.stderr.pipe(Stream.decodeText(), Stream.mkString),
+          handle.exitCode,
+        ],
+        { concurrency: "unbounded" },
+      );
+      return code === 0 ? parsePortHolders(stdout) : [];
+    }),
+  ).pipe(
+    Effect.timeout(Duration.seconds(3)),
+    Effect.orElseSucceed((): PortHolder[] => []),
+  );
 
 export function portConflictMessage(port: number, holders: readonly PortHolder[]): string {
   const owner = holders.length

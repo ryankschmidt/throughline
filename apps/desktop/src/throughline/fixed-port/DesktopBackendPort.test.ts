@@ -1,22 +1,57 @@
 import { assert, describe, it } from "@effect/vitest";
+import * as NodeServices from "@effect/platform-node/NodeServices";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Stream from "effect/Stream";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import * as NetService from "@t3tools/shared/Net";
 import { resolveDesktopBackendPort } from "../../app/DesktopApp.ts";
-import { parsePortHolders, portConflictMessage } from "./DesktopPortHolder.ts";
+import { findPortHolders, parsePortHolders, portConflictMessage } from "./DesktopPortHolder.ts";
 
 const network = (probes: number[], occupied?: number) =>
-  Layer.succeed(NetService.NetService, {
-    ...NetService.make(),
-    canListenOnHost: (port: number) => {
-      probes.push(port);
-      return Effect.succeed(port !== occupied);
-    },
-  });
+  Layer.merge(
+    NodeServices.layer,
+    Layer.succeed(NetService.NetService, {
+      ...NetService.make(),
+      canListenOnHost: (port: number) => {
+        probes.push(port);
+        return Effect.succeed(port !== occupied);
+      },
+    }),
+  );
 
 describe("desktop fixed backend port", () => {
+  it.effect("identifies an owned real listener without stopping it", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+        const child = yield* spawner.spawn(
+          ChildProcess.make(
+            process.execPath,
+            [
+              "-e",
+              "const s=require('net').createServer();s.listen(0,'127.0.0.1',()=>console.log(s.address().port));",
+            ],
+            { stdin: "ignore", stdout: "pipe", stderr: "pipe" },
+          ),
+        );
+        const output = yield* child.stdout.pipe(
+          Stream.decodeText(),
+          Stream.take(1),
+          Stream.mkString,
+        );
+        const port = Number(output.trim());
+        assert.ok(port > 0);
+        const holders = yield* findPortHolders(port);
+        assert.ok(holders.some((holder) => holder.pid === Number(child.pid)));
+        const again = yield* findPortHolders(port);
+        assert.ok(again.some((holder) => holder.pid === Number(child.pid)));
+      }),
+    ).pipe(Effect.provide(NodeServices.layer)),
+  );
+
   it("names and deduplicates the actual listening programs and PIDs", () => {
     const holders = parsePortHolders(
       "p123\ncThroughLine\np123\ncThroughLine\np456\ncT3 Code (Nightly)\n",
