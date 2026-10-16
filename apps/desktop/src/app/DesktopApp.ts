@@ -37,8 +37,12 @@ import * as DesktopWslBackend from "../wsl/DesktopWslBackend.ts";
 import * as DesktopRendererHistory from "../telemetry/DesktopRendererHistory.ts";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 
+import {
+  findPortHolders,
+  portConflictMessage,
+} from "../throughline/fixed-port/DesktopPortHolder.ts";
+
 const DEFAULT_DESKTOP_BACKEND_PORT = 3773;
-const MAX_TCP_PORT = 65_535;
 const DESKTOP_BACKEND_PORT_PROBE_HOSTS = ["127.0.0.1", "0.0.0.0", "::"] as const;
 
 const makeDesktopRunId = Crypto.Crypto.pipe(
@@ -52,9 +56,11 @@ export class DesktopBackendPortUnavailableError extends Schema.TaggedError<Deskt
     startPort: Schema.Int,
     maxPort: Schema.Int,
     hosts: Schema.Array(Schema.String),
+    holderMessage: Schema.optional(Schema.String),
   },
 ) {
   override get message(): string {
+    if (this.holderMessage) return this.holderMessage;
     return `No desktop backend port is available on hosts ${this.hosts.join(", ")} between ${this.startPort} and ${this.maxPort}.`;
   }
 }
@@ -74,7 +80,7 @@ const { logInfo: logBootstrapInfo, logWarning: logBootstrapWarning } =
 const { logInfo: logStartupInfo, logError: logStartupError } =
   DesktopObservability.makeComponentLogger("desktop-startup");
 
-const resolveDesktopBackendPort = Effect.fn("resolveDesktopBackendPort")(function* (
+export const resolveDesktopBackendPort = Effect.fn("resolveDesktopBackendPort")(function* (
   configuredPort: Option.Option<number>,
 ) {
   if (Option.isSome(configuredPort)) {
@@ -85,29 +91,20 @@ const resolveDesktopBackendPort = Effect.fn("resolveDesktopBackendPort")(functio
   }
 
   const net = yield* NetService.NetService;
-  for (let port = DEFAULT_DESKTOP_BACKEND_PORT; port <= MAX_TCP_PORT; port += 1) {
-    let availableOnEveryHost = true;
-
-    for (const host of DESKTOP_BACKEND_PORT_PROBE_HOSTS) {
-      if (!(yield* net.canListenOnHost(port, host))) {
-        availableOnEveryHost = false;
-        break;
-      }
-    }
-
-    if (availableOnEveryHost) {
-      return {
-        port,
-        selectedByScan: true,
-      } as const;
+  for (const host of DESKTOP_BACKEND_PORT_PROBE_HOSTS) {
+    if (!(yield* net.canListenOnHost(DEFAULT_DESKTOP_BACKEND_PORT, host))) {
+      return yield* new DesktopBackendPortUnavailableError({
+        holderMessage: portConflictMessage(
+          DEFAULT_DESKTOP_BACKEND_PORT,
+          yield* findPortHolders(DEFAULT_DESKTOP_BACKEND_PORT),
+        ),
+        startPort: DEFAULT_DESKTOP_BACKEND_PORT,
+        maxPort: DEFAULT_DESKTOP_BACKEND_PORT,
+        hosts: DESKTOP_BACKEND_PORT_PROBE_HOSTS,
+      });
     }
   }
-
-  return yield* new DesktopBackendPortUnavailableError({
-    startPort: DEFAULT_DESKTOP_BACKEND_PORT,
-    maxPort: MAX_TCP_PORT,
-    hosts: DESKTOP_BACKEND_PORT_PROBE_HOSTS,
-  });
+  return { port: DEFAULT_DESKTOP_BACKEND_PORT, selectedByScan: false } as const;
 });
 
 const handleFatalStartupError = Effect.fn("desktop.startup.handleFatalStartupError")(function* (
@@ -209,15 +206,9 @@ const bootstrap = Effect.gen(function* () {
 
   const backendPortSelection = yield* resolveDesktopBackendPort(environment.configuredBackendPort);
   const backendPort = backendPortSelection.port;
-  yield* logBootstrapInfo(
-    backendPortSelection.selectedByScan
-      ? "selected backend port via sequential scan"
-      : "using configured backend port",
-    {
-      port: backendPort,
-      ...(backendPortSelection.selectedByScan ? { startPort: DEFAULT_DESKTOP_BACKEND_PORT } : {}),
-    },
-  );
+  yield* logBootstrapInfo("using fixed backend port", {
+    port: backendPort,
+  });
 
   if (settings.serverExposureMode !== environment.defaultDesktopSettings.serverExposureMode) {
     yield* logBootstrapInfo("bootstrap restoring persisted server exposure mode", {

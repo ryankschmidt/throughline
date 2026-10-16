@@ -9,10 +9,10 @@
   },
   "merge_base": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
   "counts": {
-    "upstream_edit": 182,
+    "upstream_edit": 183,
     "upstream_removed": 0,
     "fork_added": 241,
-    "fork_namespace": 147
+    "fork_namespace": 149
   },
   "entries": [
     {
@@ -29154,6 +29154,52 @@
       "conflict_rule_inferred": false,
       "approval_source": "/Users/Admin/core-root/vault/01_Projects/workbench/infra/throughline/plans/next-gen-spec-2026-10-07/execution/phase-04/upstream-reconcile/opus-0431/cut/forkfix/Lead-Ruling-Scripts-Tsconfig-Swap-20261013.txt",
       "mount_lines": 4
+    },
+    {
+      "path": "apps/desktop/src/app/DesktopApp.ts",
+      "class": "upstream-edit",
+      "feature": "Fixed desktop backend port",
+      "seam_side": "upstream-mount",
+      "reason": "Keep paired clients on 3773 and explain port contention through the existing fatal-startup error box rather than silently selecting another port.",
+      "decision": "keep",
+      "contract_inspection": "Desktop startup owns primary port selection before backend start; the existing fatal error handler displays tagged error text and exits. NetService checks availability without owning process termination.",
+      "schema_assumptions": [
+        "An explicit T3CODE_PORT remains an override.",
+        "The fatal-startup error box displays the holder message; no new dialog or buttons.",
+        "No process is automatically terminated."
+      ],
+      "imported_private_symbols": ["findPortHolders", "portConflictMessage"],
+      "reason_source": "authored",
+      "reason_author": "worker-port3773-71d6d684",
+      "conflict_rule": "Retain the fixed-port bootstrap mount and fork holder lookup; run the fixed-port regression tests before accepting an upstream startup change."
+    },
+    {
+      "path": "apps/desktop/src/throughline/fixed-port/DesktopPortHolder.ts",
+      "class": "fork-namespace",
+      "feature": "Fixed desktop backend port",
+      "seam_side": "fork-namespace",
+      "reason": "Own read-only listener identification and focused regression tests on the fork side.",
+      "decision": "keep",
+      "contract_inspection": "lsof field protocol identifies listening process names and PIDs; unavailable discovery produces explicit uncertainty without guessing or killing.",
+      "schema_assumptions": ["lsof may be absent; unknown ownership must remain explicit."],
+      "imported_private_symbols": [],
+      "reason_source": "authored",
+      "reason_author": "worker-port3773-71d6d684",
+      "conflict_rule": "Retain the fixed-port bootstrap mount and fork holder lookup; run the fixed-port regression tests before accepting an upstream startup change."
+    },
+    {
+      "path": "apps/desktop/src/throughline/fixed-port/DesktopBackendPort.test.ts",
+      "class": "fork-namespace",
+      "feature": "Fixed desktop backend port",
+      "seam_side": "fork-namespace",
+      "reason": "Own read-only listener identification and focused regression tests on the fork side.",
+      "decision": "keep",
+      "contract_inspection": "lsof field protocol identifies listening process names and PIDs; unavailable discovery produces explicit uncertainty without guessing or killing.",
+      "schema_assumptions": ["lsof may be absent; unknown ownership must remain explicit."],
+      "imported_private_symbols": [],
+      "reason_source": "authored",
+      "reason_author": "worker-port3773-71d6d684",
+      "conflict_rule": "Retain the fixed-port bootstrap mount and fork holder lookup; run the fixed-port regression tests before accepting an upstream startup change."
     }
   ],
   "upstream_changes": [
@@ -33558,7 +33604,8 @@
       "docs/throughline/tax-approvals/device-lifecycle-2026-10-13.json",
       "docs/throughline/tax-approvals/optimizer-settings-2026-10-13.json",
       "docs/throughline/tax-approvals/mobile-runtime-rows-2026-10-13.json",
-      "docs/throughline/tax-approvals/android-recording-session-2026-10-13.json"
+      "docs/throughline/tax-approvals/android-recording-session-2026-10-13.json",
+      "docs/throughline/tax-approvals/fixed-desktop-port-2026-10-16.json"
     ],
     "count_history": [
       {
