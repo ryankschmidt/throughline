@@ -1,0 +1,14 @@
+{
+  "schema": "throughline.upstream-tax-approval.v1",
+  "requested_by": "worker-port3773-71d6d684",
+  "approved_by": "lead-0d0c936d-5a8b-41fd-9cce-318de741fe29",
+  "request_reason": "Keep ThroughLine on 3773 and report the listening program in its existing fatal-startup error box.",
+  "approval_reason": "Reviewed by lead 0d0c936d: a single upstream bootstrap mount replaces scanning and calls the fork-owned holder lookup; this is the smallest seam removing move-to-next-port behavior.",
+  "source": "/Users/Admin/.codex/sessions/2026/10/16/rollout-2026-10-16T02-43-39-01a14418-8150-7fa1-836b-c8c0c9d92c20.jsonl",
+  "baseline_fork": "c9dff3f6758bb6d9c6bef821097343ecfebf7eaf",
+  "pinned_upstream": "5cbe82a87006a7ee472f0f9c9fce5d5f24caa795",
+  "baseline_count": 182,
+  "max_count": 183,
+  "paths": ["apps/desktop/src/app/DesktopApp.ts"],
+  "approved_at": "2026-10-16T09:56:43.202Z"
+}
